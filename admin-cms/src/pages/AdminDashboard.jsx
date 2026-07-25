@@ -1,0 +1,2210 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, FileText, LogOut, Key, UserCheck, TrendingUp, Search, MapPin, Navigation, Activity, Map, Radio, Compass, MessageSquare, Send } from 'lucide-react';
+import Button from '../components/Button';
+import './AdminDashboard.css';
+
+const MOCK_PHOTOS = {
+  front: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=600',
+  rear: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=600',
+  left: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600',
+  right: 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=600',
+  inside: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=600',
+  document: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600'
+};
+
+const AdminDashboard = () => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('adminActiveTab') || 'approvals');
+  const [drivers, setDrivers] = useState([]);
+  const [passengers, setPassengers] = useState([]);
+  const [selectedDriver, setSelectedDriver] = useState(null);
+
+  // Direct Messaging States
+  const [messageModalDriver, setMessageModalDriver] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [newMessageText, setNewMessageText] = useState('');
+
+  // Live Fleet Monitor States
+  const [fleetData, setFleetData] = useState({ drivers: [], passengers: [], activeRides: [], onlineDriversCount: 0, ridingDriversCount: 0, offlineDriversCount: 0 });
+  const [fleetSearch, setFleetSearch] = useState('');
+  const [fleetFilter, setFleetFilter] = useState('all'); // 'all' | 'online' | 'riding' | 'offline'
+  const [fleetEntity, setFleetEntity] = useState('drivers'); // 'drivers' | 'passengers'
+  const [selectedMapDriver, setSelectedMapDriver] = useState(null);
+
+  // Save activeTab to localStorage on change
+  useEffect(() => {
+    localStorage.setItem('adminActiveTab', activeTab);
+  }, [activeTab]);
+
+  // Search State Queries
+  const [driverSearch, setDriverSearch] = useState('');
+  const [registeredDriverSearch, setRegisteredDriverSearch] = useState('');
+  const [passengerSearch, setPassengerSearch] = useState('');
+  const [ledgerSearch, setLedgerSearch] = useState('');
+
+  // Ledger filter query: 'all', 'pending', 'no-pending'
+  const [ledgerFilter, setLedgerFilter] = useState(() => localStorage.getItem('adminLedgerFilter') || 'all');
+
+  useEffect(() => {
+    localStorage.setItem('adminLedgerFilter', ledgerFilter);
+  }, [ledgerFilter]);
+
+  // Financial Stats States
+  const [financials, setFinancials] = useState({
+    totalCommission: '0.00',
+    totalGST: '0.00',
+    toBeCollected: '0.00'
+  });
+  
+  // Preview Modal State
+  const [previewFile, setPreviewFile] = useState(null);
+  const [previewTitle, setPreviewTitle] = useState('');
+
+  // System control states
+  const [baseFare, setBaseFare] = useState('50.00');
+  const [ratePerKm, setRatePerKm] = useState('15.00');
+  const [minRatePerHour, setMinRatePerHour] = useState('100.00');
+  const [surgeMultiplier, setSurgeMultiplier] = useState('1.0');
+  const [systemStatus, setSystemStatus] = useState('online');
+
+  // Payment Gateway states
+  const [gatewayType, setGatewayType] = useState('upi'); // 'upi' | 'bank'
+  const [upiId, setUpiId] = useState('humfleet@okaxis');
+  const [bankName, setBankName] = useState('HDFC Bank');
+  const [accountNo, setAccountNo] = useState('50100481293845');
+  const [ifscCode, setIfscCode] = useState('HDFC0000123');
+  const [accountHolder, setAccountHolder] = useState('HUM FLEET PLATFORMS PVT LTD');
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+
+  // Vehicle Categories Management States
+  const [categories, setCategories] = useState([]);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [catName, setCatName] = useState('');
+  const [catPassengers, setCatPassengers] = useState('4');
+  const [catBaseFare, setCatBaseFare] = useState('50.00');
+  const [catRatePerKm, setCatRatePerKm] = useState('15.00');
+
+  // Credentials change states
+  const [adminUsername, setAdminUsername] = useState('admin');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+
+  const fetchDrivers = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/drivers');
+      if (response.ok) {
+        const data = await response.json();
+        setDrivers(data);
+        if (selectedDriver) {
+          const updatedSelected = data.find(d => d.id === selectedDriver.id);
+          if (updatedSelected) {
+            setSelectedDriver(updatedSelected);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch drivers from backend:", err);
+    }
+  };
+
+  const fetchPassengers = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/passengers');
+      if (response.ok) {
+        const data = await response.json();
+        setPassengers(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch passengers from backend:", err);
+    }
+  };
+
+  const fetchFinancials = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/admin/financials');
+      if (response.ok) {
+        const data = await response.json();
+        setFinancials(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch financial analytics from backend:", err);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/vehicle-categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch vehicle categories from backend:", err);
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/settings');
+      if (response.ok) {
+        const data = await response.json();
+        setBaseFare(data.baseFare);
+        setRatePerKm(data.ratePerKm);
+        setMinRatePerHour(data.minRatePerHour || '100.00');
+        setSurgeMultiplier(data.surgeMultiplier);
+        setSystemStatus(data.systemStatus);
+        setGatewayType(data.gatewayType || 'upi');
+        setUpiId(data.upiId || '');
+        setBankName(data.bankName || '');
+        setAccountNo(data.accountNo || '');
+        setIfscCode(data.ifscCode || '');
+        setAccountHolder(data.accountHolder || '');
+        setQrCodeUrl(data.qrCodeUrl || '');
+      }
+    } catch (err) {
+      console.error("Failed to fetch settings from backend:", err);
+    }
+  };
+
+  const fetchFleetLive = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/admin/fleet-live');
+      if (response.ok) {
+        const data = await response.json();
+        setFleetData(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch live fleet monitor from backend:", err);
+    }
+  };
+
+  const fetchChatMessages = async (email) => {
+    if (!email) return;
+    try {
+      const response = await fetch(`http://localhost:5000/api/admin/messages?driverEmail=${encodeURIComponent(email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setChatMessages(data);
+      }
+    } catch (err) {
+      console.error("Error fetching driver chat messages:", err);
+    }
+  };
+
+  const handleSendMessage = async (textToSend) => {
+    const text = textToSend || newMessageText;
+    if (!text || !text.trim() || !messageModalDriver) return;
+    try {
+      const response = await fetch('http://localhost:5000/api/admin/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          driverEmail: messageModalDriver.email,
+          sender: 'Admin CMS Support',
+          text: text.trim()
+        })
+      });
+      if (response.ok) {
+        setNewMessageText('');
+        fetchChatMessages(messageModalDriver.email);
+      }
+    } catch (err) {
+      console.error("Error sending message to driver:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchDrivers();
+    fetchPassengers();
+    fetchFinancials();
+    fetchCategories();
+    fetchSettings();
+    fetchFleetLive();
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDrivers();
+      fetchPassengers();
+      fetchFinancials();
+      fetchFleetLive();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Stats values
+  const totalDrivers = drivers.length; 
+  const pendingDrivers = drivers.filter(d => d.status === 'Pending').length;
+  const approvedDriversCount = drivers.filter(d => d.status === 'Approved').length;
+
+  // Filter lists based on search queries
+  const filteredPendingDrivers = drivers
+    .filter(d => d.status === 'Pending')
+    .filter(d => 
+      d.name.toLowerCase().includes(driverSearch.toLowerCase()) ||
+      d.phone.includes(driverSearch) ||
+      d.email.toLowerCase().includes(driverSearch.toLowerCase()) ||
+      (d.plate && d.plate.toLowerCase().replace(/\s+/g, '').includes(driverSearch.toLowerCase().replace(/\s+/g, ''))) ||
+      (d.manufacturer && d.manufacturer.toLowerCase().includes(driverSearch.toLowerCase())) ||
+      (d.model && d.model.toLowerCase().includes(driverSearch.toLowerCase()))
+    );
+
+  const filteredApprovedDrivers = drivers
+    .filter(d => d.status !== 'Rejected')
+    .filter(d => 
+      d.name.toLowerCase().includes(registeredDriverSearch.toLowerCase()) ||
+      d.phone.includes(registeredDriverSearch) ||
+      d.email.toLowerCase().includes(registeredDriverSearch.toLowerCase()) ||
+      (d.plate && d.plate.toLowerCase().replace(/\s+/g, '').includes(registeredDriverSearch.toLowerCase().replace(/\s+/g, ''))) ||
+      (d.manufacturer && d.manufacturer.toLowerCase().includes(registeredDriverSearch.toLowerCase())) ||
+      (d.model && d.model.toLowerCase().includes(registeredDriverSearch.toLowerCase()))
+    );
+
+  const filteredPassengers = passengers.filter(p => 
+    p.name.toLowerCase().includes(passengerSearch.toLowerCase()) ||
+    p.phone.includes(passengerSearch) ||
+    p.email.toLowerCase().includes(passengerSearch.toLowerCase())
+  );
+
+  const filteredLedgerDrivers = drivers
+    .filter(d => 
+      d.name.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+      d.phone.includes(ledgerSearch) ||
+      d.email.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+      (d.plate && d.plate.toLowerCase().replace(/\s+/g, '').includes(ledgerSearch.toLowerCase().replace(/\s+/g, ''))) ||
+      (d.manufacturer && d.manufacturer.toLowerCase().includes(ledgerSearch.toLowerCase())) ||
+      (d.model && d.model.toLowerCase().includes(ledgerSearch.toLowerCase()))
+    )
+    .filter(d => {
+      const pendingBal = d.wallet?.toBePaid || 0;
+      if (ledgerFilter === 'pending') {
+        return pendingBal > 0;
+      }
+      if (ledgerFilter === 'no-pending') {
+        return pendingBal === 0;
+      }
+      return true;
+    });
+
+  const handleApprove = async (driverOrId) => {
+    const targetId = typeof driverOrId === 'object' ? (driverOrId.id || driverOrId.email) : driverOrId;
+    setDrivers(prev => prev.map(d => (String(d.id) === String(targetId) || d.email === targetId) ? { ...d, status: 'Approved' } : d));
+    try {
+      const response = await fetch(`http://localhost:5000/api/drivers/${encodeURIComponent(targetId)}/approve`, {
+        method: 'POST'
+      });
+      if (response.ok) {
+        fetchDrivers();
+        setSelectedDriver(null);
+      }
+    } catch (err) {
+      console.error('Error approving driver:', err);
+    }
+  };
+
+  const handleReject = async (driverOrId) => {
+    const targetId = typeof driverOrId === 'object' ? (driverOrId.id || driverOrId.email) : driverOrId;
+    setDrivers(prev => prev.map(d => (String(d.id) === String(targetId) || d.email === targetId) ? { ...d, status: 'Rejected' } : d));
+    try {
+      const response = await fetch(`http://localhost:5000/api/drivers/${encodeURIComponent(targetId)}/reject`, {
+        method: 'POST'
+      });
+      if (response.ok) {
+        fetchDrivers();
+        setSelectedDriver(null);
+      }
+    } catch (err) {
+      console.error('Error rejecting driver:', err);
+    }
+  };
+
+  const handleBlockDriver = async (id, name) => {
+    if (!window.confirm(`Block ${name} from receiving any trips?`)) return;
+    setDrivers(prev => prev.map(d => (String(d.id) === String(id) || d.email === id) ? { ...d, isBlocked: true } : d));
+    try {
+      const response = await fetch(`http://localhost:5000/api/drivers/${encodeURIComponent(id)}/block`, { method: 'POST' });
+      if (response.ok) {
+        fetchDrivers();
+      } else {
+        alert('Failed to block driver.');
+      }
+    } catch (err) {
+      console.error('Error blocking driver:', err);
+    }
+  };
+
+  const handleUnblockDriver = async (id, name) => {
+    if (!window.confirm(`Restore trip access for ${name}?`)) return;
+    setDrivers(prev => prev.map(d => (String(d.id) === String(id) || d.email === id) ? { ...d, isBlocked: false } : d));
+    try {
+      const response = await fetch(`http://localhost:5000/api/drivers/${encodeURIComponent(id)}/unblock`, { method: 'POST' });
+      if (response.ok) {
+        fetchDrivers();
+      } else {
+        alert('Failed to unblock driver.');
+      }
+    } catch (err) {
+      console.error('Error unblocking driver:', err);
+    }
+  };
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('http://localhost:5000/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          baseFare,
+          ratePerKm,
+          minRatePerHour,
+          surgeMultiplier,
+          systemStatus,
+          gatewayType,
+          upiId,
+          bankName,
+          accountNo,
+          ifscCode,
+          accountHolder,
+          qrCodeUrl
+        })
+      });
+      if (response.ok) {
+        alert('System and Payment Gateway settings updated successfully on server!');
+        fetchSettings();
+      } else {
+        alert('Failed to update system settings.');
+      }
+    } catch (err) {
+      console.error("Error saving settings:", err);
+      alert('Failed to connect to operations server.');
+    }
+  };
+
+  const handleAddCategory = async (e) => {
+    e.preventDefault();
+    if (!catName) return;
+
+    const payload = {
+      name: catName,
+      maxPassengers: catPassengers,
+      baseFare: catBaseFare,
+      ratePerKm: catRatePerKm
+    };
+
+    try {
+      let response;
+      if (editingCategory) {
+        // Edit existing category
+        response = await fetch(`http://localhost:5000/api/vehicle-categories/${editingCategory.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // Create new category
+        response = await fetch('http://localhost:5000/api/vehicle-categories', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (response.ok) {
+        setCatName('');
+        setCatPassengers('4');
+        setCatBaseFare('50.00');
+        setCatRatePerKm('15.00');
+        setEditingCategory(null);
+        fetchCategories();
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to add category.');
+      }
+    } catch (err) {
+      console.error("Failed to save category:", err);
+    }
+  };
+
+  const handleStartEdit = (cat) => {
+    setEditingCategory(cat);
+    setCatName(cat.name);
+    setCatPassengers(cat.maxPassengers.toString());
+    setCatBaseFare(cat.baseFare.toString());
+    setCatRatePerKm(cat.ratePerKm.toString());
+  };
+
+  const handleCancelEdit = () => {
+    setCatName('');
+    setCatPassengers('4');
+    setCatBaseFare('50.00');
+    setCatRatePerKm('15.00');
+    setEditingCategory(null);
+  };
+
+  const handleDeleteCategory = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/vehicle-categories/${id}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        fetchCategories();
+      }
+    } catch (err) {
+      console.error("Failed to delete category:", err);
+    }
+  };
+
+  const downloadLedgerCSV = () => {
+    const headers = [
+      'Driver Name', 
+      'Phone Number', 
+      'Email Address', 
+      'Vehicle', 
+      'Plate Number', 
+      'Cash Collected (INR)', 
+      'Pending Platform Due (INR)', 
+      'Driver Retained Cash (INR)', 
+      'Bank Name', 
+      'Account Holder', 
+      'Account Number', 
+      'IFSC Code'
+    ];
+    
+    const rows = filteredLedgerDrivers.map(d => [
+      d.name,
+      d.phone,
+      d.email,
+      `${d.manufacturer} ${d.model}`,
+      d.plate,
+      (d.wallet?.cashCollected || 0).toFixed(2),
+      (d.wallet?.toBePaid || 0).toFixed(2),
+      ((d.wallet?.cashCollected || 0) - (d.wallet?.toBePaid || 0)).toFixed(2),
+      d.bank?.bankName || 'N/A',
+      d.bank?.holderName || 'N/A',
+      d.bank?.accountNumber || 'N/A',
+      d.bank?.ifscCode || 'N/A'
+    ]);
+    
+    // Convert to CSV string, wrap items in quotes to support commas inside fields
+    const csvRows = [headers.map(h => `"${h}"`).join(',')];
+    rows.forEach(r => {
+      csvRows.push(r.map(val => `"${val}"`).join(','));
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `driver_ledger_${ledgerFilter}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Monthly, weekly, and daily completed rides report exporter
+  const downloadReportCSV = async (range) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/admin/rides');
+      if (!response.ok) {
+        alert('Failed to fetch rides report from server.');
+        return;
+      }
+      const allRides = await response.json();
+      
+      // Filter by range
+      const filtered = allRides.filter(ride => {
+        if (!ride.completedAt) return false;
+        const diff = new Date() - new Date(ride.completedAt);
+        if (range === 'daily') {
+          return diff <= 24 * 60 * 60 * 1000;
+        } else if (range === 'weekly') {
+          return diff <= 7 * 24 * 60 * 60 * 1000;
+        } else if (range === 'monthly') {
+          return diff <= 30 * 24 * 60 * 60 * 1000;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        alert(`No completed rides found in the ${range} timeframe.`);
+        return;
+      }
+
+      const headers = [
+        'Ride ID',
+        'Completed At',
+        'Passenger Name',
+        'Passenger Email',
+        'Driver Name',
+        'Driver Email',
+        'Pickup Location',
+        'Dropoff Location',
+        'Distance (KM)',
+        'Intercity',
+        'Offered Price (INR)',
+        'GST 5% (INR)',
+        'Commission 5% (INR)',
+        'Total Collected (INR)'
+      ];
+
+      const rows = filtered.map(r => [
+        r.id,
+        r.completedAt,
+        r.passengerName,
+        r.passengerEmail,
+        r.driverName || 'N/A',
+        r.driverEmail || 'N/A',
+        r.pickup,
+        r.dropoff,
+        r.totalKm || 0,
+        r.isIntercity ? 'Yes' : 'No',
+        r.fare,
+        r.gst || '0.00',
+        r.commission || '0.00',
+        r.totalCollected || '0.00'
+      ]);
+
+      const csvRows = [headers.map(h => `"${h}"`).join(',')];
+      rows.forEach(r => {
+        csvRows.push(r.map(val => `"${val}"`).join(','));
+      });
+
+      const csvContent = "data:text/csv;charset=utf-8," + csvRows.join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `hum_fleet_${range}_report_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Error generating report:', err);
+      alert('Failed to connect to report API.');
+    }
+  };
+
+  // Admin clears a driver's pending balance (restores cash trip access)
+  const handleClearBalance = async (driverId, driverName, amount) => {
+    if (!window.confirm(`Mark ₹${parseFloat(amount).toFixed(2)} pending balance of ${driverName} as paid and clear it?`)) return;
+    try {
+      const response = await fetch(`http://localhost:5000/api/admin/drivers/${driverId}/clear-balance`, {
+        method: 'POST'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        alert(`✅ Balance of ₹${parseFloat(data.clearedAmount).toFixed(2)} cleared for ${driverName}. Cash trips restored.`);
+        fetchDrivers();
+      } else {
+        alert('Failed to clear balance.');
+      }
+    } catch (err) {
+      console.error('Error clearing balance:', err);
+      alert('Failed to connect to server.');
+    }
+  };
+
+  const handleSaveCredentials = async (e) => {
+    e.preventDefault();
+    setProfileError('');
+    setProfileSuccess('');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/admin/update-credentials', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: adminUsername,
+          currentPassword,
+          newPassword
+        })
+      });
+
+      if (response.ok) {
+        setProfileSuccess('Console credentials updated successfully!');
+        setCurrentPassword('');
+        setNewPassword('');
+      } else {
+        const data = await response.json();
+        setProfileError(data.error || 'Failed to update credentials.');
+      }
+    } catch (err) {
+      console.error(err);
+      setProfileError('Failed to connect to authentication server.');
+    }
+  };
+
+  const getPhotoSrc = (side, data) => {
+    if (data && data.startsWith('data:')) {
+      return data;
+    }
+    return MOCK_PHOTOS[side] || MOCK_PHOTOS.front;
+  };
+
+  const getDocSrc = (data) => {
+    if (data && data.startsWith('data:')) {
+      return data;
+    }
+    return MOCK_PHOTOS.document;
+  };
+
+  const handleOpenPreview = (data, title) => {
+    setPreviewFile(data);
+    setPreviewTitle(title);
+  };
+
+  return (
+    <div className="admin-page">
+      <div className="admin-container container">
+        {/* Sidebar Nav */}
+        <aside className="admin-sidebar glass-card">
+          <div className="admin-profile">
+            <div className="admin-avatar">
+              <Shield size={24} />
+            </div>
+            <div>
+              <h3>Admin Panel</h3>
+              <p>HUM Fleet Control</p>
+            </div>
+          </div>
+          <nav className="admin-nav" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <button 
+              className={`admin-nav-item ${activeTab === 'approvals' ? 'active' : ''}`}
+              onClick={() => setActiveTab('approvals')}
+            >
+              <UserCheck size={18} /> Partner Approvals ({pendingDrivers})
+            </button>
+            <button 
+              className={`admin-nav-item ${activeTab === 'fleet-monitor' ? 'active' : ''}`}
+              onClick={() => setActiveTab('fleet-monitor')}
+              style={{ position: 'relative' }}
+            >
+              <MapPin size={18} color={fleetData.onlineDriversCount > 0 ? '#10b981' : 'currentColor'} /> 
+              Live Fleet Monitor
+              {fleetData.onlineDriversCount > 0 && (
+                <span style={{ marginLeft: 'auto', background: '#10b981', color: '#000', fontSize: '10px', fontWeight: '800', borderRadius: '10px', padding: '1px 6px' }}>
+                  {fleetData.onlineDriversCount} Live
+                </span>
+              )}
+            </button>
+            <button 
+              className={`admin-nav-item ${activeTab === 'registered-drivers' ? 'active' : ''}`}
+              onClick={() => setActiveTab('registered-drivers')}
+            >
+              <Car size={18} /> Registered Partners ({approvedDriversCount})
+            </button>
+            <button 
+              className={`admin-nav-item ${activeTab === 'passengers' ? 'active' : ''}`}
+              onClick={() => setActiveTab('passengers')}
+            >
+              <Users size={18} /> Registered Users ({passengers.length})
+            </button>
+            <button 
+              className={`admin-nav-item ${activeTab === 'ledger' ? 'active' : ''}`}
+              onClick={() => setActiveTab('ledger')}
+            >
+              <DollarSign size={18} /> Partner Ledger
+            </button>
+            <button 
+              className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+              onClick={() => setActiveTab('settings')}
+            >
+              <Settings size={18} /> System Controls
+            </button>
+            <button 
+              className={`admin-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
+              onClick={() => setActiveTab('profile')}
+            >
+              <Key size={18} /> Security Settings
+            </button>
+            
+            <button 
+              className="admin-nav-item"
+              onClick={() => navigate('/')}
+              style={{ marginTop: 'auto', color: '#ef4444' }}
+            >
+              <LogOut size={18} /> Logout
+            </button>
+          </nav>
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="admin-content glass-card">
+          
+          {/* Top Row: General Statistics */}
+          <div className="admin-stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+            <div className="admin-stat-box">
+              <span className="stat-label">Total Partners</span>
+              <span className="stat-value">{totalDrivers}</span>
+            </div>
+            <div className="admin-stat-box">
+              <span className="stat-label">Pending Approval</span>
+              <span className="stat-value text-gradient">{pendingDrivers}</span>
+            </div>
+            <div className="admin-stat-box">
+              <span className="stat-label">Total Passengers</span>
+              <span className="stat-value text-gradient" style={{ color: '#3b82f6' }}>{passengers.length}</span>
+            </div>
+            <div className="admin-stat-box">
+              <span className="stat-label">System State</span>
+              <span className="stat-value" style={{ color: systemStatus === 'online' ? 'var(--primary)' : '#ef4444' }}>
+                {systemStatus.toUpperCase()}
+              </span>
+            </div>
+          </div>
+
+          {/* Bottom Row: Financial Statistics Ledgers ( GST & Comm ) */}
+          <div className="admin-stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginTop: '16px' }}>
+            <div className="admin-stat-box" style={{ background: 'rgba(16, 185, 129, 0.03)', borderColor: 'rgba(16, 185, 129, 0.15)' }}>
+              <span className="stat-label" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>Total Commission (5%)</span>
+              <span className="stat-value" style={{ color: 'var(--primary)' }}>₹{parseFloat(financials.totalCommission).toFixed(2)}</span>
+            </div>
+            <div className="admin-stat-box" style={{ background: 'rgba(245, 158, 11, 0.03)', borderColor: 'rgba(245, 158, 11, 0.15)' }}>
+              <span className="stat-label" style={{ color: '#f59e0b', fontWeight: 'bold' }}>Total GST Collected (5%)</span>
+              <span className="stat-value" style={{ color: '#f59e0b' }}>₹{parseFloat(financials.totalGST).toFixed(2)}</span>
+            </div>
+            <div className="admin-stat-box" style={{ background: 'rgba(239, 68, 68, 0.03)', borderColor: 'rgba(239, 68, 68, 0.15)' }}>
+              <span className="stat-label" style={{ color: '#ef4444', fontWeight: 'bold' }}>Cash Commission Due (Unpaid)</span>
+              <span className="stat-value" style={{ color: '#ef4444' }}>₹{parseFloat(financials.toBeCollected).toFixed(2)}</span>
+            </div>
+          </div>
+
+          <hr className="divider" />
+
+          {/* TAB 1: Driver Approvals */}
+          {activeTab === 'approvals' && (
+            <div className="tab-pane">
+              <h2>Partner Approvals Queue</h2>
+              <p className="tab-subtitle">Review applicant registration profiles, uploaded vehicle photos, bank details, and compliance documents.</p>
+
+              {drivers.filter(d => d.status === 'Pending').length === 0 ? (
+                <p className="empty-state">No pending applications found in the database.</p>
+              ) : (
+                <div className="approval-layout">
+                  <div className="drivers-list">
+                    {/* Dynamic Search Box for Driver Approvals */}
+                    <div style={{ position: 'relative', marginBottom: '12px' }}>
+                      <input 
+                        type="text" 
+                        className="input-field" 
+                        placeholder="Search by vehicle number, name, phone..." 
+                        value={driverSearch}
+                        onChange={(e) => setDriverSearch(e.target.value)}
+                        style={{ padding: '10px 14px 10px 36px', width: '100%', fontSize: '13px' }}
+                      />
+                      <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                    </div>
+
+                    {filteredPendingDrivers.length === 0 ? (
+                      <p className="empty-state" style={{ padding: '20px 0' }}>No matching applications found.</p>
+                    ) : (
+                      filteredPendingDrivers.map(driver => (
+                        <div 
+                          key={driver.id} 
+                          className={`driver-list-card ${selectedDriver?.id === driver.id ? 'selected' : ''}`}
+                          onClick={() => setSelectedDriver(driver)}
+                        >
+                          <div className="driver-info-header">
+                            <h4>{driver.name}</h4>
+                            <span className={`status-badge badge-${driver.status.toLowerCase()}`}>
+                              {driver.status}
+                            </span>
+                          </div>
+                          <p className="driver-car">{driver.manufacturer} {driver.model} ({driver.year})</p>
+                          <p className="driver-plate">{driver.plate}</p>
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }} onClick={(e) => e.stopPropagation()}>
+                            <Button 
+                              variant="primary" 
+                              onClick={() => handleApprove(driver)}
+                              style={{ flex: 1, padding: '4px 8px', fontSize: '11px' }}
+                            >
+                              <Check size={14} /> Approve & Activate
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              onClick={() => handleReject(driver)}
+                              style={{ flex: 1, padding: '4px 8px', fontSize: '11px', borderColor: '#ef4444', color: '#ef4444' }}
+                            >
+                              <X size={14} /> Reject
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="driver-details-panel">
+                    {selectedDriver ? (
+                      <div className="details-scrollable">
+                        <h3>Review Profile: {selectedDriver.name}</h3>
+                        <div className="profile-grid">
+                          <div><strong>Phone:</strong> {selectedDriver.phone}</div>
+                          <div><strong>Email:</strong> {selectedDriver.email}</div>
+                          <div><strong>Vehicle Make:</strong> {selectedDriver.manufacturer}</div>
+                          <div><strong>Vehicle Model:</strong> {selectedDriver.model}</div>
+                          <div><strong>Mfg. Year:</strong> {selectedDriver.year}</div>
+                          <div><strong>Plate No:</strong> {selectedDriver.plate}</div>
+                          <div><strong>Minimum Rate/KM:</strong> ₹{selectedDriver.ratePerKm || '15.00'}</div>
+                          <div><strong>Minimum Rate/Hour:</strong> ₹{selectedDriver.ratePerHour || '120.00'}</div>
+                        </div>
+
+                        {/* Indian Bank Account Details Card */}
+                        <div style={{ marginTop: '14px', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px', background: 'rgba(255,255,255,0.01)' }}>
+                          <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '800' }}>
+                            <DollarSign size={15} color="var(--primary)"/> Bank Account Details (Indian)
+                          </h4>
+                          {selectedDriver.bank ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px' }}>
+                              <div><strong>Holder Name:</strong> {selectedDriver.bank.holderName || 'N/A'}</div>
+                              <div><strong>Bank Name:</strong> {selectedDriver.bank.bankName || 'N/A'}</div>
+                              <div><strong>Account No:</strong> {selectedDriver.bank.accountNumber || 'N/A'}</div>
+                              <div><strong>IFSC Code:</strong> {selectedDriver.bank.ifscCode || 'N/A'}</div>
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No bank details provided.</div>
+                          )}
+                        </div>
+
+                        {/* Partner Ledger Balance */}
+                        <div style={{ marginTop: '14px', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px', background: 'rgba(255,255,255,0.01)' }}>
+                          <h4 style={{ margin: '0 0 6px 0', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}><DollarSign size={15} color="var(--primary)"/> Partner Ledger (Cash Runs)</h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px' }}>
+                            <div><strong>Collected Cash:</strong> ₹{parseFloat(selectedDriver.wallet?.cashCollected || 0).toFixed(2)}</div>
+                            <div style={{ color: '#ef4444' }}><strong>Platform Debt Due:</strong> ₹{parseFloat(selectedDriver.wallet?.toBePaid || 0).toFixed(2)}</div>
+                          </div>
+                        </div>
+
+                        {/* Live Registration Face Verification Selfie */}
+                        <div className="doc-section" style={{ marginTop: '14px' }}>
+                          <h4>Registration Live Face Selfie <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 'bold' }}>✓ Verified</span></h4>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                            <div 
+                              className="clickable-thumb" 
+                              onClick={() => handleOpenPreview(selectedDriver.profilePic || selectedDriver.facePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600', `${selectedDriver.name} Live Face Selfie`)}
+                              style={{ width: '70px', height: '70px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--primary)', flexShrink: 0 }}
+                            >
+                              <img 
+                                src={selectedDriver.profilePic || selectedDriver.facePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600'} 
+                                alt="Face Verification" 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                              />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text-main)' }}>Live Face Verification Captured</div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Camera selfie captured during driver registration flow.</div>
+                              <div style={{ fontSize: '11px', color: '#10b981', fontWeight: '700', marginTop: '2px' }}>✓ Facial Geometry Validated</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Vehicle Photos */}
+                        <div className="doc-section" style={{ marginTop: '14px' }}>
+                          <h4>Uploaded Vehicle Photos <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'normal' }}>(Click to view)</span></h4>
+                          <div className="admin-docs-grid">
+                            {Object.entries(selectedDriver.photos || {}).map(([side, data]) => {
+                              const src = getPhotoSrc(side, data);
+                              return (
+                                <div key={side} className="admin-doc-thumbnail clickable-thumb" onClick={() => handleOpenPreview(src, `${side.charAt(0).toUpperCase() + side.slice(1)} View`)}>
+                                  <img src={src} alt={side} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />
+                                  <span className="thumb-label" style={{ marginTop: '4px' }}>{side.charAt(0).toUpperCase() + side.slice(1)} view</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Vehicle Documents */}
+                        <div className="doc-section">
+                          <h4>Compliance Documents <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'normal' }}>(Click to view)</span></h4>
+                          <div className="admin-docs-grid">
+                            {[
+                              { id: 'rc', label: 'Registration (RC)' },
+                              { id: 'pollution', label: 'Pollution (PUC)' },
+                              { id: 'insurance', label: 'Insurance' },
+                              { id: 'fitness', label: 'Fitness Cert.' },
+                              { id: 'license', label: 'Driving Licence (DL)' }
+                            ].map((doc) => {
+                              const data = selectedDriver.docs?.[doc.id];
+                              const src = getDocSrc(data);
+                              return (
+                                <div key={doc.id} className="admin-doc-thumbnail doc-pdf clickable-thumb" onClick={() => handleOpenPreview(src, doc.label)}>
+                                  {data && data.startsWith('data:image') ? (
+                                    <img src={data} alt={doc.label} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />
+                                  ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '12px 0' }}>
+                                      <FileText size={28} color="var(--secondary)" />
+                                    </div>
+                                  )}
+                                  <span className="thumb-label">{doc.label}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                          <div className="action-buttons-row" style={{ display: 'flex', gap: '10px' }}>
+                            {selectedDriver.status === 'Pending' && (
+                              <>
+                                <Button 
+                                  variant="outline" 
+                                  onClick={() => handleReject(selectedDriver.id)}
+                                  style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444' }}
+                                >
+                                  <X size={16} /> Reject Partner
+                                </Button>
+                                <Button 
+                                  variant="primary" 
+                                  onClick={() => handleApprove(selectedDriver.id)}
+                                  style={{ flex: 1 }}
+                                >
+                                  <Check size={16} /> Approve & Activate
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              variant="outline"
+                              onClick={() => { setMessageModalDriver(selectedDriver); fetchChatMessages(selectedDriver.email); }}
+                              style={{ flex: 1, borderColor: '#3b82f6', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                            >
+                              <MessageSquare size={16} /> Direct Message
+                            </Button>
+                          </div>
+                      </div>
+                    ) : (
+                      <div className="no-selection-state">
+                        <Users size={48} />
+                        <p>Select an applicant from the queue to view full profile, photos, and compliance documents.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 1B: Live Fleet & Partner GPS Monitor */}
+          {activeTab === 'fleet-monitor' && (
+            <div className="tab-pane animate-fade-in">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <MapPin color="#10b981" size={24} /> Live Fleet & GPS Monitor
+                  </h2>
+                  <p className="tab-subtitle" style={{ margin: '4px 0 0 0' }}>
+                    Track active/online partners, passengers on trip, live GPS coordinates, and real-time ride telemetry.
+                  </p>
+                </div>
+
+                {/* View Switcher: Drivers vs Passengers */}
+                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                  <button
+                    onClick={() => setFleetEntity('drivers')}
+                    style={{
+                      background: fleetEntity === 'drivers' ? 'var(--primary)' : 'transparent',
+                      color: fleetEntity === 'drivers' ? '#000' : 'var(--text-muted)',
+                      border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: '800', cursor: 'pointer'
+                    }}
+                  >
+                    🚗 Partner Drivers ({fleetData.drivers?.length || 0})
+                  </button>
+                  <button
+                    onClick={() => setFleetEntity('passengers')}
+                    style={{
+                      background: fleetEntity === 'passengers' ? '#3b82f6' : 'transparent',
+                      color: fleetEntity === 'passengers' ? '#fff' : 'var(--text-muted)',
+                      border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: '800', cursor: 'pointer'
+                    }}
+                  >
+                    👤 Passengers ({fleetData.passengers?.length || 0})
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Summary Bar */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', margin: '16px 0' }}>
+                <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.06)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', fontWeight: 'bold' }}>
+                    <Radio size={20} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Online Partners (Idle)</span>
+                    <span style={{ fontSize: '18px', fontWeight: '800', color: '#10b981' }}>{fleetData.onlineDriversCount || 0}</span>
+                  </div>
+                </div>
+
+                <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.06)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', fontWeight: 'bold' }}>
+                    <Navigation size={20} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>On Active Trip</span>
+                    <span style={{ fontSize: '18px', fontWeight: '800', color: '#f59e0b' }}>{fleetData.ridingDriversCount || 0}</span>
+                  </div>
+                </div>
+
+                <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontWeight: 'bold' }}>
+                    <Car size={20} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Offline Partners</span>
+                    <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-main)' }}>{fleetData.offlineDriversCount || 0}</span>
+                  </div>
+                </div>
+
+                <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid rgba(59,130,246,0.3)', background: 'rgba(59,130,246,0.06)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>
+                    <Users size={20} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Total Passengers</span>
+                    <span style={{ fontSize: '18px', fontWeight: '800', color: '#3b82f6' }}>{fleetData.passengers?.length || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters & Search Toolbar */}
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '16px' }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+                  <input 
+                    type="text" 
+                    className="input-field" 
+                    placeholder="Search by name, phone, email, plate number, or location..." 
+                    value={fleetSearch}
+                    onChange={(e) => setFleetSearch(e.target.value)}
+                    style={{ padding: '10px 14px 10px 36px', width: '100%', fontSize: '13px' }}
+                  />
+                  <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                </div>
+
+                {fleetEntity === 'drivers' && (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {[
+                      { id: 'all', label: 'All Partners' },
+                      { id: 'online', label: '🟢 Online (Idle)' },
+                      { id: 'riding', label: '🚕 On Active Trip' },
+                      { id: 'offline', label: '⚪ Offline' }
+                    ].map(f => (
+                      <button
+                        key={f.id}
+                        onClick={() => setFleetFilter(f.id)}
+                        style={{
+                          background: fleetFilter === f.id ? 'var(--primary)' : 'rgba(255,255,255,0.04)',
+                          color: fleetFilter === f.id ? '#000' : 'var(--text-muted)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer'
+                        }}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* FLEET DRIVERS VIEW */}
+              {fleetEntity === 'drivers' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                  {fleetData.drivers
+                    .filter(d => {
+                      if (fleetFilter === 'online') return d.isOnline && !d.currentRide;
+                      if (fleetFilter === 'riding') return d.currentRide != null;
+                      if (fleetFilter === 'offline') return !d.isOnline;
+                      return true;
+                    })
+                    .filter(d => 
+                      d.name.toLowerCase().includes(fleetSearch.toLowerCase()) ||
+                      d.phone.includes(fleetSearch) ||
+                      d.email.toLowerCase().includes(fleetSearch.toLowerCase()) ||
+                      (d.plate && d.plate.toLowerCase().replace(/\s+/g, '').includes(fleetSearch.toLowerCase().replace(/\s+/g, ''))) ||
+                      (d.manufacturer && d.manufacturer.toLowerCase().includes(fleetSearch.toLowerCase())) ||
+                      (d.model && d.model.toLowerCase().includes(fleetSearch.toLowerCase()))
+                    )
+                    .map(d => {
+                      const isRiding = d.currentRide != null;
+                      const isOnline = Boolean(d.isOnline);
+                      return (
+                        <div key={d.id} style={{
+                          border: `1.5px solid ${isRiding ? 'rgba(245,158,11,0.5)' : isOnline ? 'rgba(16,185,129,0.4)' : 'var(--border)'}`,
+                          borderRadius: '16px', padding: '16px',
+                          background: isRiding ? 'rgba(245,158,11,0.03)' : isOnline ? 'rgba(16,185,129,0.03)' : 'rgba(255,255,255,0.01)',
+                          display: 'flex', flexDirection: 'column', gap: '12px'
+                        }}>
+                          {/* Driver Card Header */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{ width: '42px', height: '42px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--border)', background: '#121624', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 'bold', fontSize: '16px' }}>
+                                {d.profilePic ? <img src={d.profilePic} alt={d.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : d.name.charAt(0)}
+                              </div>
+                              <div>
+                                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>{d.name}</h4>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{d.manufacturer} {d.model} • <strong style={{ color: 'var(--text-main)', fontFamily: 'monospace' }}>{d.plate}</strong></span>
+                              </div>
+                            </div>
+
+                            {/* Status Badge */}
+                            {isRiding ? (
+                              <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)', borderRadius: '20px', padding: '4px 10px', fontSize: '10px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#f59e0b', animation: 'pulse 1.5s infinite' }}></span> 🚕 ON TRIP
+                              </span>
+                            ) : d.isPaused ? (
+                              <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)', borderRadius: '20px', padding: '4px 10px', fontSize: '10px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                ☕ ON REST BREAK
+                              </span>
+                            ) : isOnline ? (
+                              <span style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.4)', borderRadius: '20px', padding: '4px 10px', fontSize: '10px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', animation: 'pulse 1.5s infinite' }}></span> 🟢 ONLINE
+                              </span>
+                            ) : (
+                              <span style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: '20px', padding: '4px 10px', fontSize: '10px', fontWeight: '800' }}>
+                                ⚪ OFFLINE
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Active Trip Details Box if riding */}
+                          {isRiding && d.currentRide && (
+                            <div style={{ border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '10px', background: 'rgba(245,158,11,0.06)', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ fontWeight: '800', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Navigation size={14} /> Active Trip for {d.currentRide.passengerName || 'Passenger'}
+                              </div>
+                              <div><strong>From:</strong> {d.currentRide.pickup}</div>
+                              <div><strong>To:</strong> {d.currentRide.dropoff}</div>
+                              <div><strong>Fare:</strong> ₹{d.currentRide.fare}</div>
+                            </div>
+                          )}
+
+                          {/* GPS Telemetry & Contact */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '8px' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Compass size={14} color="var(--primary)" /> 
+                              Lat: {d.lat ? parseFloat(d.lat).toFixed(4) : '28.4950'}, Lng: {d.lng ? parseFloat(d.lng).toFixed(4) : '77.0896'}
+                            </span>
+                            <span>📞 {d.phone}</span>
+                          </div>
+
+                          {/* View Live Map Location & Direct Message Buttons */}
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <Button 
+                              variant="primary" 
+                              onClick={() => setSelectedMapDriver(d)}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flex: 1, fontSize: '12px', padding: '8px' }}
+                            >
+                              <MapPin size={15} /> View Live Location
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              onClick={() => { setMessageModalDriver(d); fetchChatMessages(d.email); }}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', flex: 1, fontSize: '12px', padding: '8px', borderColor: '#3b82f6', color: '#3b82f6' }}
+                            >
+                              <MessageSquare size={15} /> 💬 Message
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              {/* PASSENGERS VIEW */}
+              {fleetEntity === 'passengers' && (
+                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'rgba(255,255,255,0.01)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Passenger Name</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Email Address</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Mobile Number</th>
+                        <th style={{ padding: '16px', fontWeight: '700', textAlign: 'center' }}>Active Ride Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fleetData.passengers
+                        .filter(p => p.name.toLowerCase().includes(fleetSearch.toLowerCase()) || p.email.toLowerCase().includes(fleetSearch.toLowerCase()) || p.phone.includes(fleetSearch))
+                        .map(p => (
+                          <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '16px', fontWeight: '600' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '13px', color: '#3b82f6' }}>
+                                  {p.profilePic ? <img src={p.profilePic} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : p.name.charAt(0)}
+                                </div>
+                                <span>{p.name}</span>
+                              </div>
+                            </td>
+                            <td style={{ padding: '16px', color: 'var(--text-main)' }}>{p.email}</td>
+                            <td style={{ padding: '16px', color: 'var(--text-main)' }}>{p.phone}</td>
+                            <td style={{ padding: '16px', textAlign: 'center' }}>
+                              {p.activeRide ? (
+                                <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)', borderRadius: '20px', padding: '4px 12px', fontSize: '11px', fontWeight: '800' }}>
+                                  🚕 Ride Requested / Active ({p.activeRide.pickup.split(',')[0]} → {p.activeRide.dropoff.split(',')[0]})
+                                </span>
+                              ) : (
+                                <span style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '20px', padding: '4px 12px', fontSize: '11px', fontWeight: '800' }}>
+                                  ✓ Account Active (Idle)
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 1C: Registered Drivers List (EXCLUSIVELY VERTICAL ALIGNED CARD VIEW & VERTICAL SCROLL) */}
+          {activeTab === 'registered-drivers' && (
+            <div className="tab-pane animate-fade-in">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h2 style={{ margin: 0 }}>Registered Partners</h2>
+                  <p className="tab-subtitle" style={{ margin: '4px 0 0 0' }}>Database of partner accounts approved and active to perform rides on the platform.</p>
+                </div>
+              </div>
+
+              {/* Dynamic Search Box for Registered Drivers */}
+              <div style={{ position: 'relative', margin: '16px 0 16px 0', maxWidth: '380px' }}>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Search by partner name, phone, email, plate..." 
+                  value={registeredDriverSearch}
+                  onChange={(e) => setRegisteredDriverSearch(e.target.value)}
+                  style={{ padding: '10px 14px 10px 36px', width: '100%', fontSize: '13px' }}
+                />
+                <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              </div>
+
+              {filteredApprovedDrivers.length === 0 ? (
+                <p className="empty-state">No matching registered partners found.</p>
+              ) : (
+
+                /* VERTICAL ALIGNED CARDS LIST WITH SMOOTH VERTICAL SCROLLING */
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  maxHeight: 'calc(100vh - 240px)',
+                  overflowY: 'auto',
+                  paddingRight: '8px',
+                  paddingBottom: '24px'
+                }}>
+                  {filteredApprovedDrivers.map((d) => {
+                    const isVerifiedToday = d.lastVerifiedAt && new Date(d.lastVerifiedAt).toDateString() === new Date().toDateString();
+                    return (
+                      <div 
+                        key={d.id} 
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'minmax(210px, 1.2fr) minmax(180px, 1fr) minmax(150px, 1fr) minmax(160px, 1fr) auto',
+                          alignItems: 'center',
+                          gap: '16px',
+                          background: '#ffffff',
+                          border: '1px solid var(--border)',
+                          borderRadius: '16px',
+                          padding: '16px 20px',
+                          boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+                          transition: 'all 0.2s ease'
+                        }} 
+                        className="glass-card table-row-hover"
+                      >
+                        {/* Column 1: Partner Avatar, Name, Rating */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '46px', height: '46px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--primary)', background: '#121624', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '18px', color: 'var(--primary)' }}>
+                            {d.profilePic ? <img src={d.profilePic} alt={d.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : d.name.charAt(0)}
+                          </div>
+                          <div>
+                            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: 'var(--text-main)' }}>{d.name}</h4>
+                            <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: '800' }}>★ {d.rating || '5.0'} Rating</span>
+                          </div>
+                        </div>
+
+                        {/* Column 2: Contact Details */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.email}</span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>📞 {d.phone}</span>
+                        </div>
+
+                        {/* Column 3: Vehicle Model & Plate Number */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-main)' }}>{d.manufacturer} {d.model}</span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'monospace', fontWeight: '700' }}>{d.plate}</span>
+                        </div>
+
+                        {/* Column 4: Verification & Trip Access Badges */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {isVerifiedToday ? (
+                            <span style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: '800', width: 'fit-content' }}>
+                              ✓ Face Verified Today
+                            </span>
+                          ) : (
+                            <span style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: '800', width: 'fit-content' }}>
+                              ⏳ Verification Pending
+                            </span>
+                          )}
+
+                          {d.isBlocked ? (
+                            <span style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: '800', width: 'fit-content' }}>
+                              🚫 Access Blocked
+                            </span>
+                          ) : (
+                            <span style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: '800', width: 'fit-content' }}>
+                              ✅ Access Active
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Column 5: Actions */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {d.isBlocked ? (
+                            <button
+                              title="Unblock Partner"
+                              onClick={() => handleUnblockDriver(d.id, d.name)}
+                              style={{ background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              ✅ Unblock
+                            </button>
+                          ) : (
+                            <button
+                              title="Block Partner"
+                              onClick={() => handleBlockDriver(d.id, d.name)}
+                              style={{ background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              🚫 Block
+                            </button>
+                          )}
+
+                          <button
+                            title="Direct Message Partner"
+                            onClick={() => { setMessageModalDriver(d); fetchChatMessages(d.email); }}
+                            style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <MessageSquare size={14} /> Message
+                          </button>
+
+                          <Button 
+                            variant="outline" 
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to suspend and deactivate driver ${d.name}?`)) {
+                                handleReject(d.id);
+                              }
+                            }}
+                            style={{ borderColor: '#ef4444', color: '#ef4444', padding: '8px 12px', fontSize: '12px' }}
+                          >
+                            Suspend
+                          </Button>
+
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setSelectedDriver(d)}
+                            style={{ fontSize: '12px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <Eye size={14} /> Details
+                          </Button>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: Registered Passengers (Users) */}
+          {activeTab === 'passengers' && (
+            <div className="tab-pane">
+              <h2>Registered Customers (Users)</h2>
+              <p className="tab-subtitle">Database of passenger accounts registered to request and book rides on the platform.</p>
+
+              {/* Dynamic Search Box for Passengers */}
+              <div style={{ position: 'relative', margin: '14px 0 14px 0', maxWidth: '350px' }}>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Search passengers (name, email, phone...)" 
+                  value={passengerSearch}
+                  onChange={(e) => setPassengerSearch(e.target.value)}
+                  style={{ padding: '10px 14px 10px 36px', width: '100%', fontSize: '13px' }}
+                />
+                <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              </div>
+
+              {filteredPassengers.length === 0 ? (
+                <p className="empty-state">No matching registered passengers found.</p>
+              ) : (
+                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'rgba(255,255,255,0.01)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Name</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Rating</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Email Address</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Mobile Number</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Total Spent</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>GST Paid</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPassengers.map((p) => (
+                        <tr key={p.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} className="table-row-hover">
+                          <td style={{ padding: '16px', fontWeight: '600' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '13px', color: '#3b82f6' }}>
+                                {p.profilePic ? <img src={p.profilePic} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : p.name.charAt(0)}
+                              </div>
+                              <span>{p.name}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '16px', color: '#f59e0b', fontWeight: '700' }}>★ {p.rating || '5.0'}</td>
+                          <td style={{ padding: '16px', color: 'var(--text-main)' }}>{p.email}</td>
+                          <td style={{ padding: '16px', color: 'var(--text-main)' }}>{p.phone}</td>
+                          <td style={{ padding: '16px', fontWeight: '600', color: 'var(--primary)' }}>₹{parseFloat(p.wallet?.totalSpent || 0).toFixed(2)}</td>
+                          <td style={{ padding: '16px', color: '#f59e0b' }}>₹{parseFloat(p.wallet?.taxPaid || 0).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: Driver Ledger Accounts */}
+          {activeTab === 'ledger' && (
+            <div className="tab-pane">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h2>{ledgerFilter === 'pending' ? 'Pending Collection Report' : ledgerFilter === 'no-pending' ? 'Settled Collection Report' : 'Master Collection Report'}</h2>
+                  <p className="tab-subtitle">
+                    {ledgerFilter === 'pending' 
+                      ? 'Showing outstanding commission and GST platform dues currently owed by partners.' 
+                      : ledgerFilter === 'no-pending' 
+                        ? 'Showing partners with zero platform dues and completed settlements.' 
+                        : 'Monitor cash collections, contact profiles, and outstanding balances due to the platform.'}
+                  </p>
+                </div>
+                
+                {/* Search & Dynamic Status Filters */}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type="text" 
+                      className="input-field" 
+                      placeholder="Search ledger by vehicle number, name..." 
+                      value={ledgerSearch}
+                      onChange={(e) => setLedgerSearch(e.target.value)}
+                      style={{ padding: '8px 12px 8px 34px', width: '220px', fontSize: '13px' }}
+                    />
+                    <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                  </div>
+
+                  {/* Pending & Non-Pending Amount Filter dropdown */}
+                  <select 
+                    className="input-field" 
+                    value={ledgerFilter} 
+                    onChange={(e) => setLedgerFilter(e.target.value)}
+                    style={{ 
+                      padding: '8px 12px', 
+                      width: '200px', 
+                      fontSize: '13px', 
+                      fontWeight: '600',
+                      display: 'block',
+                      color: '#ffffff',
+                      background: '#1a2035',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: '8px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="all" style={{ background: '#1a2035', color: '#ffffff' }}>Show All Balances</option>
+                    <option value="pending" style={{ background: '#1a2035', color: '#ef4444' }}>With Pending Due (&gt; ₹0)</option>
+                    <option value="no-pending" style={{ background: '#1a2035', color: '#10b981' }}>No Pending Due (₹0)</option>
+                  </select>
+                  
+                  <Button 
+                    variant="primary" 
+                    onClick={downloadLedgerCSV}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '38px' }}
+                  >
+                    <TrendingUp size={16} /> Export to Excel (CSV)
+                  </Button>
+                </div>
+              </div>
+
+              {filteredLedgerDrivers.length === 0 ? (
+                <p className="empty-state">No matching driver ledger accounts found.</p>
+              ) : (
+                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'rgba(255,255,255,0.01)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Partner Name</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Contact Number</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Vehicle & Plate</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Cash Collected</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Pending Amount (Due)</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Non-Pending (Settled)</th>
+                        <th style={{ padding: '16px', fontWeight: '700', textAlign: 'center' }}>Balance Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredLedgerDrivers.map((d) => (
+                        <tr key={d.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} className="table-row-hover">
+                          <td style={{ padding: '16px', fontWeight: '600' }}>{d.name}</td>
+                          <td style={{ padding: '16px', color: 'var(--text-main)', fontWeight: '500' }}>{d.phone}</td>
+                          <td style={{ padding: '16px', color: 'var(--text-main)' }}>
+                            {d.manufacturer} {d.model} (<span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: '600' }}>{d.plate}</span>)
+                          </td>
+                          <td style={{ padding: '16px', fontWeight: '600', color: 'var(--primary)' }}>₹{parseFloat(d.wallet?.cashCollected || 0).toFixed(2)}</td>
+                          <td style={{ padding: '16px', fontWeight: '700', color: '#ef4444' }}>₹{parseFloat(d.wallet?.toBePaid || 0).toFixed(2)}</td>
+                          <td style={{ padding: '16px', fontWeight: '700', color: 'var(--primary)' }}>
+                            ₹{parseFloat((d.wallet?.cashCollected || 0) - (d.wallet?.toBePaid || 0)).toFixed(2)}
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
+                            {parseFloat(d.wallet?.toBePaid || 0) > 1500 ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                  background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+                                  border: '1px solid rgba(239,68,68,0.3)', borderRadius: '20px',
+                                  padding: '2px 10px', fontSize: '10px', fontWeight: '800'
+                                }}>
+                                  🔒 Cash Locked
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handleClearBalance(d.id, d.name, d.wallet?.toBePaid || 0)}
+                                  style={{ borderColor: '#10b981', color: '#10b981', padding: '4px 10px', fontSize: '11px', fontWeight: '700' }}
+                                >
+                                  ✓ Mark as Paid
+                                </Button>
+                              </div>
+                            ) : (
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                background: 'rgba(16,185,129,0.1)', color: '#10b981',
+                                border: '1px solid rgba(16,185,129,0.25)', borderRadius: '20px',
+                                padding: '2px 10px', fontSize: '10px', fontWeight: '700'
+                              }}>
+                                ✓ Cash Active
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ background: 'rgba(255, 255, 255, 0.04)', borderTop: '2px solid var(--border)', fontWeight: 'bold' }}>
+                        <td style={{ padding: '16px' }}>Grand Total</td>
+                        <td style={{ padding: '16px' }}>-</td>
+                        <td style={{ padding: '16px' }}>-</td>
+                        <td style={{ padding: '16px', color: 'var(--primary)', fontWeight: '800' }}>
+                          ₹{filteredLedgerDrivers.reduce((sum, d) => sum + (d.wallet?.cashCollected || 0), 0).toFixed(2)}
+                        </td>
+                        <td style={{ padding: '16px', color: '#ef4444', fontWeight: '800' }}>
+                          ₹{filteredLedgerDrivers.reduce((sum, d) => sum + (d.wallet?.toBePaid || 0), 0).toFixed(2)}
+                        </td>
+                        <td style={{ padding: '16px', color: 'var(--primary)', fontWeight: '800' }}>
+                          ₹{filteredLedgerDrivers.reduce((sum, d) => sum + ((d.wallet?.cashCollected || 0) - (d.wallet?.toBePaid || 0)), 0).toFixed(2)}
+                        </td>
+                        <td style={{ padding: '16px', textAlign: 'center', color: '#ef4444', fontWeight: '800' }}>
+                          {filteredLedgerDrivers.filter(d => parseFloat(d.wallet?.toBePaid || 0) > 1500).length} Locked Partners
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+
+              {/* Transactional Reports Download Section */}
+              <div style={{ marginTop: '24px', padding: '20px', border: '1px solid var(--border)', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.01)' }}>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800' }}>System Operational Reports</h3>
+                <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  Download audit spreadsheets of completed trips and revenue splits over custom time windows.
+                </p>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <Button variant="outline" onClick={() => downloadReportCSV('daily')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <TrendingUp size={15} /> Download Daily Report
+                  </Button>
+                  <Button variant="outline" onClick={() => downloadReportCSV('weekly')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <TrendingUp size={15} /> Download Weekly Report
+                  </Button>
+                  <Button variant="outline" onClick={() => downloadReportCSV('monthly')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <TrendingUp size={15} /> Download Monthly Report
+                  </Button>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 4: System Settings */}
+          {activeTab === 'settings' && (
+            <div className="tab-pane" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+              <div>
+                <h2>Total Control Settings</h2>
+                <p className="tab-subtitle">Adjust rates, manage dynamic surges, and view active global system settings.</p>
+
+                <form onSubmit={handleSaveSettings} className="admin-settings-form">
+                  <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label>Base Ride Fare (INR)</label>
+                      <input 
+                        type="number" 
+                        className="input-field" 
+                        value={baseFare}
+                        onChange={(e) => setBaseFare(e.target.value)} 
+                        min="0"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Driver Min Rate/KM (INR)</label>
+                      <input 
+                        type="number" 
+                        className="input-field" 
+                        value={ratePerKm}
+                        onChange={(e) => setRatePerKm(e.target.value)}
+                        min="0"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Driver Min Rate/Hour (INR)</label>
+                      <input 
+                        type="number" 
+                        className="input-field" 
+                        value={minRatePerHour}
+                        onChange={(e) => setMinRatePerHour(e.target.value)}
+                        min="0"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Peak Surge Multiplier</label>
+                      <select 
+                        className="input-field"
+                        value={surgeMultiplier}
+                        onChange={(e) => setSurgeMultiplier(e.target.value)}
+                        style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                      >
+                        <option value="1.0">1.0x (Standard Rates)</option>
+                        <option value="1.2">1.2x (Mild Demand)</option>
+                        <option value="1.5">1.5x (High Surge)</option>
+                        <option value="2.0">2.0x (Peak Hours)</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Global System Mode</label>
+                      <select 
+                        className="input-field"
+                        value={systemStatus}
+                        onChange={(e) => setSystemStatus(e.target.value)}
+                        style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                      >
+                        <option value="online">Online (Accepting all users)</option>
+                        <option value="maintenance">Maintenance (Admins Only)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <CreditCard size={18} color="var(--primary)" /> Payment Gateway Configurations (For Driver Dues Collection)
+                    </h3>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                      Configure the gateway details drivers will see when settling their platform commission dues.
+                    </p>
+
+                    <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '14px' }}>
+                      <div className="form-group">
+                        <label>Gateway Type</label>
+                        <select 
+                          className="input-field"
+                          value={gatewayType}
+                          onChange={(e) => setGatewayType(e.target.value)}
+                          style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                        >
+                          <option value="upi">UPI Address / QR Code</option>
+                          <option value="bank">Direct Bank Transfer</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>Account Holder / Beneficiary Name</label>
+                        <input 
+                          type="text" 
+                          className="input-field" 
+                          value={accountHolder}
+                          onChange={(e) => setAccountHolder(e.target.value)}
+                          placeholder="e.g. HUM FLEET PLATFORMS PVT LTD"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {gatewayType === 'upi' ? (
+                      <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '14px' }}>
+                        <div className="form-group">
+                          <label>UPI ID (VPA)</label>
+                          <input 
+                            type="text" 
+                            className="input-field" 
+                            value={upiId}
+                            onChange={(e) => setUpiId(e.target.value)}
+                            placeholder="e.g. humfleet@okaxis"
+                            required={gatewayType === 'upi'}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Upload UPI QR Code (Optional Image)</label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              id="admin-qr-upload-input"
+                              onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (evt) => setQrCodeUrl(evt.target.result);
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                            <label htmlFor="admin-qr-upload-input" className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px', background: 'rgba(255,255,255,0.02)', color: 'var(--text-main)' }}>
+                              <Upload size={14} /> Choose Image
+                            </label>
+                            {qrCodeUrl && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '12px', color: 'var(--primary)' }}>✓ Uploaded</span>
+                                <button type="button" onClick={() => setQrCodeUrl('')} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '11px', cursor: 'pointer', fontWeight: '700' }}>Remove</button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '14px' }}>
+                          <div className="form-group">
+                            <label>Bank Name</label>
+                            <input 
+                              type="text" 
+                              className="input-field" 
+                              value={bankName}
+                              onChange={(e) => setBankName(e.target.value)}
+                              placeholder="e.g. HDFC Bank"
+                              required={gatewayType === 'bank'}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>Account Number</label>
+                            <input 
+                              type="text" 
+                              className="input-field" 
+                              value={accountNo}
+                              onChange={(e) => setAccountNo(e.target.value)}
+                              placeholder="e.g. 50100234567890"
+                              required={gatewayType === 'bank'}
+                            />
+                          </div>
+                        </div>
+                        <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '14px' }}>
+                          <div className="form-group">
+                            <label>IFSC Code</label>
+                            <input 
+                              type="text" 
+                              className="input-field" 
+                              value={ifscCode}
+                              onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
+                              placeholder="e.g. HDFC0000123"
+                              required={gatewayType === 'bank'}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <Button variant="primary" type="submit" style={{ marginTop: '16px' }}>
+                    Save System Configuration
+                  </Button>
+                </form>
+              </div>
+
+              {/* Dynamic Vehicle Categories Manager Card */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '24px' }}>
+                <h2>Vehicle Categories Manager</h2>
+                <p className="tab-subtitle">Configure available vehicle classes, max passenger seats, and separate pricing rates dynamically.</p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: '24px', marginTop: '16px' }}>
+                  {/* Category Table */}
+                  <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'rgba(255,255,255,0.01)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
+                          <th style={{ padding: '12px 16px', fontWeight: '700' }}>Class Name</th>
+                          <th style={{ padding: '12px 16px', fontWeight: '700' }}>Max Passengers</th>
+                          <th style={{ padding: '12px 16px', fontWeight: '700' }}>Base Fare</th>
+                          <th style={{ padding: '12px 16px', fontWeight: '700' }}>Rate/KM</th>
+                          <th style={{ padding: '12px 16px', fontWeight: '700', textAlign: 'center' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {categories.map((cat) => (
+                          <tr key={cat.id} style={{ borderBottom: '1px solid var(--border)' }} className="table-row-hover">
+                            <td style={{ padding: '12px 16px', fontWeight: '600' }}>{cat.name}</td>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-main)' }}>{cat.maxPassengers} Passengers</td>
+                            <td style={{ padding: '12px 16px', fontWeight: '600', color: 'var(--primary)' }}>₹{parseFloat(cat.baseFare).toFixed(2)}</td>
+                            <td style={{ padding: '12px 16px', fontWeight: '600', color: 'var(--primary)' }}>₹{parseFloat(cat.ratePerKm).toFixed(2)}</td>
+                            <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                              <button 
+                                onClick={() => handleStartEdit(cat)}
+                                style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '12px', fontWeight: '700', marginRight: '10px' }}
+                              >
+                                Edit
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteCategory(cat.id)}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}
+                                disabled={categories.length <= 1} // Retain at least 1 category!
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Add/Edit Class Form */}
+                  <form onSubmit={handleAddCategory} className="admin-settings-form" style={{ margin: 0, padding: '20px', border: '1px solid var(--border)', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.01)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800' }}>
+                      {editingCategory ? 'Edit Vehicle Class' : 'Add Vehicle Class'}
+                    </h3>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label>Category Name</label>
+                      <input 
+                        type="text" 
+                        className="input-field" 
+                        placeholder="e.g. HUM SUV"
+                        value={catName}
+                        onChange={(e) => setCatName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label>Max Passengers</label>
+                      <input 
+                        type="number" 
+                        className="input-field" 
+                        min="1"
+                        max="20"
+                        value={catPassengers}
+                        onChange={(e) => setCatPassengers(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <div className="form-group" style={{ flex: 1, margin: 0 }}>
+                        <label>Base Fare (₹)</label>
+                        <input 
+                          type="number" 
+                          className="input-field" 
+                          min="0"
+                          value={catBaseFare}
+                          onChange={(e) => setCatBaseFare(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="form-group" style={{ flex: 1, margin: 0 }}>
+                        <label>Rate / KM (₹)</label>
+                        <input 
+                          type="number" 
+                          className="input-field" 
+                          min="0"
+                          value={catRatePerKm}
+                          onChange={(e) => setCatRatePerKm(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <Button variant="primary" type="submit" style={{ width: '100%' }}>
+                        {editingCategory ? 'Save Changes' : 'Create Category'}
+                      </Button>
+                      {editingCategory && (
+                        <Button 
+                          variant="outline" 
+                          type="button" 
+                          style={{ width: '100%', borderColor: '#ef4444', color: '#ef4444' }}
+                          onClick={handleCancelEdit}
+                        >
+                          Cancel Edit
+                        </Button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: Security Credentials */}
+          {activeTab === 'profile' && (
+            <div className="tab-pane">
+              <h2>Admin Credentials Control</h2>
+              <p className="tab-subtitle">Update your operations console username and security password.</p>
+
+              {profileError && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '12px', color: '#ef4444', fontSize: '14px', marginBottom: '16px' }}>
+                  {profileError}
+                </div>
+              )}
+              {profileSuccess && (
+                <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '8px', padding: '12px', color: 'var(--primary)', fontSize: '14px', marginBottom: '16px' }}>
+                  {profileSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleSaveCredentials} className="admin-settings-form">
+                <div className="form-group">
+                  <label>Consoles Username</label>
+                  <input 
+                    type="text" 
+                    className="input-field" 
+                    value={adminUsername}
+                    onChange={(e) => setAdminUsername(e.target.value)} 
+                    required
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Current Security Password</label>
+                    <input 
+                      type="password" 
+                      className="input-field" 
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)} 
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>New Security Password</label>
+                    <input 
+                      type="password" 
+                      className="input-field" 
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)} 
+                      required
+                    />
+                  </div>
+                </div>
+
+                <Button variant="primary" type="submit" style={{ marginTop: '16px' }}>
+                  Update Credentials
+                </Button>
+              </form>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Fullscreen Preview Modal */}
+      {previewFile && (
+        <div className="preview-modal" onClick={() => setPreviewFile(null)}>
+          <div className="preview-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="preview-modal-header">
+              <h3>{previewTitle}</h3>
+              <button className="close-preview" onClick={() => setPreviewFile(null)}><X size={20} /></button>
+            </div>
+            <div className="preview-modal-body">
+              {previewFile.startsWith('data:image') || previewFile.startsWith('http') ? (
+                <img src={previewFile} alt={previewTitle} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} />
+              ) : previewFile.startsWith('data:application/pdf') ? (
+                <embed src={previewFile} type="application/pdf" width="100%" height="500px" style={{ borderRadius: '8px' }} />
+              ) : (
+                <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <FileText size={64} style={{ marginBottom: '16px', color: 'var(--primary)' }} />
+                  <p>Document content: {previewFile}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Live Driver GPS Location Tracking Modal */}
+      {selectedMapDriver && (
+        <div className="preview-modal" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '640px', padding: '24px', borderRadius: '20px', background: '#121624', border: '1px solid rgba(255,255,255,0.15)', position: 'relative' }}>
+            
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', pb: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <MapPin size={22} color="#10b981" />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#fff' }}>Live GPS Location: {selectedMapDriver.name}</h3>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                    {selectedMapDriver.manufacturer} {selectedMapDriver.model} • <strong style={{ color: 'var(--text-main)', fontFamily: 'monospace' }}>{selectedMapDriver.plate}</strong>
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedMapDriver(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Live Map Iframe Embed */}
+            <div style={{ position: 'relative', borderRadius: '14px', overflow: 'hidden', border: '2px solid var(--primary)', height: '340px', marginBottom: '16px', background: '#0a0d14' }}>
+              <iframe
+                title="Live Driver GPS Map Location"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                src={`https://maps.google.com/maps?q=${selectedMapDriver.lat || 28.4950},${selectedMapDriver.lng || 77.0896}&z=15&output=embed`}
+              />
+            </div>
+
+            {/* GPS & Active Trip Details Telemetry */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <div>
+                <strong style={{ color: 'var(--text-muted)' }}>Status:</strong>{' '}
+                {selectedMapDriver.currentRide ? (
+                  <span style={{ color: '#f59e0b', fontWeight: '800' }}>🚕 On Active Trip</span>
+                ) : selectedMapDriver.isOnline ? (
+                  <span style={{ color: '#10b981', fontWeight: '800' }}>🟢 Online (Idle)</span>
+                ) : (
+                  <span style={{ color: 'var(--text-muted)', fontWeight: '800' }}>⚪ Offline</span>
+                )}
+              </div>
+              <div><strong style={{ color: 'var(--text-muted)' }}>Mobile:</strong> {selectedMapDriver.phone}</div>
+              <div><strong style={{ color: 'var(--text-muted)' }}>Latitude:</strong> {selectedMapDriver.lat ? parseFloat(selectedMapDriver.lat).toFixed(6) : '28.4950'}° N</div>
+              <div><strong style={{ color: 'var(--text-muted)' }}>Longitude:</strong> {selectedMapDriver.lng ? parseFloat(selectedMapDriver.lng).toFixed(6) : '77.0896'}° E</div>
+              
+              {selectedMapDriver.currentRide && (
+                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '4px', color: '#f59e0b' }}>
+                  <strong>Trip Telemetry:</strong> Carrying passenger <strong>{selectedMapDriver.currentRide.passengerName || 'Customer'}</strong> from <i>{selectedMapDriver.currentRide.pickup}</i> to <i>{selectedMapDriver.currentRide.dropoff}</i> (Fare: ₹{selectedMapDriver.currentRide.fare})
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* DIRECT MESSAGING MODAL (ADMIN TO DRIVER) */}
+      {messageModalDriver && (
+        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '560px', height: '620px', display: 'flex', flexDirection: 'column', padding: '20px', borderRadius: '20px', background: 'var(--bg-card)', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--primary)', background: '#121624', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 'bold' }}>
+                  {messageModalDriver.profilePic ? <img src={messageModalDriver.profilePic} alt={messageModalDriver.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : messageModalDriver.name.charAt(0)}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Direct Message: {messageModalDriver.name}</h3>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Plate: <strong style={{ color: 'var(--text-main)', fontFamily: 'monospace' }}>{messageModalDriver.plate}</strong> • {messageModalDriver.email}</span>
+                </div>
+              </div>
+              <button onClick={() => setMessageModalDriver(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                <X size={22} />
+              </button>
+            </div>
+
+            {/* Quick Broadcast Templates */}
+            <div style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              <span style={{ width: '100%', fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)' }}>Quick Broadcast Templates:</span>
+              <button onClick={() => handleSendMessage("📋 Please upload your updated vehicle documents / photos.")} style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '14px', padding: '3px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+                📋 Update Docs
+              </button>
+              <button onClick={() => handleSendMessage("☕ High shift hours detected. Please take a rest break.")} style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '14px', padding: '3px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+                ☕ Rest Break
+              </button>
+              <button onClick={() => handleSendMessage("⚡ High trip demand in your area! Go online to accept rides.")} style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '14px', padding: '3px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+                ⚡ High Demand
+              </button>
+              <button onClick={() => handleSendMessage("📞 Please contact HUM Fleet Admin Support immediately.")} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '14px', padding: '3px 10px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+                📞 Contact Support
+              </button>
+            </div>
+
+            {/* Messages Thread Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {chatMessages.length === 0 ? (
+                <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                  <MessageSquare size={36} style={{ opacity: 0.4, marginBottom: '8px' }} />
+                  <p style={{ margin: 0 }}>No previous direct messages with this driver.</p>
+                  <p style={{ margin: 0, fontSize: '11px' }}>Type a message below or click a quick template to send.</p>
+                </div>
+              ) : (
+                chatMessages.map((msg) => {
+                  const isAdmin = msg.sender.includes('Admin');
+                  return (
+                    <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isAdmin ? 'flex-end' : 'flex-start' }}>
+                      <div style={{
+                        maxWidth: '82%',
+                        background: isAdmin ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(0, 0, 0, 0.05)',
+                        color: isAdmin ? '#ffffff' : 'var(--text-main)',
+                        padding: '10px 14px',
+                        borderRadius: isAdmin ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                        fontSize: '13px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                        border: isAdmin ? 'none' : '1px solid var(--border)'
+                      }}>
+                        <div style={{ fontSize: '10px', opacity: 0.8, marginBottom: '2px', fontWeight: '700' }}>
+                          {msg.sender} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        <div>{msg.text}</div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Message Input Box */}
+            <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} style={{ display: 'flex', gap: '8px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+              <input 
+                type="text" 
+                className="input-field" 
+                placeholder={`Type direct message to ${messageModalDriver.name}...`}
+                value={newMessageText}
+                onChange={(e) => setNewMessageText(e.target.value)}
+                style={{ flex: 1, padding: '10px 14px', fontSize: '13px' }}
+              />
+              <Button variant="primary" type="submit" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 16px' }}>
+                <Send size={16} /> Send
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminDashboard;
