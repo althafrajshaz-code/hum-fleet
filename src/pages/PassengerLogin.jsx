@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import Button from '../components/Button';
 import './Auth.css';
 
@@ -7,6 +8,7 @@ const PassengerLogin = () => {
   const navigate = useNavigate();
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -14,11 +16,15 @@ const PassengerLogin = () => {
     setError('');
     
     try {
-      const response = await fetch('http://localhost:5000/api/passengers/login', {
+      const getBackendUrl = () => {
+        if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')) {
+          return 'http://localhost:5000';
+        }
+        return import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      };
+      const response = await fetch(`${getBackendUrl()}/api/passengers/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ loginId, password })
       });
 
@@ -26,6 +32,7 @@ const PassengerLogin = () => {
         const user = await response.json();
         localStorage.setItem('passengerEmail', user.email);
         localStorage.setItem('passengerName', user.name);
+        if (user.verificationCode) localStorage.setItem('passengerVerificationCode', user.verificationCode);
         navigate('/passenger');
       } else {
         const data = await response.json();
@@ -75,15 +82,38 @@ const PassengerLogin = () => {
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input 
-              type="password" 
-              id="password" 
-              className="input-field" 
-              placeholder="••••••••" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required 
-            />
+            <div style={{ position: 'relative' }}>
+              <input 
+                type={showPassword ? "text" : "password"} 
+                id="password" 
+                className="input-field" 
+                placeholder="••••••••" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ paddingRight: '40px' }}
+                required 
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           <Button variant="primary" type="submit" className="full-width">
             Login

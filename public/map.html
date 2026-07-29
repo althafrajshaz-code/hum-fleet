@@ -44,8 +44,8 @@
   <button class="locate-btn" onclick="locateUser()">Locate Me</button>
   <div id="map"></div>
   <script>
-    // Initialize map centered on Connaught Place, New Delhi
-    var map = L.map('map', { zoomControl: false }).setView([28.6304, 77.2177], 13);
+    // Initialize map centered on Ernakulam, Kochi, Kerala
+    var map = L.map('map', { zoomControl: false }).setView([9.9777, 76.2758], 13);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -76,7 +76,7 @@
     });
 
     // Pin markers
-    var pickupMarker = L.marker([28.6304, 77.2177], { icon: greenIcon, draggable: true }).addTo(map);
+    var pickupMarker = L.marker([9.9777, 76.2758], { icon: greenIcon, draggable: true }).addTo(map);
     var dropoffMarker = null;
     var routePolyline = null;
     var carMarker = null;

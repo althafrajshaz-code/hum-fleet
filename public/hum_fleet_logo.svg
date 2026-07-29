@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <!-- Background -->
+  <rect width="500" height="500" fill="#ffffff" />
+  
+  <!-- H letter -->
+  <path d="M 95 110 L 130 110 L 130 178 L 185 178 L 185 110 L 220 110 L 220 270 L 185 270 L 185 212 L 130 212 L 130 270 L 95 270 Z" fill="#0A2540" />
+
+  <!-- M letter -->
+  <path d="M 280 110 L 315 110 L 340 195 L 365 110 L 400 110 L 400 270 L 368 270 L 368 156 L 348 226 L 332 226 L 312 156 L 312 270 L 280 270 Z" fill="#0A2540" />
+
+  <!-- U Road Icon -->
+  <g>
+    <!-- Outer Road Loop Shape -->
+    <path d="M 195 240 C 185 275 235 285 268 268 C 298 245 298 155 298 155 C 298 155 270 155 270 182 C 270 220 240 242 220 230 C 205 218 235 168 258 155 C 218 145 195 198 195 240 Z" fill="#4B5563" />
+    
+    <!-- Curved Road Surface Body -->
+    <path d="M 195 244 C 195 278 242 278 270 264 C 293 248 295 160 295 160 C 295 160 274 160 274 182 C 274 225 244 244 224 232 C 202 218 242 165 258 158 C 222 150 195 202 195 244 Z" fill="#5A6578" />
+
+    <!-- Road Markings / Dashes -->
+    <path d="M 230 259 L 239 257 L 237 248 L 229 250 Z" fill="#FFFFFF" />
+    <path d="M 240 244 L 248 240 L 245 232 L 238 235 Z" fill="#FFFFFF" />
+    <path d="M 249 225 L 255 219 L 251 212 L 246 217 Z" fill="#FFFFFF" />
+    <path d="M 256 204 L 261 197 L 257 191 L 252 197 Z" fill="#FFFFFF" />
+    <path d="M 261 183 L 265 175 L 261 171 L 257 178 Z" fill="#FFFFFF" />
+  </g>
+
+  <!-- HUM Typography -->
+  <text x="250" y="348" font-family="'Inter', 'Arial Black', sans-serif" font-weight="900" font-size="64" fill="#0A2540" text-anchor="middle" letter-spacing="14">HUM</text>
+
+  <!-- - FLEET - Typography -->
+  <g transform="translate(250, 395)">
+    <!-- Left Dash -->
+    <line x1="-135" y1="-7" x2="-95" y2="-7" stroke="#4B5563" stroke-width="4" stroke-linecap="round" />
+    
+    <!-- Text -->
+    <text x="0" y="0" font-family="'Inter', 'Arial', sans-serif" font-weight="700" font-size="28" fill="#4B5563" text-anchor="middle" letter-spacing="18">FLEET</text>
+    
+    <!-- Right Dash -->
+    <line x1="95" y1="-7" x2="135" y2="-7" stroke="#4B5563" stroke-width="4" stroke-linecap="round" />
+  </g>
+</svg>

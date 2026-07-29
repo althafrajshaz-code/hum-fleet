@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Power, MapPin, Navigation, Car, AlertTriangle, ShieldCheck, DollarSign, Wallet, FileText, CheckCircle, Camera, X, Coffee, Pause, Play, MessageSquare, Send, Flame, Zap, Award, TrendingUp, Gauge, Compass, Activity, Sparkles, Settings, CreditCard, User, ChevronRight } from 'lucide-react';
+import { Power, MapPin, Navigation, Car, AlertTriangle, ShieldCheck, DollarSign, Wallet, FileText, CheckCircle, Camera, X, Coffee, Pause, Play, MessageSquare, Send, Flame, Zap, Award, TrendingUp, Gauge, Compass, Activity, Sparkles, Settings, CreditCard, User, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import Button from '../components/Button';
 import './Dashboard.css';
+
+const API_BASE = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
+  ? 'http://localhost:5000'
+  : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000');
+
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
   const [activeMenu, setActiveMenu] = useState('dispatches'); // 'dispatches' | 'wallet' | 'messages' | 'settings'
-  const [settingsSubTab, setSettingsSubTab] = useState('rates'); // 'rates' | 'documents' | 'profile' | 'bank' | 'earnings'
+  const [settingsSubTab, setSettingsSubTab] = useState('rates'); // 'rates' | 'documents' | 'profile' | 'bank' | 'vehicles'
   const [earningsPeriod, setEarningsPeriod] = useState('daily'); // 'daily' | 'weekly' | 'monthly'
   const [homeEarnings, setHomeEarnings] = useState(null);
   const [showEarningsHistory, setShowEarningsHistory] = useState(false);
@@ -19,11 +24,29 @@ const DriverDashboard = () => {
   const [status, setStatus] = useState('Pending'); // Pending, Approved, Rejected
   const [isBlocked, setIsBlocked] = useState(false);
   const [loading, setLoading] = useState(true);
+  
   const [driverDetails, setDriverDetails] = useState(null);
+
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('driverTheme') || 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const email = localStorage.getItem('driverEmail');
+    if (!email) {
+      navigate('/driver/login');
+    }
+  }, [navigate]);
 
   // System & Payment Gateway States
   const [systemSettings, setSystemSettings] = useState(null);
   const [showPayDuesModal, setShowPayDuesModal] = useState(false);
+  const [showDuesNoticeModal, setShowDuesNoticeModal] = useState(false);
+  const [hasDismissedDuesModal, setHasDismissedDuesModal] = useState(false);
   const [payAmount, setPayAmount] = useState('');
   const [isPayingDues, setIsPayingDues] = useState(false);
   const [payDuesSuccess, setPayDuesSuccess] = useState(false);
@@ -46,9 +69,9 @@ const DriverDashboard = () => {
   const [shiftMinutes, setShiftMinutes] = useState(720); // Default 12 hours accumulated (Max 900 mins = 15 hours)
   const [dailyTarget, setDailyTarget] = useState({ earned: 1425, goal: 2000, percentage: 71 });
   const [surgeZones] = useState([
-    { id: 1, name: 'DLF CyberCity (Gurugram)', multiplier: '2.4x Surge', distance: '1.2 KM', lat: 28.4950, lng: 77.0896, color: '#ef4444' },
-    { id: 2, name: 'IGI Airport T3 Terminal', multiplier: '1.9x Surge', distance: '4.8 KM', lat: 28.5562, lng: 77.1000, color: '#f59e0b' },
-    { id: 3, name: 'Connaught Place (Inner Circle)', multiplier: '1.7x Surge', distance: '8.5 KM', lat: 28.6304, lng: 77.2177, color: '#3b82f6' }
+    { id: 1, name: 'Infopark & SmartCity (Kakkanad, Kochi)', multiplier: '2.4x Surge', distance: '1.2 KM', lat: 10.0088, lng: 76.3606, color: '#ef4444' },
+    { id: 2, name: 'Cochin International Airport (COK)', multiplier: '1.9x Surge', distance: '4.8 KM', lat: 10.1520, lng: 76.4019, color: '#f59e0b' },
+    { id: 3, name: 'Technopark Phase 1 (Trivandrum)', multiplier: '1.7x Surge', distance: '8.5 KM', lat: 8.5581, lng: 76.8816, color: '#3b82f6' }
   ]);
 
   // Custom driver rates state
@@ -67,7 +90,21 @@ const DriverDashboard = () => {
   const [profileEditName, setProfileEditName] = useState('');
   const [profileEditPicPreview, setProfileEditPicPreview] = useState(null);
   const [profileEditPicBase64, setProfileEditPicBase64] = useState(null);
+  const [profileNewPassword, setProfileNewPassword] = useState('');
+  const [profileConfirmPassword, setProfileConfirmPassword] = useState('');
+  const [showProfilePassword, setShowProfilePassword] = useState(false);
   const [profileSaveStatus, setProfileSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
+
+  // Vehicle management states
+  const [vehicles, setVehicles] = useState([]);
+  const [newMake, setNewMake] = useState('');
+  const [newModel, setNewModel] = useState('');
+  const [newYear, setNewYear] = useState('');
+  const [newPlate, setNewPlate] = useState('');
+  const [newVehiclePhotos, setNewVehiclePhotos] = useState({});
+  const [newVehicleDocs, setNewVehicleDocs] = useState({});
+  const [showAddVehicleForm, setShowAddVehicleForm] = useState(false);
+  const [vehicleSaveStatus, setVehicleSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
 
   // Wallet State
   const [wallet, setWallet] = useState({ cashCollected: 0, toBePaid: 0 });
@@ -76,13 +113,35 @@ const DriverDashboard = () => {
   const [incomingRide, setIncomingRide] = useState(null);
   const [currentRide, setCurrentRide] = useState(null);
 
+  // Pre-booked / scheduled ride states
+  const [availablePreBooked, setAvailablePreBooked] = useState([]);
+  const [myScheduledTrips, setMyScheduledTrips] = useState([]);
+
   // Bidirectional rating states
   const [showRating, setShowRating] = useState(false);
   const [ratingValue, setRatingValue] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
 
+  // Travel Route / En-Route Destination states
+  const [travelRoute, setTravelRoute] = useState(null); // The currently set route from the server
+  const [routeInput, setRouteInput] = useState('');
+  const [routeInputFocused, setRouteInputFocused] = useState(false);
+  const [nominatimResults, setNominatimResults] = useState([]);
+  const [isGeoSearching, setIsGeoSearching] = useState(false);
+  const nominatimTimerRef = useRef(null);
+  
+  // Real-time GPS Trip Meter State
+  const [liveGpsDistance, setLiveGpsDistance] = useState(0); // Accumulated live GPS trip kilometers
+  const [lastGpsCoords, setLastGpsCoords] = useState(null);
+  
+  // End Trip Summary & Cash Collection states
+  const [showEndTripSummary, setShowEndTripSummary] = useState(false);
+  const [collectCash, setCollectCash] = useState(true);
+  const [ridePin, setRidePin] = useState('');
+  const [queuedRide, setQueuedRide] = useState(null);
+
   // Daily face verification states
-  const [isDailyVerified, setIsDailyVerified] = useState(false);
+  const [isDailyVerified, setIsDailyVerified] = useState(true);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const [capturedPhoto, setCapturedPhoto] = useState(null);
@@ -98,18 +157,17 @@ const DriverDashboard = () => {
   const fetchStatus = async (initialLoad = false) => {
     const email = localStorage.getItem('driverEmail');
     if (!email) {
-      setStatus('Approved');
-      setLoading(false);
+      navigate('/driver/login');
       return;
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/drivers/status?email=${encodeURIComponent(email)}`);
+      const response = await fetch(`${API_BASE}/api/drivers/status?email=${encodeURIComponent(email)}`);
       if (response.ok) {
         const data = await response.json();
         setStatus(data.status);
         setIsBlocked(data.isBlocked || false);
-        setIsDailyVerified(data.isDailyVerified || false);
+        setIsDailyVerified(true);
         setDriverDetails(data);
         if (data.photos) setDriverPhotos(data.photos);
         if (data.docs) setDriverDocs(data.docs);
@@ -118,12 +176,137 @@ const DriverDashboard = () => {
           setRatePerKm(data.ratePerKm || '15.00');
           setRatePerHour(data.ratePerHour || '120.00');
         }
+        fetchVehicles();
+      } else {
+        localStorage.removeItem('driverEmail');
+        navigate('/driver/login');
       }
     } catch (err) {
       console.error("Error fetching driver status from API:", err);
-      setStatus('Approved');
     } finally {
       if (initialLoad) setLoading(false);
+    }
+  };
+
+  const fetchVehicles = async () => {
+    const email = localStorage.getItem('driverEmail');
+    if (!email) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/drivers/vehicles?email=${encodeURIComponent(email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setVehicles(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch vehicles:", err);
+    }
+  };
+
+  const handleActivateVehicle = async (vehicleId) => {
+    const email = localStorage.getItem('driverEmail');
+    try {
+      const response = await fetch(`${API_BASE}/api/drivers/vehicles/activate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, vehicleId })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setVehicles(data.vehicles);
+        alert('Vehicle activated successfully! All active ride details will now map to this vehicle.');
+        fetchStatus(false);
+      } else {
+        alert('Failed to activate vehicle.');
+      }
+    } catch (err) {
+      console.error("Error activating vehicle:", err);
+      alert('Network error, please try again.');
+    }
+  };
+
+  const handleDeleteVehicle = async (vehicleId) => {
+    if (!confirm('Are you sure you want to remove this vehicle from your account?')) return;
+    const email = localStorage.getItem('driverEmail');
+    try {
+      const response = await fetch(`${API_BASE}/api/drivers/vehicles`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, vehicleId })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setVehicles(data.vehicles);
+        alert('Vehicle removed successfully.');
+        fetchStatus(false);
+      } else {
+        const errData = await response.json();
+        alert(errData.error || 'Failed to delete vehicle.');
+      }
+    } catch (err) {
+      console.error("Error deleting vehicle:", err);
+      alert('Network error, please try again.');
+    }
+  };
+
+  const handleAddVehicle = async (e) => {
+    e.preventDefault();
+    if (!newMake.trim() || !newModel.trim() || !newYear.trim() || !newPlate.trim()) {
+      alert('Please fill out all vehicle specifications.');
+      return;
+    }
+
+    if (!newVehiclePhotos.front || !newVehiclePhotos.rear || !newVehiclePhotos.left || !newVehiclePhotos.right || !newVehiclePhotos.inside) {
+      alert('Please upload all 5 required vehicle photos (Front, Rear, Left, Right, Inside Cabin).');
+      return;
+    }
+
+    if (!newVehicleDocs.rc || !newVehicleDocs.pollution || !newVehicleDocs.insurance || !newVehicleDocs.fitness) {
+      alert('Please upload all 4 required compliance documents (RC, Pollution, Insurance, Fitness).');
+      return;
+    }
+    
+    setVehicleSaveStatus('saving');
+    const email = localStorage.getItem('driverEmail');
+    try {
+      const response = await fetch(`${API_BASE}/api/drivers/vehicles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          manufacturer: newMake.trim(),
+          model: newModel.trim(),
+          year: newYear.trim(),
+          plate: newPlate.trim(),
+          photos: newVehiclePhotos,
+          docs: newVehicleDocs
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setVehicles(data);
+        alert('New vehicle added successfully!');
+        setNewMake('');
+        setNewModel('');
+        setNewYear('');
+        setNewPlate('');
+        setNewVehiclePhotos({});
+        setNewVehicleDocs({});
+        setShowAddVehicleForm(false);
+        setVehicleSaveStatus('saved');
+        fetchStatus(false);
+        setTimeout(() => setVehicleSaveStatus(null), 3000);
+      } else {
+        const errData = await response.json();
+        alert(errData.error || 'Failed to add vehicle.');
+        setVehicleSaveStatus('error');
+        setTimeout(() => setVehicleSaveStatus(null), 3000);
+      }
+    } catch (err) {
+      console.error("Error adding vehicle:", err);
+      alert('Network error, please verify the server is running.');
+      setVehicleSaveStatus('error');
+      setTimeout(() => setVehicleSaveStatus(null), 3000);
     }
   };
 
@@ -133,9 +316,9 @@ const DriverDashboard = () => {
     reader.onloadend = async () => {
       const base64Data = reader.result;
       setDriverProfilePic(base64Data);
-      const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+      const email = localStorage.getItem('driverEmail');
       try {
-        const res = await fetch('http://localhost:5000/api/drivers/profile-pic', {
+        const res = await fetch(`${API_BASE}/api/drivers/profile-pic`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, profilePic: base64Data })
@@ -159,9 +342,9 @@ const DriverDashboard = () => {
       const updatedPhotos = { ...driverPhotos, [side]: base64Data };
       setDriverPhotos(updatedPhotos);
 
-      const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+      const email = localStorage.getItem('driverEmail');
       try {
-        const res = await fetch('http://localhost:5000/api/drivers/photos', {
+        const res = await fetch(`${API_BASE}/api/drivers/photos`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, photos: { [side]: base64Data } })
@@ -185,9 +368,9 @@ const DriverDashboard = () => {
       const updatedDocs = { ...driverDocs, [docId]: base64Data };
       setDriverDocs(updatedDocs);
 
-      const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+      const email = localStorage.getItem('driverEmail');
       try {
-        const res = await fetch('http://localhost:5000/api/drivers/photos', {
+        const res = await fetch(`${API_BASE}/api/drivers/photos`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, docs: { [docId]: base64Data } })
@@ -244,10 +427,10 @@ const DriverDashboard = () => {
   };
 
   const submitVerification = async () => {
-    const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+    const email = localStorage.getItem('driverEmail');
     setVerifyStep('submitting');
     try {
-      const response = await fetch('http://localhost:5000/api/drivers/verify-daily', {
+      const response = await fetch(`${API_BASE}/api/drivers/verify-daily`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, photo: capturedPhoto })
@@ -276,11 +459,11 @@ const DriverDashboard = () => {
 
   const goOnline = () => {
     setIsOnline(true);
-    const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+    const email = localStorage.getItem('driverEmail');
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(async (position) => {
         try {
-          await fetch('http://localhost:5000/api/drivers/location', {
+          await fetch(`${API_BASE}/api/drivers/location`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, lat: position.coords.latitude, lng: position.coords.longitude, isOnline: true })
@@ -290,19 +473,23 @@ const DriverDashboard = () => {
         }
       });
     } else {
-      fetch('http://localhost:5000/api/drivers/location', {
+      fetch(`${API_BASE}/api/drivers/location`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, isOnline: true })
       }).catch(err => console.error(err));
     }
+    // Immediately fetch trips after going online
+    fetchAvailablePreBooked();
+    fetchMyScheduledTrips();
+    fetchDriverActiveRide();
   };
 
   const goOffline = () => {
     setIsOnline(false);
     setIsPaused(false);
-    const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
-    fetch('http://localhost:5000/api/drivers/location', {
+    const email = localStorage.getItem('driverEmail');
+    fetch(`${API_BASE}/api/drivers/location`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, isOnline: false, isPaused: false })
@@ -311,9 +498,9 @@ const DriverDashboard = () => {
 
   const togglePauseBreak = async (shouldPause) => {
     setIsPaused(shouldPause);
-    const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+    const email = localStorage.getItem('driverEmail');
     try {
-      await fetch('http://localhost:5000/api/drivers/location', {
+      await fetch(`${API_BASE}/api/drivers/location`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, isOnline: true, isPaused: shouldPause })
@@ -327,10 +514,13 @@ const DriverDashboard = () => {
     const email = localStorage.getItem('driverEmail');
     if (!email) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/drivers/wallet?email=${encodeURIComponent(email)}`);
+      const response = await fetch(`${API_BASE}/api/drivers/wallet?email=${encodeURIComponent(email)}`);
       if (response.ok) {
         const data = await response.json();
         setWallet(data);
+        if (parseFloat(data.toBePaid || 0) >= 700 && !hasDismissedDuesModal) {
+          setShowDuesNoticeModal(true);
+        }
       }
     } catch (err) {
       console.error("Error fetching driver wallet:", err);
@@ -339,7 +529,7 @@ const DriverDashboard = () => {
 
   const fetchSystemSettings = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/settings');
+      const response = await fetch(`${API_BASE}/api/settings`);
       if (response.ok) {
         const data = await response.json();
         setSystemSettings(data);
@@ -350,9 +540,9 @@ const DriverDashboard = () => {
   };
 
   const fetchAdminMessages = async () => {
-    const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+    const email = localStorage.getItem('driverEmail');
     try {
-      const response = await fetch(`http://localhost:5000/api/drivers/messages?email=${encodeURIComponent(email)}`);
+      const response = await fetch(`${API_BASE}/api/drivers/messages?email=${encodeURIComponent(email)}`);
       if (response.ok) {
         const data = await response.json();
         setAdminMessages(data);
@@ -363,9 +553,9 @@ const DriverDashboard = () => {
   };
 
   const clearAdminMessages = async () => {
-    const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+    const email = localStorage.getItem('driverEmail');
     try {
-      await fetch('http://localhost:5000/api/drivers/messages/clear', {
+      await fetch(`${API_BASE}/api/drivers/messages/clear`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -377,9 +567,9 @@ const DriverDashboard = () => {
   };
 
   const handleResetShift = async () => {
-    const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+    const email = localStorage.getItem('driverEmail');
     try {
-      const res = await fetch('http://localhost:5000/api/drivers/shift/reset', {
+      const res = await fetch(`${API_BASE}/api/drivers/shift/reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, force: true })
@@ -400,9 +590,9 @@ const DriverDashboard = () => {
   const handleDriverReply = async (e) => {
     e.preventDefault();
     if (!driverReplyText || !driverReplyText.trim()) return;
-    const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+    const email = localStorage.getItem('driverEmail');
     try {
-      const response = await fetch('http://localhost:5000/api/admin/messages/send', {
+      const response = await fetch(`${API_BASE}/api/admin/messages/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -423,9 +613,9 @@ const DriverDashboard = () => {
   // In-Trip Passenger-Driver Chat Helpers
   const fetchDriverTripChatMessages = async () => {
     if (!currentRide) return;
-    const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+    const email = localStorage.getItem('driverEmail');
     try {
-      const res = await fetch(`http://localhost:5000/api/rides/messages?rideId=${currentRide.id}&userEmail=${encodeURIComponent(email)}`);
+      const res = await fetch(`${API_BASE}/api/rides/messages?rideId=${currentRide.id}&userEmail=${encodeURIComponent(email)}`);
       if (res.ok) {
         const data = await res.json();
         setDriverTripChatMessages(data);
@@ -447,9 +637,9 @@ const DriverDashboard = () => {
       return;
     }
 
-    const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+    const email = localStorage.getItem('driverEmail');
     try {
-      const res = await fetch('http://localhost:5000/api/rides/messages/send', {
+      const res = await fetch(`${API_BASE}/api/rides/messages/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -479,6 +669,70 @@ const DriverDashboard = () => {
     return () => clearInterval(interval);
   }, [showDriverTripChat, currentRide]);
 
+  // Real-time GPS Tracker & Running Kilometer Meter Effect
+  useEffect(() => {
+    if (!currentRide) {
+      setLiveGpsDistance(0);
+      setLastGpsCoords(null);
+      return;
+    }
+
+    // Set initial distance baseline from ride estimation
+    if (liveGpsDistance === 0 && currentRide.totalKm) {
+      setLiveGpsDistance(parseFloat(currentRide.totalKm) || 0);
+    }
+
+    let watchId = null;
+    if ('geolocation' in navigator) {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const newLat = position.coords.latitude;
+          const newLng = position.coords.longitude;
+
+          setLastGpsCoords((prevCoords) => {
+            if (prevCoords) {
+              const deltaKm = getFrontendDistance(prevCoords.lat, prevCoords.lng, newLat, newLng);
+              // Only add valid motion delta (ignore tiny GPS drift under 15 meters)
+              if (deltaKm > 0.015 && deltaKm < 3.0) {
+                setLiveGpsDistance((prevDist) => parseFloat((prevDist + deltaKm).toFixed(2)));
+              }
+            }
+            return { lat: newLat, lng: newLng };
+          });
+        },
+        (err) => console.log('GPS Geolocation watch warning:', err.message),
+        { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
+      );
+    }
+
+    return () => {
+      if (watchId !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, [currentRide]);
+
+  // Sync liveGpsDistance with backend during active ride
+  const latestLiveGpsDistance = useRef(0);
+  useEffect(() => {
+    latestLiveGpsDistance.current = liveGpsDistance;
+  }, [liveGpsDistance]);
+
+  useEffect(() => {
+    if (!currentRide || currentRide.status !== 'In Progress') return;
+    const interval = setInterval(() => {
+      const dist = latestLiveGpsDistance.current;
+      if (dist > 0) {
+        fetch(`${API_BASE}/api/rides/${currentRide.id}/update-distance`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ liveGpsDistance: dist })
+        }).catch(err => console.error("Error updating live distance:", err));
+      }
+    }, 15000); // Poll every 15 seconds
+    return () => clearInterval(interval);
+  }, [currentRide]);
+
   useEffect(() => {
     const email = localStorage.getItem('driverEmail');
     if (!email) {
@@ -487,14 +741,95 @@ const DriverDashboard = () => {
     }
     fetchStatus(true);
     // Fetch home earnings summary
-    fetch(`http://localhost:5000/api/drivers/earnings?email=${encodeURIComponent(email)}`)
+    fetch(`${API_BASE}/api/drivers/earnings?email=${encodeURIComponent(email)}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setHomeEarnings(d); })
       .catch(() => {});
     fetchWallet();
     fetchAdminMessages();
     fetchSystemSettings();
+    fetchTravelRoute();
   }, []);
+
+  const fetchTravelRoute = async () => {
+    const email = localStorage.getItem('driverEmail');
+    if (!email) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/drivers/travel-route?email=${encodeURIComponent(email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTravelRoute(data);
+      }
+    } catch (err) {
+      console.error("Error fetching travel route:", err);
+    }
+  };
+
+  const handleSetTravelRoute = async (locName, locCoords) => {
+    const email = localStorage.getItem('driverEmail');
+    if (!email) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/drivers/travel-route`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, destination: locName, destinationCoords: locCoords })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTravelRoute(data.travelRoute);
+        setRouteInput('');
+      }
+    } catch (err) {
+      console.error("Error setting travel route:", err);
+    }
+  };
+
+  const handleClearTravelRoute = async () => {
+    const email = localStorage.getItem('driverEmail');
+    if (!email) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/drivers/travel-route`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, destination: null, destinationCoords: null })
+      });
+      if (response.ok) {
+        setTravelRoute(null);
+      }
+    } catch (err) {
+      console.error("Error clearing travel route:", err);
+    }
+  };
+
+  // Debounced Nominatim geocoding search for travel route
+  const searchNominatim = (query) => {
+    if (nominatimTimerRef.current) clearTimeout(nominatimTimerRef.current);
+    if (!query || query.trim().length < 3) {
+      setNominatimResults([]);
+      return;
+    }
+    nominatimTimerRef.current = setTimeout(async () => {
+      setIsGeoSearching(true);
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Kerala, India')}&format=json&addressdetails=1&limit=8&countrycodes=in&viewbox=74.5,8.0,77.5,12.8&bounded=1`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (res.ok) {
+          const data = await res.json();
+          const mapped = data.map(item => ({
+            name: item.display_name.replace(/, India$/i, ''),
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon),
+            isGeoResult: true
+          }));
+          setNominatimResults(mapped);
+        }
+      } catch (err) {
+        console.error('Nominatim geocoding error:', err);
+      } finally {
+        setIsGeoSearching(false);
+      }
+    }, 400);
+  };
 
   // Poll status of driver profile updates & admin messages
   useEffect(() => {
@@ -503,22 +838,186 @@ const DriverDashboard = () => {
       fetchWallet();
       fetchAdminMessages();
       fetchSystemSettings();
+      fetchTravelRoute();
     }, 3000);
     return () => clearInterval(interval);
   }, []);
 
+  const fetchAvailablePreBooked = async () => {
+    const email = localStorage.getItem('driverEmail');
+    if (!email) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/rides/prebooked?email=${encodeURIComponent(email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAvailablePreBooked(data);
+      }
+    } catch (err) {
+      console.error("Error fetching available prebooked rides:", err);
+    }
+  };
+
+  const fetchMyScheduledTrips = async () => {
+    const email = localStorage.getItem('driverEmail');
+    if (!email) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/rides/driver/scheduled?email=${encodeURIComponent(email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setMyScheduledTrips(data);
+      }
+    } catch (err) {
+      console.error("Error fetching scheduled trips:", err);
+    }
+  };
+
+  const fetchDriverActiveRide = async () => {
+    const email = localStorage.getItem('driverEmail');
+    if (!email) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/rides/driver/active?email=${encodeURIComponent(email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data) {
+          if (data.current) setCurrentRide(data.current);
+          else setCurrentRide(null);
+          
+          if (data.queued && data.queued.length > 0) setQueuedRide(data.queued[0]);
+          else setQueuedRide(null);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching active driver ride:", err);
+    }
+  };
+
+  const handleAcceptPreBooked = async (rideId) => {
+    if (!driverDetails) return;
+    
+    // ₹1500 BALANCE LOCK check before local submit
+    const CASH_LOCK_THRESHOLD = 1500;
+    const driverPendingBalance = parseFloat(wallet.toBePaid || 0);
+    const ride = availablePreBooked.find(r => r.id === rideId);
+    const isCashTrip = ride ? (ride.paymentType === 'cash' || !ride.paymentType) : true;
+
+    if (isCashTrip && driverPendingBalance > CASH_LOCK_THRESHOLD) {
+      alert(`Your pending balance of ₹${driverPendingBalance.toFixed(2)} exceeds ₹${CASH_LOCK_THRESHOLD}. You can only accept prepaid trips until you settle your dues with HUM Fleet.`);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/rides/${rideId}/accept`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          driverName: driverDetails.name,
+          driverPhone: driverDetails.phone,
+          driverEmail: driverDetails.email,
+          vehicleModel: driverDetails.activeVehicle?.model || 'Tata Nexon',
+          vehiclePlate: driverDetails.activeVehicle?.plateNo || 'DL 3C AY 4567'
+        })
+      });
+
+      if (response.ok) {
+        alert("Pre-booked trip accepted successfully! It has been added to your scheduled trips.");
+        fetchAvailablePreBooked();
+        fetchMyScheduledTrips();
+      } else {
+        const errData = await response.json();
+        alert(errData.error || "Failed to accept trip.");
+        fetchAvailablePreBooked();
+      }
+    } catch (err) {
+      console.error("Failed to accept prebooked ride:", err);
+      alert("Error accepting prebooked ride.");
+    }
+  };
+
+  const handleStartScheduledTrip = async (rideId) => {
+    if (!isOnline) {
+      alert("Please go Online first to start this trip!");
+      return;
+    }
+    if (currentRide) {
+      alert("Please complete or cancel your current active trip before starting another one!");
+      return;
+    }
+    if (!window.confirm("Are you ready to activate and start this scheduled trip now? This will make the trip active on the passenger's screen.")) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/rides/${rideId}/start`, {
+        method: 'POST'
+      });
+      if (response.ok) {
+        const ride = await response.json();
+        setCurrentRide(ride);
+        alert("Trip started! You are now navigating to the passenger pickup point.");
+      } else {
+        alert("Failed to start scheduled trip.");
+      }
+    } catch (err) {
+      console.error("Error starting scheduled trip:", err);
+      alert("Error starting scheduled trip.");
+    }
+  };
+
+  useEffect(() => {
+    fetchDriverActiveRide();
+    fetchAvailablePreBooked();
+    fetchMyScheduledTrips();
+  }, []);
+
+  useEffect(() => {
+    const checkScheduledRequests = () => {
+      fetchMyScheduledTrips();
+      if (isOnline && !currentRide && !showRating) {
+        fetchAvailablePreBooked();
+      }
+    };
+    const interval = setInterval(checkScheduledRequests, 5000);
+    return () => clearInterval(interval);
+  }, [isOnline, currentRide, showRating]);
+
   // Real-time active ride request polling loop
   useEffect(() => {
-    if (!isOnline || currentRide || showRating) return;
+    // If offline, showing rating, or already have a queued ride, don't poll
+    if (!isOnline || showRating || queuedRide) return;
+    
+    // Check 7 KM threshold if we are on a trip
+    if (currentRide) {
+      const baseTotal = parseFloat(currentRide.totalKm || 8.0);
+      const liveDist = parseFloat(liveGpsDistance || 0);
+      const remainingDistance = baseTotal - liveDist;
+      
+      // Only poll for next ride if we are <= 7 KM from destination
+      if (remainingDistance > 7.0) return;
+    }
 
     const checkActiveRequests = async () => {
       try {
-        const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
-        const response = await fetch(`http://localhost:5000/api/rides/active?email=${encodeURIComponent(email)}`);
+        const email = localStorage.getItem('driverEmail');
+        const response = await fetch(`${API_BASE}/api/rides/active?email=${encodeURIComponent(email)}`);
         if (response.ok) {
           const data = await response.json();
           if (data) {
-            setIncomingRide(data);
+            // New incoming ride detected!
+            if (!incomingRide || incomingRide.id !== data.id) {
+              setIncomingRide(data);
+              
+              // Voice synthesis "You have a ride"
+              if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance("You have a ride.");
+                const voices = window.speechSynthesis.getVoices();
+                // Try to find a female voice
+                const femaleVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Google UK English Female') || v.name.includes('Samantha') || v.name.includes('Victoria'));
+                if (femaleVoice) {
+                  utterance.voice = femaleVoice;
+                }
+                window.speechSynthesis.speak(utterance);
+              }
+            }
           } else {
             setIncomingRide(null);
           }
@@ -553,7 +1052,7 @@ const DriverDashboard = () => {
 
     try {
       // Fetch platform settings limits
-      const settingsResponse = await fetch('http://localhost:5000/api/settings');
+      const settingsResponse = await fetch(`${API_BASE}/api/settings`);
       if (settingsResponse.ok) {
         const settingsData = await settingsResponse.json();
         
@@ -568,7 +1067,7 @@ const DriverDashboard = () => {
         }
       }
 
-      const response = await fetch('http://localhost:5000/api/drivers/rates', {
+      const response = await fetch(`${API_BASE}/api/drivers/rates`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -603,24 +1102,28 @@ You can only accept prepaid trips until your balance is cleared.`);
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/rides/${incomingRide.id}/accept`, {
+      const response = await fetch(`${API_BASE}/api/rides/${incomingRide.id}/accept`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          driverName: driverDetails?.name || 'Rajesh Kumar',
-          driverPhone: driverDetails?.phone || '+91 98765 43210',
-          driverEmail: localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com',
-          vehicleModel: driverDetails ? `${driverDetails.manufacturer} ${driverDetails.model}` : 'Tata Nexon',
-          vehiclePlate: driverDetails?.plate || 'DL 3C AY 4567'
+          driverName: driverDetails.name,
+          driverPhone: driverDetails.phone,
+          driverEmail: driverDetails.email,
+          vehicleModel: driverDetails.activeVehicle.model,
+          vehiclePlate: driverDetails.activeVehicle.plate
         })
       });
-
+      const data = await response.json();
       if (response.ok) {
-        const accepted = await response.json();
-        setCurrentRide(accepted);
         setIncomingRide(null);
+        if (currentRide) {
+          setQueuedRide(data);
+          alert("Next trip queued! It will begin after you complete your current trip.");
+        } else {
+          setCurrentRide(data);
+          alert("Trip accepted! You are now navigating to the passenger pickup point.");
+        }
+        fetchData();
       } else if (response.status === 403) {
         const errData = await response.json();
         alert(`⚠️ ${errData.message}`);
@@ -635,7 +1138,7 @@ You can only accept prepaid trips until your balance is cleared.`);
   const handleCancelRide = async () => {
     if (!currentRide) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/rides/${currentRide.id}/cancel`, {
+      const response = await fetch(`${API_BASE}/api/rides/${currentRide.id}/cancel`, {
         method: 'POST'
       });
       if (response.ok) {
@@ -649,13 +1152,43 @@ You can only accept prepaid trips until your balance is cleared.`);
     }
   };
 
-  const handleCompleteRide = async () => {
+  const handleVerifyPin = async () => {
+    if (!ridePin || ridePin.length !== 6) {
+      alert("Please enter a valid 6-digit PIN.");
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/api/rides/${currentRide.id}/verify-pin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: ridePin })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert("PIN verified successfully! Trip is now in progress.");
+        fetchData();
+        setRidePin('');
+      } else {
+        alert(data.error || "Invalid PIN. Please ask the passenger for their 6-digit ID.");
+      }
+    } catch (err) {
+      console.error('Error verifying PIN:', err);
+      alert('Failed to verify PIN. Please check your connection.');
+    }
+  };
+
+  const handleCompleteRide = async (collectCashVal = true) => {
     if (!currentRide) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/rides/${currentRide.id}/complete`, {
-        method: 'POST'
+      const response = await fetch(`${API_BASE}/api/rides/${currentRide.id}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ collectCash: collectCashVal })
       });
       if (response.ok) {
+        setShowEndTripSummary(false);
         setShowRating(true);
       } else {
         alert('Failed to complete ride.');
@@ -668,7 +1201,7 @@ You can only accept prepaid trips until your balance is cleared.`);
   const handleSubmitRating = async () => {
     if (!currentRide) return;
     try {
-      await fetch(`http://localhost:5000/api/rides/${currentRide.id}/rate-passenger`, {
+      await fetch(`${API_BASE}/api/rides/${currentRide.id}/rate-passenger`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -683,7 +1216,13 @@ You can only accept prepaid trips until your balance is cleared.`);
     }
 
     alert('Passenger feedback registered successfully!');
-    setCurrentRide(null);
+    if (queuedRide) {
+      setCurrentRide(queuedRide);
+      setQueuedRide(null);
+      alert(`Ride completed. Your queued trip to ${queuedRide.dropoff} is now active!`);
+    } else {
+      setCurrentRide(null);
+    }
     setShowRating(false);
     setRatingValue(5);
     setRatingComment('');
@@ -914,6 +1453,66 @@ You can only accept prepaid trips until your balance is cleared.`);
                 <Power size={18} /> {isOnline ? 'Go Offline' : 'Go Online'}
               </Button>
             </div>
+          </div>
+
+          {/* DRIVER TRAVEL ROUTE / DESTINATION FILTER */}
+          <div className="glass-card" style={{ padding: '16px', background: travelRoute ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.02)', border: travelRoute ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: travelRoute ? '0' : '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Navigation size={16} color={travelRoute ? '#10b981' : 'var(--text-muted)'} />
+                <span style={{ fontSize: '13px', fontWeight: '700', color: travelRoute ? '#10b981' : 'var(--text-main)' }}>Destination Filter</span>
+              </div>
+              {travelRoute && (
+                <button onClick={handleClearTravelRoute} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '11px', fontWeight: '800', cursor: 'pointer', padding: '4px 8px' }}>CLEAR</button>
+              )}
+            </div>
+
+            {travelRoute ? (
+              <div style={{ marginTop: '12px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Currently matching rides along route to:</div>
+                <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <MapPin size={14} color="#f59e0b" /> {travelRoute.destination}
+                </div>
+              </div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="text"
+                  className="input-field"
+                  placeholder="Set travel destination..."
+                  value={routeInput}
+                  onChange={(e) => { setRouteInput(e.target.value); searchNominatim(e.target.value); }}
+                  onFocus={() => setRouteInputFocused(true)}
+                  onBlur={() => setTimeout(() => setRouteInputFocused(false), 250)}
+                  style={{ fontSize: '12px', padding: '10px 14px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)' }}
+                />
+                {routeInputFocused && (
+                  <div className="autocomplete-dropdown glass-card" style={{ zIndex: 100 }}>
+                    {isGeoSearching && (
+                      <div className="dropdown-item" style={{ color: 'var(--text-muted)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ width: '14px', height: '14px', border: '2px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
+                        Searching locations...
+                      </div>
+                    )}
+                    {nominatimResults.map((loc, idx) => (
+                      <div 
+                        onMouseDown={() => handleSetTravelRoute(loc.name, { lat: loc.lat, lng: loc.lng })}
+                        key={idx} 
+                        className="dropdown-item" 
+                      >
+                        <Navigation size={14} style={{ marginRight: '8px', color: 'var(--secondary)' }} />
+                        {loc.name}
+                      </div>
+                    ))}
+                    {!isGeoSearching && routeInput.trim().length >= 3 && nominatimResults.length === 0 && (
+                      <div className="dropdown-item" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                        No locations found.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* DEDICATED ROW UNDER GO ONLINE BUTTON FOR ADMIN MESSAGE NOTICE (ELECTRIC PURPLE COLOUR THEME) */}
@@ -1206,6 +1805,74 @@ You can only accept prepaid trips until your balance is cleared.`);
                 )}
               </div>
 
+              {/* ₹700 Commission & GST Dues Notification Banner with WhatsApp Link (+91 8848347290) */}
+              {parseFloat(wallet.toBePaid || 0) >= 700 && (
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(239, 68, 68, 0.12))',
+                  border: '1.5px solid rgba(245, 158, 11, 0.6)',
+                  borderRadius: '14px',
+                  padding: '14px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <AlertTriangle size={22} color="#f59e0b" style={{ flexShrink: 0 }} />
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: '#f59e0b' }}>
+                          ⚠️ Platform Dues Payment Notice (≥ ₹700)
+                        </h4>
+                        <span style={{ fontSize: '12px', color: 'var(--text-main)' }}>
+                          Your accumulated commission & GST dues have reached <strong style={{ color: '#ef4444' }}>₹{parseFloat(wallet.toBePaid).toFixed(2)}</strong>. Please clear your dues.
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%', justifyContent: 'flex-end', marginTop: '4px' }}>
+                      <a 
+                        href={`https://api.whatsapp.com/send?phone=918848347290&text=${encodeURIComponent(`Hello Admin, I am driver ${driverInfo?.name || 'Partner'} (${driverInfo?.phone || ''}). My pending platform commission & GST dues have reached ₹${parseFloat(wallet.toBePaid || 0).toFixed(2)}. I would like to clear my dues.`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: '#25D366',
+                          color: '#ffffff',
+                          fontWeight: '800',
+                          fontSize: '12px',
+                          padding: '8px 12px',
+                          borderRadius: '8px'
+                        }}
+                      >
+                        💬 Chat Admin on WhatsApp (+91 8848347290)
+                      </a>
+
+                      <button
+                        onClick={() => setShowPayDuesModal(true)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: 'linear-gradient(135deg, #10b981, #059669)',
+                          color: '#ffffff',
+                          fontWeight: '800',
+                          fontSize: '12px',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <CreditCard size={14} /> Pay Dues Online
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ₹1500 Balance Lock Warning Banner */}
               {parseFloat(wallet.toBePaid || 0) > 1500 && (
                 <div style={{
@@ -1278,11 +1945,23 @@ You can only accept prepaid trips until your balance is cleared.`);
                 <div className="incoming-request animate-fade-in delay-100">
                   <div className="request-pulse"></div>
                   <h3>New Ride Request!</h3>
-                  {incomingRide.isIntercity && (
-                    <div style={{ background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px' }}>
-                      Intercity Ride (+₹250 Base Included)
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                    {incomingRide.matchType === 'en-route' ? (
+                      <div style={{ background: '#3b82f6', color: '#fff', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Navigation size={12} /> En-Route Match
+                      </div>
+                    ) : (
+                      <div style={{ background: '#10b981', color: '#fff', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <MapPin size={12} /> Nearby Pickup ({incomingRide.distance} KM)
+                      </div>
+                    )}
+                    {incomingRide.isIntercity && (
+                      <div style={{ background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>
+                        Intercity Ride (+₹250 Base Included)
+                      </div>
+                    )}
+                  </div>
+
 
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
                     <span style={{
@@ -1337,53 +2016,250 @@ You can only accept prepaid trips until your balance is cleared.`);
               {/* Active ride in progress block */}
               {isOnline && currentRide && !showRating && (
                 <div className="incoming-request animate-fade-in delay-100" style={{ background: 'rgba(59, 130, 246, 0.08)', borderColor: '#3b82f6' }}>
-                  <h3 style={{ color: '#3b82f6' }}>Trip in Progress</h3>
-                  {currentRide.isIntercity && (
-                    <div style={{ background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px' }}>
-                      Intercity Route Active (+₹250 Base)
-                    </div>
-                  )}
-                  <div className="request-details">
-                    <div className="req-row"><MapPin size={16}/> <strong>Pickup:</strong> {currentRide.pickup}</div>
-                    <div className="req-row"><Navigation size={16}/> <strong>Drop-off:</strong> {currentRide.dropoff}</div>
-                    
-                    <div style={{ borderTop: '1px solid rgba(59, 130, 246, 0.2)', marginTop: '8px', paddingTop: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <div><strong>Total Distance:</strong> {currentRide.totalKm || 8.0} KM</div>
-                      <div style={{ paddingLeft: '8px', borderLeft: '2px solid #3b82f6', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12px' }}>
-                        <div>• Passenger Bid: INR {parseFloat(currentRide.fare).toFixed(2)}</div>
-                        <div>• GST Tax (5%): +INR {(parseFloat(currentRide.fare) * 0.05).toFixed(2)}</div>
-                        <div style={{ borderTop: '1px solid rgba(59, 130, 246, 0.3)', marginTop: '4px', paddingTop: '4px', fontWeight: 'bold', color: 'var(--text-main)' }}>
-                          • Collect Cash: INR {(parseFloat(currentRide.fare) * 1.05).toFixed(2)}
-                        </div>
+                  {showEndTripSummary ? (
+                    <div>
+                      <h3 style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 12px 0' }}>
+                        <DollarSign size={20} /> End Trip Summary
+                      </h3>
+                      
+                      {(() => {
+                        const baseTotal = parseFloat(currentRide.totalKm || 8.0);
+                        const liveDist = parseFloat(liveGpsDistance || 0);
+                        const finalDist = liveDist > 0 ? liveDist : baseTotal;
+                        
+                        const rate = parseFloat(ratePerKm || 15.00);
+                        let originalMinFare = baseTotal * rate;
+                        if (currentRide.isIntercity) originalMinFare += 250;
+                        
+                        const originalOfferedFare = parseFloat(currentRide.fare || originalMinFare);
+                        const voluntaryExtraOffer = Math.max(0, originalOfferedFare - originalMinFare);
+                        
+                        let recalculatedMinFare = finalDist * rate;
+                        if (currentRide.isIntercity) recalculatedMinFare += 250;
+                        
+                        const baseF = recalculatedMinFare + voluntaryExtraOffer;
+                        const tax = baseF * 0.05;
+                        const total = baseF + tax;
+                        
+                        const isLess = liveDist > 0 && liveDist < baseTotal;
+                        const isMore = liveDist > baseTotal;
+
+                        return (
+                          <>
+                            <div className="request-details" style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span><strong>Final Distance:</strong></span>
+                                <span>{finalDist.toFixed(2)} KM</span>
+                              </div>
+                              {isMore && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444', fontSize: '11px' }}>
+                                  <span>Extra Distance Travelled:</span>
+                                  <span>+{(finalDist - baseTotal).toFixed(2)} KM</span>
+                                </div>
+                              )}
+                              {isLess && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981', fontSize: '11px' }}>
+                                  <span>Stopped Early:</span>
+                                  <span>-{(baseTotal - finalDist).toFixed(2)} KM</span>
+                                </div>
+                              )}
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span><strong>Rate per KM:</strong></span>
+                                <span>₹{rate.toFixed(2)}</span>
+                              </div>
+                              {voluntaryExtraOffer > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--primary)', fontSize: '12px', fontWeight: 'bold' }}>
+                                  <span>Passenger Voluntary Extra Tip:</span>
+                                  <span>+₹{voluntaryExtraOffer.toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div style={{ borderTop: '1px dashed rgba(59, 130, 246, 0.2)', margin: '4px 0' }} />
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Subtotal (KM Fare):</span>
+                                <span>₹{baseF.toFixed(2)}</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f59e0b' }}>
+                                <span>GST Tax (5%):</span>
+                                <span>₹{tax.toFixed(2)}</span>
+                              </div>
+                              <div style={{ borderTop: '1px solid rgba(59, 130, 246, 0.3)', margin: '6px 0', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '15px' }}>
+                                <span>Total Collected:</span>
+                                <span>₹{total.toFixed(2)}</span>
+                              </div>
+                            </div>
+
+                            <div style={{ marginTop: '16px', background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={collectCash} 
+                                  onChange={(e) => setCollectCash(e.target.checked)}
+                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                />
+                                <span>💵 Collect Cash from Passenger</span>
+                              </label>
+                              <p style={{ margin: '6px 0 0 28px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                                Passenger will pay ₹{total.toFixed(2)} in cash.
+                              </p>
+                            </div>
+                          </>
+                        );
+                      })()}
+
+                      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                        <Button variant="outline" className="full-width" onClick={() => setShowEndTripSummary(false)} style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)' }}>
+                          Back
+                        </Button>
+                        <Button variant="primary" className="full-width" onClick={() => handleCompleteRide(collectCash)} style={{ background: '#10b981', color: 'white' }}>
+                          Confirm & Complete
+                        </Button>
                       </div>
                     </div>
+                  ) : currentRide.status === 'Accepted' ? (
+                    <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                      <h3 style={{ color: '#3b82f6', marginBottom: '16px' }}>Verify Passenger to Start Trip</h3>
+                      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                        Ask the passenger ({currentRide.passengerName || 'Passenger'}) for their 6-digit Ride PIN to verify their identity and start the trip.
+                      </p>
+                      <input 
+                        type="text" 
+                        value={ridePin} 
+                        onChange={(e) => setRidePin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="Enter 6-digit PIN" 
+                        style={{ fontSize: '20px', letterSpacing: '4px', textAlign: 'center', width: '100%', padding: '12px', borderRadius: '8px', border: '2px solid #3b82f6', background: 'transparent', color: 'var(--text-main)', marginBottom: '16px' }}
+                      />
+                      <Button variant="primary" className="full-width" onClick={handleVerifyPin} style={{ background: '#3b82f6', color: 'white' }} disabled={ridePin.length !== 6}>
+                        Verify & Start Trip
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <h3 style={{ color: '#3b82f6' }}>Trip in Progress</h3>
+                      {currentRide.isIntercity && (
+                        <div style={{ background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px' }}>
+                          Intercity Route Active (+₹250 Base)
+                        </div>
+                      )}
+                      {/* LIVE RUNNING GPS TAXIMETER CARD */}
+                      <div style={{
+                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.12))',
+                        border: '1.5px solid #10b981',
+                        borderRadius: '14px',
+                        padding: '14px',
+                        marginBottom: '14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        boxShadow: '0 4px 16px rgba(16, 185, 129, 0.12)'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '11px', fontWeight: '900', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                            LIVE GPS TRIP METER ACTIVE
+                          </span>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '700' }}>
+                            Rate: ₹{parseFloat(ratePerKm || 15.00).toFixed(2)}/KM
+                          </span>
+                        </div>
 
-                    <div className="req-price est-price" style={{ color: '#3b82f6', marginTop: '8px' }}>Fare: INR {currentRide.fare}</div>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => { setShowDriverTripChat(true); fetchDriverTripChatMessages(); }}
-                    style={{ width: '100%', marginBottom: '10px', borderColor: '#3b82f6', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  >
-                    <MessageSquare size={16} /> 💬 Chat with Passenger ({currentRide.passengerName || 'Passenger'})
-                  </Button>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <Button variant="outline" className="full-width" onClick={handleCancelRide} style={{ borderColor: '#ef4444', color: '#ef4444' }}>
-                      Cancel Ride
-                    </Button>
-                    <Button variant="primary" className="full-width" onClick={handleCompleteRide} style={{ background: '#3b82f6', color: 'white' }}>
-                      Complete Ride
-                    </Button>
-                  </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', alignItems: 'center', paddingTop: '4px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Est. Distance</span>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
+                              {(liveGpsDistance > 0 ? liveGpsDistance : parseFloat(currentRide.totalKm || 8.0)).toFixed(2)} <span style={{ fontSize: '12px', color: '#10b981' }}>KM</span>
+                            </div>
+                          </div>
+                          <div style={{ width: '1px', background: 'rgba(59, 130, 246, 0.2)', margin: '0 8px' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Est. Fare</span>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
+                              ₹{((liveGpsDistance > 0 ? liveGpsDistance : parseFloat(currentRide.totalKm || 8.0)) * parseFloat(ratePerKm || 15.00) + (currentRide.isIntercity ? 250 : 0)).toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', borderTop: '1px dashed var(--border)', paddingTop: '6px', marginTop: '2px' }}>
+                          ⚡ GPS tracks precise vehicle motion while riding with passenger.
+                        </div>
+                      </div>
+
+                      <div className="request-details">
+                        <div className="req-row"><MapPin size={16}/> <strong>Pickup:</strong> {currentRide.pickup}</div>
+                        <div className="req-row"><Navigation size={16}/> <strong>Drop-off:</strong> {currentRide.dropoff}</div>
+                        
+                        <div style={{ borderTop: '1px solid rgba(59, 130, 246, 0.2)', marginTop: '8px', paddingTop: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div><strong>Estimated Distance:</strong> {currentRide.totalKm || 8.0} KM</div>
+                          <div style={{ paddingLeft: '8px', borderLeft: '2px solid #3b82f6', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12px' }}>
+                            <div>• Offered Price: INR {parseFloat(currentRide.fare).toFixed(2)}</div>
+                            <div>• GST Tax (5%): +INR {(parseFloat(currentRide.fare) * 0.05).toFixed(2)}</div>
+                            <div style={{ borderTop: '1px solid rgba(59, 130, 246, 0.3)', marginTop: '4px', paddingTop: '4px', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                              • Collect Cash: INR {(parseFloat(currentRide.fare) * 1.05).toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="req-price est-price" style={{ color: '#3b82f6', marginTop: '8px' }}>Fare: INR {currentRide.fare}</div>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => { setShowDriverTripChat(true); fetchDriverTripChatMessages(); }}
+                        style={{ width: '100%', marginBottom: '10px', borderColor: '#3b82f6', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      >
+                        <MessageSquare size={16} /> 💬 Chat with Passenger ({currentRide.passengerName || 'Passenger'})
+                      </Button>
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <Button variant="outline" className="full-width" onClick={handleCancelRide} style={{ borderColor: '#ef4444', color: '#ef4444' }}>
+                          Cancel Ride
+                        </Button>
+                        <Button variant="primary" className="full-width" onClick={() => setShowEndTripSummary(true)} style={{ background: '#3b82f6', color: 'white' }}>
+                          Complete Ride
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
-              {/* Idle online status screen */}
+              {/* Idle online status screen — Simple Clean Trip Searching Indicator */}
               {isOnline && !incomingRide && !currentRide && !showRating && !isPaused && (
-                <div style={{ border: '1px dashed var(--primary)', borderRadius: '14px', padding: '24px', textAlign: 'center', background: 'rgba(16, 185, 129, 0.03)' }}>
-                  <div className="request-pulse" style={{ margin: '0 auto 12px auto' }}></div>
-                  <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: 'var(--primary)', fontWeight: '800' }}>Searching for Nearby Trips...</h4>
-                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Stay in high-demand zones to receive passenger ride requests automatically.</p>
+                <div style={{
+                  border: '1px dashed #10b981',
+                  borderRadius: '16px',
+                  padding: '24px 20px',
+                  textAlign: 'center',
+                  background: 'rgba(16, 185, 129, 0.03)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '12px'
+                }} className="animate-fade-in">
+                  
+                  {/* Simple Pulsing Beacon Ring */}
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    border: '1.5px solid #10b981',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#10b981',
+                    boxShadow: '0 0 12px rgba(16, 185, 129, 0.2)',
+                    animation: 'pulse 2s infinite'
+                  }}>
+                    <Car size={24} />
+                  </div>
+
+                  <div>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#10b981', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                      Searching for Nearby Trips...
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
+                      Scanning nearby Kerala passengers within 8 KM radius. Requests will pop up automatically.
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -1395,6 +2271,86 @@ You can only accept prepaid trips until your balance is cleared.`);
                   <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Click "Go Online" in the header to start accepting ride dispatches.</p>
                 </div>
               )}
+
+              {/* Available Pre-booked Trips Section (Visible when Online and Idle) */}
+              {isOnline && !currentRide && !showRating && (
+                <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    📅 Available Pre-booked Trips ({availablePreBooked.length})
+                  </h4>
+                  {availablePreBooked.length === 0 ? (
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', textAlign: 'center', background: 'rgba(255,255,255,0.01)', fontSize: '12px', color: 'var(--text-muted)' }}>
+                      No available pre-booked trips within 20 KM.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
+                      {availablePreBooked.map(ride => (
+                        <div key={ride.id} style={{ border: '1px solid var(--border)', borderRadius: '14px', padding: '14px', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
+                            <span style={{ fontWeight: '700', color: 'var(--primary)' }}>{ride.preBookDate} at {ride.preBookTime}</span>
+                            <span>📍 Driver Dist: <strong>{ride.distance} KM</strong></span>
+                          </div>
+                          <div style={{ fontSize: '12.5px', fontWeight: '600' }}>
+                            📍 <strong>From:</strong> {ride.pickup}
+                          </div>
+                          <div style={{ fontSize: '12.5px', fontWeight: '600' }}>
+                            🏁 <strong>To:</strong> {ride.dropoff}
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', fontSize: '12px' }}>
+                            <span>Bid Fare: <strong style={{ color: 'var(--primary)', fontSize: '13px' }}>₹{ride.fare}</strong></span>
+                            <span>Total Dist: <strong>{ride.totalKm} KM</strong></span>
+                          </div>
+                          <Button variant="primary" className="full-width" onClick={() => handleAcceptPreBooked(ride.id)} style={{ marginTop: '8px', fontSize: '12.5px', padding: '8px' }}>
+                            Accept Pre-booked Trip
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* My Scheduled Trips Section (Always Visible) */}
+              <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  💼 My Scheduled Trips ({myScheduledTrips.length})
+                </h4>
+                {myScheduledTrips.length === 0 ? (
+                  <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', textAlign: 'center', background: 'rgba(255,255,255,0.01)', fontSize: '12px', color: 'var(--text-muted)' }}>
+                    You have no scheduled trips.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
+                    {myScheduledTrips.map(ride => (
+                      <div key={ride.id} style={{ border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '14px', padding: '14px', background: 'rgba(56, 189, 248, 0.02)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
+                          <span style={{ fontWeight: '700', color: '#38bdf8' }}>{ride.preBookDate} at {ride.preBookTime}</span>
+                          <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '2px 6px', borderRadius: '8px', fontSize: '9px', fontWeight: 'bold' }}>ACCEPTED</span>
+                        </div>
+                        <div style={{ fontSize: '12.5px', fontWeight: '600' }}>
+                          📍 <strong>From:</strong> {ride.pickup}
+                        </div>
+                        <div style={{ fontSize: '12.5px', fontWeight: '600' }}>
+                          🏁 <strong>To:</strong> {ride.dropoff}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', fontSize: '12px' }}>
+                          <span>Fare: <strong style={{ color: '#38bdf8', fontSize: '13px' }}>₹{ride.fare}</strong></span>
+                          <span>Passenger: <strong>{ride.passengerName}</strong></span>
+                        </div>
+                        {isOnline ? (
+                          <Button variant="primary" className="full-width" onClick={() => handleStartScheduledTrip(ride.id)} style={{ marginTop: '8px', background: '#38bdf8', borderColor: '#38bdf8', color: 'black', fontWeight: '800', fontSize: '12.5px', padding: '8px' }}>
+                            Start Trip Now
+                          </Button>
+                        ) : (
+                          <div style={{ fontSize: '11px', color: '#ef4444', textAlign: 'center', marginTop: '6px', fontWeight: 'bold' }}>
+                            Go Online to start this trip
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
             </div>
           )}
@@ -1431,7 +2387,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                   </div>
                   <div style={{ padding: '10px', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.04)', textAlign: 'center' }}>
                     <span style={{ fontSize: '10px', color: '#ef4444', display: 'block', marginBottom: '4px' }}>Platform Dues</span>
-                    <span style={{ fontSize: '14px', fontWeight: '800', color: '#ef4444' }}>₹{parseFloat(wallet.toBePaid || 0).toFixed(2)}</span>
+                    <span style={{ fontSize: '14px', fontWeight: '800', color: '#ef4444' }}>-₹{parseFloat(wallet.toBePaid || 0).toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -1440,27 +2396,49 @@ You can only accept prepaid trips until your balance is cleared.`);
                   <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-main)' }}>📋 Platform Commission Breakdown</span>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Base Commission (5%):</span>
-                    <strong style={{ color: 'var(--text-main)' }}>₹{(parseFloat(wallet.toBePaid || 0) * 0.5).toFixed(2)}</strong>
+                    <strong style={{ color: '#ef4444' }}>-₹{(parseFloat(wallet.toBePaid || 0) * 0.5).toFixed(2)}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Government GST (5%):</span>
-                    <strong style={{ color: 'var(--text-main)' }}>₹{(parseFloat(wallet.toBePaid || 0) * 0.5).toFixed(2)}</strong>
+                    <strong style={{ color: '#ef4444' }}>-₹{(parseFloat(wallet.toBePaid || 0) * 0.5).toFixed(2)}</strong>
                   </div>
                   <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '4px 0' }} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '800' }}>
                     <span style={{ color: '#ef4444' }}>Total Commission Dues:</span>
-                    <strong style={{ color: '#ef4444' }}>₹{parseFloat(wallet.toBePaid || 0).toFixed(2)}</strong>
+                    <strong style={{ color: '#ef4444' }}>-₹{parseFloat(wallet.toBePaid || 0).toFixed(2)}</strong>
                   </div>
                 </div>
 
                 {parseFloat(wallet.toBePaid || 0) > 0 && (
-                  <Button 
-                    variant="primary" 
-                    onClick={() => setShowPayDuesModal(true)}
-                    style={{ marginTop: '4px', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', fontWeight: '800' }}
-                  >
-                    <CreditCard size={16} /> Pay Commission via Payment Gateway
-                  </Button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                    <Button 
+                      variant="primary" 
+                      onClick={() => setShowPayDuesModal(true)}
+                      style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', fontWeight: '800' }}
+                    >
+                      <CreditCard size={16} /> Pay Commission via Payment Gateway
+                    </Button>
+                    <a 
+                      href={`https://api.whatsapp.com/send?phone=918848347290&text=${encodeURIComponent(`Hello Admin, I am driver ${driverInfo?.name || 'Partner'} (${driverInfo?.phone || ''}). My pending platform commission & GST dues have reached ₹${parseFloat(wallet.toBePaid || 0).toFixed(2)}. I would like to clear my dues.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        background: '#25D366',
+                        color: '#ffffff',
+                        fontWeight: '800',
+                        fontSize: '12px',
+                        padding: '10px',
+                        borderRadius: '10px'
+                      }}
+                    >
+                      💬 Chat Admin on WhatsApp (+91 8848347290)
+                    </a>
+                  </div>
                 )}
 
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '10px', lineHeight: '1.5' }}>
@@ -1477,6 +2455,7 @@ You can only accept prepaid trips until your balance is cleared.`);
               {/* SETTINGS SUB-NAVIGATION PILLS */}
               <div style={{
                 display: 'flex',
+                flexWrap: 'wrap',
                 alignItems: 'center',
                 gap: '4px',
                 padding: '4px',
@@ -1498,7 +2477,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justify: 'center',
+                    justifyContent: 'center',
                     gap: '4px',
                     transition: 'all 0.2s'
                   }}
@@ -1520,7 +2499,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justify: 'center',
+                    justifyContent: 'center',
                     gap: '4px',
                     transition: 'all 0.2s'
                   }}
@@ -1573,25 +2552,17 @@ You can only accept prepaid trips until your balance is cleared.`);
                 </button>
 
                 <button
-                  onClick={async () => {
-                    setSettingsSubTab('earnings');
-                    if (!earningsData) {
-                      setEarningsLoading(true);
-                      const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
-                      try {
-                        const res = await fetch(`http://localhost:5000/api/drivers/earnings?email=${encodeURIComponent(email)}`);
-                        if (res.ok) setEarningsData(await res.json());
-                      } catch {}
-                      setEarningsLoading(false);
-                    }
+                  onClick={() => {
+                    setSettingsSubTab('vehicles');
+                    fetchVehicles();
                   }}
                   style={{
                     flex: 1,
                     padding: '6px 10px',
                     borderRadius: '8px',
                     border: 'none',
-                    background: settingsSubTab === 'earnings' ? 'var(--primary)' : 'transparent',
-                    color: settingsSubTab === 'earnings' ? '#000' : 'var(--text-muted)',
+                    background: settingsSubTab === 'vehicles' ? 'var(--primary)' : 'transparent',
+                    color: settingsSubTab === 'vehicles' ? '#000' : 'var(--text-muted)',
                     fontWeight: '800',
                     fontSize: '11px',
                     cursor: 'pointer',
@@ -1602,9 +2573,268 @@ You can only accept prepaid trips until your balance is cleared.`);
                     transition: 'all 0.2s'
                   }}
                 >
-                  <TrendingUp size={13} /> Earnings
+                  <Car size={13} /> Vehicles
+                </button>
+
+                <button
+                  onClick={() => setSettingsSubTab('appearance')}
+                  style={{
+                    flex: 1,
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: settingsSubTab === 'appearance' ? 'var(--primary)' : 'transparent',
+                    color: settingsSubTab === 'appearance' ? '#000' : 'var(--text-muted)',
+                    fontWeight: '800',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <Sparkles size={13} /> Theme
                 </button>
               </div>
+
+              {/* SUB-SECTION 0.5: VEHICLES GARAGE */}
+              {settingsSubTab === 'vehicles' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Car size={18} color="var(--primary)" />
+                      <span style={{ fontSize: '14px', fontWeight: '800' }}>Manage Garage</span>
+                    </div>
+                    <button
+                      onClick={() => setShowAddVehicleForm(prev => !prev)}
+                      className="btn btn-outline"
+                      style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '700' }}
+                    >
+                      {showAddVehicleForm ? '✕ Close Form' : '➕ Add Another Vehicle'}
+                    </button>
+                  </div>
+
+                  {/* Add Vehicle Form */}
+                  {showAddVehicleForm && (
+                    <form onSubmit={handleAddVehicle} style={{ border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', background: 'rgba(255,255,255,0.01)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '800' }}>Add Specifications</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                          <label style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Manufacturer / Make</label>
+                          <input
+                            type="text"
+                            className="input-field"
+                            placeholder="e.g. Tata, Hyundai"
+                            value={newMake}
+                            onChange={(e) => setNewMake(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Model Name</label>
+                          <input
+                            type="text"
+                            className="input-field"
+                            placeholder="e.g. Nexon, Creta"
+                            value={newModel}
+                            onChange={(e) => setNewModel(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                          <label style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Mfg. Year</label>
+                          <input
+                            type="number"
+                            className="input-field"
+                            placeholder="e.g. 2023"
+                            value={newYear}
+                            onChange={(e) => setNewYear(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>License Plate Number</label>
+                          <input
+                            type="text"
+                            className="input-field"
+                            placeholder="e.g. KA 01 AB 1234"
+                            value={newPlate}
+                            onChange={(e) => setNewPlate(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {/* Vehicle Photos */}
+                      <div style={{ marginTop: '8px' }}>
+                        <label style={{ fontSize: '11px', fontWeight: '800', display: 'block', marginBottom: '8px' }}>📷 Required Vehicle Photos</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                          {[
+                            { id: 'front', label: 'Front view' },
+                            { id: 'rear', label: 'Rear view' },
+                            { id: 'left', label: 'Left Side' },
+                            { id: 'right', label: 'Right Side' },
+                            { id: 'inside', label: 'Inside Cabin' }
+                          ].map((side) => (
+                            <div key={side.id} style={{ border: '1px dashed var(--border)', borderRadius: '10px', padding: '8px', textAlign: 'center', position: 'relative' }}>
+                              <span style={{ fontSize: '10px', fontWeight: '700', display: 'block', marginBottom: '4px' }}>{side.label} *</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                required
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (evt) => setNewVehiclePhotos(prev => ({ ...prev, [side.id]: evt.target.result }));
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                                style={{ fontSize: '9px', width: '100%' }}
+                              />
+                              {newVehiclePhotos[side.id] && (
+                                <div style={{ marginTop: '6px', width: '60px', height: '40px', margin: '6px auto 0 auto', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                                  <img src={newVehiclePhotos[side.id]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={side.label} />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Vehicle Documents */}
+                      <div style={{ marginTop: '12px' }}>
+                        <label style={{ fontSize: '11px', fontWeight: '800', display: 'block', marginBottom: '8px' }}>📄 Required Compliance Documents</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                          {[
+                            { id: 'rc', label: 'Registration (RC)' },
+                            { id: 'pollution', label: 'Pollution (PUC)' },
+                            { id: 'insurance', label: 'Insurance Policy' },
+                            { id: 'fitness', label: 'Fitness Certificate' }
+                          ].map((doc) => (
+                            <div key={doc.id} style={{ border: '1px dashed var(--border)', borderRadius: '10px', padding: '8px', textAlign: 'center', position: 'relative' }}>
+                              <span style={{ fontSize: '10px', fontWeight: '700', display: 'block', marginBottom: '4px' }}>{doc.label} *</span>
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                required
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (evt) => setNewVehicleDocs(prev => ({ ...prev, [doc.id]: evt.target.result }));
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                                style={{ fontSize: '9px', width: '100%' }}
+                              />
+                              {newVehicleDocs[doc.id] && (
+                                <span style={{ fontSize: '9px', color: '#10b981', display: 'block', marginTop: '4px', fontWeight: '700' }}>✓ Document Loaded</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="primary"
+                        type="submit"
+                        disabled={vehicleSaveStatus === 'saving'}
+                        style={{ padding: '8px 12px', fontSize: '12px', fontWeight: '800', marginTop: '6px' }}
+                      >
+                        {vehicleSaveStatus === 'saving' ? '⏳ Adding vehicle...' : '💾 Save Vehicle to Garage'}
+                      </Button>
+                    </form>
+                  )}
+
+                  {/* Vehicles List */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {vehicles.map((v) => (
+                      <div
+                        key={v.id}
+                        style={{
+                          border: '1px solid var(--border)',
+                          borderRadius: '12px',
+                          padding: '14px',
+                          background: v.isActive ? 'rgba(16, 185, 129, 0.04)' : 'rgba(255,255,255,0.01)',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          <div style={{ width: '42px', height: '42px', borderRadius: '8px', overflow: 'hidden', background: '#121624', border: v.isActive ? '2px solid var(--primary)' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {v.photos?.front ? (
+                              <img src={v.photos.front} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Car" />
+                            ) : (
+                              <Car size={20} color={v.isActive ? 'var(--primary)' : 'var(--text-muted)'} />
+                            )}
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '13px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-main)' }}>
+                              {v.manufacturer} {v.model} ({v.year})
+                              {v.status === 'Pending' && (
+                                <span style={{ fontSize: '9px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#f59e0b', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>Pending</span>
+                              )}
+                              {v.status === 'Rejected' && (
+                                <span style={{ fontSize: '9px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>Rejected</span>
+                              )}
+                              {v.status === 'Approved' && (
+                                <span style={{ fontSize: '9px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#10b981', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>Approved</span>
+                              )}
+                            </span>
+                            <span style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+                              {v.plate}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          {v.isActive ? (
+                            <span style={{ fontSize: '10px', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '4px 10px', borderRadius: '20px', fontWeight: '800', border: '1px solid rgba(16,185,129,0.2)' }}>
+                              ✓ Active Ride
+                            </span>
+                          ) : (
+                            <>
+                              {(v.status === 'Approved' || !v.status) && (
+                                <button
+                                  onClick={() => handleActivateVehicle(v.id)}
+                                  className="btn btn-outline"
+                                  style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '700' }}
+                                >
+                                  Activate
+                                </button>
+                              )}
+                              {v.status === 'Pending' && (
+                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px' }}>
+                                  ⏳ Awaiting Approval
+                                </span>
+                              )}
+                              {v.status === 'Rejected' && (
+                                <span style={{ fontSize: '10px', color: '#ef4444', background: 'rgba(239, 68, 68, 0.05)', padding: '4px 8px', borderRadius: '6px' }}>
+                                  Rejected
+                                </span>
+                              )}
+                              <button
+                                onClick={() => handleDeleteVehicle(v.id)}
+                                style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
+                              >
+                                Remove
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* SUB-SECTION 1: FARE RATES */}
               {settingsSubTab === 'rates' && (
@@ -1704,9 +2934,12 @@ You can only accept prepaid trips until your balance is cleared.`);
                         { id: 'pollution', label: 'Pollution (PUC)' },
                         { id: 'insurance', label: 'Insurance Policy' },
                         { id: 'fitness', label: 'Fitness Certificate' },
-                        { id: 'license', label: 'Driving Licence (DL)' }
+                        { id: 'licenseFront', label: 'Licence (Front Side)' },
+                        { id: 'licenseBack', label: 'Licence (Back Side)' }
                       ].map((doc) => {
-                        const hasDoc = Boolean(driverDocs[doc.id]);
+                        const hasDoc = Boolean(driverDocs[doc.id] || (
+                          (doc.id === 'licenseFront' || doc.id === 'licenseBack') ? driverDocs.license : null
+                        ));
                         return (
                           <div key={doc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', fontSize: '12px' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
@@ -1799,6 +3032,81 @@ You can only accept prepaid trips until your balance is cleared.`);
                     />
                   </div>
 
+                  {/* Reset Password Fields */}
+                  <div style={{ borderTop: '1px dashed var(--border)', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-main)', display: 'block' }}>
+                      🔑 Reset Security Password
+                    </span>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>New Password</label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type={showProfilePassword ? "text" : "password"}
+                          className="input-field"
+                          placeholder="••••••••"
+                          value={profileNewPassword}
+                          onChange={(e) => setProfileNewPassword(e.target.value)}
+                          style={{ padding: '10px 14px', paddingRight: '40px', fontSize: '14px', width: '100%' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowProfilePassword(prev => !prev)}
+                          style={{
+                            position: 'absolute',
+                            right: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 2
+                          }}
+                        >
+                          {showProfilePassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Confirm Password</label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type={showProfilePassword ? "text" : "password"}
+                          className="input-field"
+                          placeholder="••••••••"
+                          value={profileConfirmPassword}
+                          onChange={(e) => setProfileConfirmPassword(e.target.value)}
+                          style={{ padding: '10px 14px', paddingRight: '40px', fontSize: '14px', width: '100%' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowProfilePassword(prev => !prev)}
+                          style={{
+                            position: 'absolute',
+                            right: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 2
+                          }}
+                        >
+                          {showProfilePassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Current read-only info */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '10px' }}>
                     {[['Email', driverDetails?.email || '—'], ['Rating', `★ ${driverDetails?.rating || '5.0'}`], ['Status', driverDetails?.status || 'Approved']].map(([label, val]) => (
@@ -1827,20 +3135,31 @@ You can only accept prepaid trips until your balance is cleared.`);
                     className="full-width"
                     disabled={profileSaveStatus === 'saving'}
                     onClick={async () => {
-                      if (!profileEditName.trim() && !profileEditPicBase64) {
-                        alert('Please enter a new name or choose a new photo.');
+                      if (!profileEditName.trim() && !profileEditPicBase64 && !profileNewPassword) {
+                        alert('Please edit your name, choose a new photo, or enter a new password.');
                         return;
                       }
+                      if (profileNewPassword) {
+                        if (profileNewPassword !== profileConfirmPassword) {
+                          alert('New passwords do not match!');
+                          return;
+                        }
+                        if (profileNewPassword.length < 4) {
+                          alert('Password must be at least 4 characters long.');
+                          return;
+                        }
+                      }
                       setProfileSaveStatus('saving');
-                      const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+                      const email = localStorage.getItem('driverEmail');
                       try {
-                        const res = await fetch('http://localhost:5000/api/drivers/profile', {
+                        const res = await fetch(`${API_BASE}/api/drivers/profile`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
                             email,
                             name: profileEditName.trim() || driverDetails?.name,
-                            profilePic: profileEditPicBase64 || undefined
+                            profilePic: profileEditPicBase64 || undefined,
+                            password: profileNewPassword || undefined
                           })
                         });
                         if (res.ok) {
@@ -1852,6 +3171,8 @@ You can only accept prepaid trips until your balance is cleared.`);
                           setProfileEditName('');
                           setProfileEditPicPreview(null);
                           setProfileEditPicBase64(null);
+                          setProfileNewPassword('');
+                          setProfileConfirmPassword('');
                           setTimeout(() => setProfileSaveStatus(null), 3000);
                         } else {
                           setProfileSaveStatus('error');
@@ -1988,14 +3309,14 @@ You can only accept prepaid trips until your balance is cleared.`);
                       className="full-width"
                       disabled={bankSaveStatus === 'saving'}
                       onClick={async () => {
-                        const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+                        const email = localStorage.getItem('driverEmail');
                         if (!bankHolder && !bankName && !accountNo && !ifscCode) {
                           alert('Please fill in at least one field to update.');
                           return;
                         }
                         setBankSaveStatus('saving');
                         try {
-                          const res = await fetch('http://localhost:5000/api/drivers/bank', {
+                          const res = await fetch(`${API_BASE}/api/drivers/bank`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ email, bankHolder: bankHolder || driverDetails?.bankHolder, bankName: bankName || driverDetails?.bankName, accountNo: accountNo || driverDetails?.accountNo, ifscCode: ifscCode || driverDetails?.ifscCode, upiId: upiId || driverDetails?.upiId })
@@ -2021,156 +3342,62 @@ You can only accept prepaid trips until your balance is cleared.`);
                 </div>
               )}
 
-              {/* SUB-SECTION 5: EARNINGS REPORT */}
-              {settingsSubTab === 'earnings' && (
-                <div style={{ border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', background: 'rgba(255,255,255,0.01)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {/* Header */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <TrendingUp size={18} color="var(--primary)" />
-                      <span style={{ fontSize: '14px', fontWeight: '800' }}>Earnings Report</span>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        setEarningsLoading(true);
-                        const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
-                        try {
-                          const res = await fetch(`http://localhost:5000/api/drivers/earnings?email=${encodeURIComponent(email)}`);
-                          if (res.ok) setEarningsData(await res.json());
-                        } catch {}
-                        setEarningsLoading(false);
-                      }}
-                      style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', color: 'var(--primary)', borderRadius: '8px', padding: '4px 12px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}
-                    >
-                      🔄 Refresh
-                    </button>
+              {/* SUB-SECTION 6: THEME & APPEARANCE */}
+              {settingsSubTab === 'appearance' && (
+                <div style={{ border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', background: 'rgba(255, 255, 255, 0.01)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Sparkles size={18} color="var(--primary)" />
+                    <span style={{ fontSize: '14px', fontWeight: '800' }}>Theme & Appearance</span>
                   </div>
-
-                  {/* Period Selector */}
-                  <div style={{ display: 'flex', gap: '6px', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '4px' }}>
-                    {[['daily', '📅 Today'], ['weekly', '📆 This Week'], ['monthly', '🗓️ This Month']].map(([key, label]) => (
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Choose your preferred dashboard display theme:</span>
+                    
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                       <button
-                        key={key}
-                        onClick={() => setEarningsPeriod(key)}
+                        onClick={() => setTheme('light')}
                         style={{
-                          flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
-                          background: earningsPeriod === key ? 'var(--primary)' : 'transparent',
-                          color: earningsPeriod === key ? '#000' : 'var(--text-muted)',
-                          fontWeight: '800', fontSize: '11px', cursor: 'pointer', transition: 'all 0.2s'
+                          flex: 1,
+                          padding: '12px',
+                          borderRadius: '10px',
+                          border: theme === 'light' ? '2px solid var(--primary)' : '1px solid var(--border)',
+                          background: theme === 'light' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                          color: theme === 'light' ? 'var(--primary)' : 'var(--text-main)',
+                          fontWeight: '800',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s'
                         }}
-                      >{label}</button>
-                    ))}
-                  </div>
-
-                  {earningsLoading ? (
-                    <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '13px' }}>⏳ Loading earnings...</div>
-                  ) : earningsData ? (() => {
-                    const period = earningsData[earningsPeriod];
-                    const periodLabel = earningsPeriod === 'daily' ? 'Today' : earningsPeriod === 'weekly' ? 'This Week' : 'This Month';
-                    return (
-                      <>
-                        {/* Summary Cards */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                          {[
-                            { label: 'Trips Completed', value: period.count, color: '#3b82f6' },
-                            { label: 'Gross Earnings', value: `₹${period.gross}`, color: '#f59e0b' },
-                            { label: '10% Commission', value: `₹${period.commission}`, color: '#ef4444' },
-                            { label: 'Net Earnings', value: `₹${period.net}`, color: '#10b981' },
-                          ].map(({ label, value, color }) => (
-                            <div key={label} style={{ padding: '12px', border: `1px solid ${color}30`, borderRadius: '10px', background: `${color}08` }}>
-                              <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>{label}</div>
-                              <div style={{ fontSize: '16px', fontWeight: '800', color }}>{value}</div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Ride Breakdown List */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '2px' }}>
-                            🧾 {periodLabel} Ride Breakdown ({period.count})
-                          </div>
-                          {period.rides.length === 0 ? (
-                            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', border: '1px dashed var(--border)', borderRadius: '10px' }}>
-                              No completed rides for {periodLabel.toLowerCase()}.
-                            </div>
-                          ) : (
-                            <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', paddingRight: '2px' }}>
-                              {period.rides.map((ride, i) => (
-                                <div key={ride.id || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontWeight: '700', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                      {ride.pickup} → {ride.dropoff}
-                                    </div>
-                                    <div style={{ color: 'var(--text-muted)', fontSize: '10px', marginTop: '1px' }}>
-                                      {ride.passengerName} • {ride.completedAt ? new Date(ride.completedAt).toLocaleDateString('en-IN') : '—'}
-                                    </div>
-                                  </div>
-                                  <div style={{ fontWeight: '800', color: '#10b981', marginLeft: '10px', whiteSpace: 'nowrap' }}>₹{ride.fare}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Download PDF Button */}
-                        <button
-                          onClick={() => {
-                            const driverName = driverDetails?.name || 'Driver Partner';
-                            const rows = period.rides.map(r => `
-                              <tr>
-                                <td>${r.id ?? '—'}</td>
-                                <td>${r.passengerName ?? '—'}</td>
-                                <td>${r.pickup ?? '—'}</td>
-                                <td>${r.dropoff ?? '—'}</td>
-                                <td style="text-align:right">₹${r.fare ?? '0'}</td>
-                                <td style="text-align:right;color:#059669">₹${(parseFloat(r.fare||0)*0.9).toFixed(2)}</td>
-                                <td>${r.completedAt ? new Date(r.completedAt).toLocaleDateString('en-IN') : '—'}</td>
-                              </tr>`).join('');
-                            const win = window.open('', '_blank');
-                            win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>HUM Fleet – Earnings Report</title>
-                              <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#fff;padding:32px;color:#111}
-                              .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #10b981}
-                              .logo{font-size:24px;font-weight:900;color:#10b981}h2{font-size:16px;font-weight:700;color:#333;margin-bottom:4px}
-                              .meta{font-size:12px;color:#666}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-                              .card{padding:14px;border-radius:10px;border:1px solid #e5e7eb}
-                              .card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#666;margin-bottom:4px}
-                              .card-val{font-size:20px;font-weight:800}table{width:100%;border-collapse:collapse;font-size:12px}
-                              th{background:#f9fafb;padding:8px 10px;text-align:left;font-weight:700;color:#374151;border-bottom:2px solid #e5e7eb}
-                              td{padding:8px 10px;border-bottom:1px solid #f3f4f6}tr:hover td{background:#f9fafb}
-                              .footer{margin-top:24px;font-size:11px;color:#9ca3af;text-align:center;border-top:1px solid #e5e7eb;padding-top:12px}
-                              @media print{body{padding:16px}}</style></head><body>
-                              <div class="header">
-                                <div><div class="logo">🚗 HUM Fleet</div><div class="meta">Partner Earnings Report · Generated ${new Date().toLocaleString('en-IN')}</div></div>
-                                <div style="text-align:right"><h2>${driverName}</h2><div class="meta">Period: ${periodLabel}</div></div>
-                              </div>
-                              <div class="summary">
-                                <div class="card"><div class="card-label">Trips</div><div class="card-val" style="color:#3b82f6">${period.count}</div></div>
-                                <div class="card"><div class="card-label">Gross Earnings</div><div class="card-val" style="color:#f59e0b">₹${period.gross}</div></div>
-                                <div class="card"><div class="card-label">Commission (10%)</div><div class="card-val" style="color:#ef4444">₹${period.commission}</div></div>
-                                <div class="card"><div class="card-label">Net Earned</div><div class="card-val" style="color:#10b981">₹${period.net}</div></div>
-                              </div>
-                              <table><thead><tr><th>#</th><th>Passenger</th><th>Pickup</th><th>Drop-off</th><th>Gross (₹)</th><th>Net (₹)</th><th>Date</th></tr></thead>
-                              <tbody>${rows || '<tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:24px">No rides for this period</td></tr>'}</tbody></table>
-                              <div class="footer">HUM Fleet Partner Earnings · This is a system-generated statement · For disputes contact admin support</div>
-                              <script>window.onload=()=>{window.print();}<\/script></body></html>`);
-                            win.document.close();
-                          }}
-                          style={{
-                            padding: '11px', width: '100%', borderRadius: '10px',
-                            background: 'linear-gradient(135deg, #10b981, #059669)',
-                            color: '#fff', border: 'none', fontWeight: '800', fontSize: '13px',
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                          }}
-                        >
-                          ⬇️ Download {periodLabel} Report (.PDF)
-                        </button>
-                      </>
-                    );
-                  })() : (
-                    <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '13px' }}>
-                      Click <strong>Refresh</strong> to load your earnings.
+                      >
+                        ☀️ Light Theme
+                      </button>
+                      <button
+                        onClick={() => setTheme('dark')}
+                        style={{
+                          flex: 1,
+                          padding: '12px',
+                          borderRadius: '10px',
+                          border: theme === 'dark' ? '2px solid var(--primary)' : '1px solid var(--border)',
+                          background: theme === 'dark' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                          color: theme === 'dark' ? 'var(--primary)' : 'var(--text-main)',
+                          fontWeight: '800',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        🌙 Dark Theme
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
 
@@ -2525,8 +3752,8 @@ You can only accept prepaid trips until your balance is cleared.`);
                   onClick={async () => {
                     setEarningsHistoryPeriod(key);
                     if (!homeEarnings) {
-                      const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
-                      const r = await fetch(`http://localhost:5000/api/drivers/earnings?email=${encodeURIComponent(email)}`);
+                      const email = localStorage.getItem('driverEmail');
+                      const r = await fetch(`${API_BASE}/api/drivers/earnings?email=${encodeURIComponent(email)}`);
                       if (r.ok) setHomeEarnings(await r.json());
                     }
                   }}
@@ -2579,6 +3806,11 @@ You can only accept prepaid trips until your balance is cleared.`);
                             <div style={{ textAlign: 'right', marginLeft: '12px' }}>
                               <div style={{ fontWeight: '800', fontSize: '14px', color: '#10b981' }}>₹{(parseFloat(ride.fare) * 0.9).toFixed(2)}</div>
                               <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>of ₹{ride.fare}</div>
+                              {ride.driverBalance !== undefined && ride.driverBalance !== null && (
+                                <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold', marginTop: '2px' }}>
+                                  Bal: {parseFloat(ride.driverBalance) < 0 ? '-' : ''}₹{Math.abs(parseFloat(ride.driverBalance)).toFixed(2)}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -2738,9 +3970,9 @@ You can only accept prepaid trips until your balance is cleared.`);
                 setIsPayingDues(true);
                 setPayDuesError(null);
                 setPayDuesSuccess(false);
-                const email = localStorage.getItem('driverEmail') || 'rajesh.k@gmail.com';
+                const email = localStorage.getItem('driverEmail');
                 try {
-                  const res = await fetch('http://localhost:5000/api/drivers/pay-dues', {
+                  const res = await fetch(`${API_BASE}/api/drivers/pay-dues`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, amount: amt })
@@ -2766,6 +3998,121 @@ You can only accept prepaid trips until your balance is cleared.`);
             >
               {isPayingDues ? 'Processing Settlement...' : 'Confirm Payment & Settle'}
             </Button>
+
+            <div style={{ textAlign: 'center', marginTop: '6px' }}>
+              <a 
+                href={`https://api.whatsapp.com/send?phone=918848347290&text=${encodeURIComponent(`Hello Admin, I am driver ${driverInfo?.name || 'Partner'} (${driverInfo?.phone || ''}). My pending platform commission & GST dues have reached ₹${parseFloat(wallet.toBePaid || 0).toFixed(2)}. I would like to clear my dues.`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  color: '#25D366',
+                  fontWeight: '700',
+                  fontSize: '12px'
+                }}
+              >
+                💬 Need help? Chat Admin on WhatsApp (+91 8848347290)
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== INR 700 COMMISSION & GST DUES NOTIFICATION POPUP MODAL ========== */}
+      {showDuesNoticeModal && parseFloat(wallet.toBePaid || 0) >= 700 && (
+        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(5px)', position: 'fixed', inset: 0, zIndex: 1150, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '440px', padding: '24px', borderRadius: '20px', background: 'var(--bg-card)', border: '1.5px solid rgba(245, 158, 11, 0.6)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <AlertTriangle size={24} color="#f59e0b" />
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#f59e0b' }}>Commission & GST Dues Alert</h3>
+              </div>
+              <button onClick={() => { setShowDuesNoticeModal(false); setHasDismissedDuesModal(true); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Accumulated Dues (≥ ₹700)</span>
+              <div style={{ fontSize: '28px', fontWeight: '900', color: '#ef4444' }}>
+                ₹{parseFloat(wallet.toBePaid || 0).toFixed(2)}
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                (10% Platform Commission & GST Dues)
+              </div>
+            </div>
+
+            <p style={{ fontSize: '13px', color: 'var(--text-main)', margin: 0, lineHeight: '1.5', textAlign: 'center' }}>
+              Your accumulated platform commission & GST dues have reached <strong>₹700</strong> or above. Please clear your dues or communicate with the Admin via WhatsApp to settle your dues.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+              <a 
+                href={`https://api.whatsapp.com/send?phone=918848347290&text=${encodeURIComponent(`Hello Admin, I am driver ${driverInfo?.name || 'Partner'} (${driverInfo?.phone || ''}). My pending platform commission & GST dues have reached ₹${parseFloat(wallet.toBePaid || 0).toFixed(2)}. I would like to clear my dues.`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  background: '#25D366',
+                  color: '#ffffff',
+                  fontWeight: '800',
+                  fontSize: '13px',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)'
+                }}
+              >
+                💬 Chat Admin on WhatsApp (+91 8848347290)
+              </a>
+
+              <button
+                onClick={() => {
+                  setShowDuesNoticeModal(false);
+                  setShowPayDuesModal(true);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  color: '#ffffff',
+                  fontWeight: '800',
+                  fontSize: '13px',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <CreditCard size={16} /> Pay Dues Online
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowDuesNoticeModal(false);
+                  setHasDismissedDuesModal(true);
+                }}
+                style={{
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                  fontWeight: '600',
+                  fontSize: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '6px'
+                }}
+              >
+                Dismiss Notice
+              </button>
+            </div>
           </div>
         </div>
       )}

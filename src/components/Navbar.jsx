@@ -11,11 +11,8 @@ const Navbar = () => {
   return (
     <nav className="navbar glass">
       <div className="container nav-container">
-        <Link to="/" className="nav-logo">
-          <div className="logo-icon">
-            <Car size={24} />
-          </div>
-          <span className="logo-text text-gradient">HUM Fleet</span>
+        <Link to="/" className="nav-logo" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <img src="/hum_fleet_official_logo.jpg" alt="HUM Fleet Logo" style={{ height: '42px', width: 'auto', borderRadius: '4px' }} />
         </Link>
         <div className="nav-links">
           {!isPassengerFlow && !isDriverFlow && (

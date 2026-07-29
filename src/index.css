@@ -14,6 +14,22 @@
   --header-bg: #0f172a;
   --header-text: #f8fafc;
   --header-text-muted: #94a3b8;
+  --bg-focus: rgba(255, 255, 255, 1);
+}
+
+[data-theme='dark'] {
+  --bg-main: #0b0f17;
+  --bg-card: #151c2c;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(21, 28, 44, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  
+  --header-bg: #030712;
+  --header-text: #f9fafb;
+  --header-text-muted: #9ca3af;
+  --bg-focus: #1e293b;
 }
 
 * {
@@ -109,7 +125,7 @@ body {
 
 .input-field:focus {
   border-color: var(--primary);
-  background: rgba(255, 255, 255, 1);
+  background: var(--bg-focus);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 

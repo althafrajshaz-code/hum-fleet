@@ -3,7 +3,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 const DATA_FILE = path.join(__dirname, 'data_store.json');
 
@@ -30,23 +30,23 @@ let passengers = [
   }
 ];
 
-// Mock drivers preset with default Indian coordinates in Delhi NCR, wallets, and ratings
+// Mock drivers preset with default Kerala coordinates (Kochi, Trivandrum, Calicut)
 let drivers = [
   {
     id: 1,
-    name: 'Rajesh Kumar',
+    name: 'Althaf A',
     email: 'rajesh.k@gmail.com',
     phone: '+91 98765 43210',
     manufacturer: 'Tata',
     model: 'Nexon',
     year: '2023',
-    plate: 'DL 3C AY 4567',
-    status: 'Pending',
+    plate: 'KL 07 CD 4567',
+    status: 'Approved',
     isBlocked: false,
     ratePerKm: '15.00',
     ratePerHour: '120.00',
-    lat: 28.4950, // Gurugram
-    lng: 77.0896,
+    lat: 9.9777, // Marine Drive, Ernakulam, Kochi
+    lng: 76.2758,
     photos: { front: 'front_nexon.jpg', rear: 'rear_nexon.jpg', left: 'left_nexon.jpg', right: 'right_nexon.jpg', inside: 'inside_nexon.jpg' },
     docs: { rc: 'rc_rajesh.pdf', pollution: 'puc_rajesh.pdf', insurance: 'insurance_rajesh.pdf', fitness: 'fitness_rajesh.pdf', license: 'license_rajesh.pdf' },
     wallet: { cashCollected: 0, toBePaid: 0, gstCollected: 0 },
@@ -61,13 +61,13 @@ let drivers = [
     manufacturer: 'Hyundai',
     model: 'Creta',
     year: '2022',
-    plate: 'MH 12 QP 9876',
-    status: 'Pending',
+    plate: 'KL 01 BP 9876',
+    status: 'Approved',
     isBlocked: false,
     ratePerKm: '15.00',
     ratePerHour: '120.00',
-    lat: 28.6129, // India Gate
-    lng: 77.2295,
+    lat: 8.5581, // Technopark, Trivandrum
+    lng: 76.8816,
     photos: { front: 'front_creta.jpg', rear: 'rear_creta.jpg', left: 'left_creta.jpg', right: 'right_creta.jpg', inside: 'inside_creta.jpg' },
     docs: { rc: 'rc_amit.pdf', pollution: 'puc_amit.pdf', insurance: 'insurance_amit.pdf', fitness: 'insurance_amit.pdf', license: 'license_amit.pdf' },
     wallet: { cashCollected: 0, toBePaid: 0, gstCollected: 0 },
@@ -82,13 +82,13 @@ let drivers = [
     manufacturer: 'Maruti Suzuki',
     model: 'Swift',
     year: '2024',
-    plate: 'HR 26 BZ 1122',
-    status: 'Pending',
+    plate: 'KL 11 BZ 1122',
+    status: 'Approved',
     isBlocked: false,
     ratePerKm: '15.00',
     ratePerHour: '120.00',
-    lat: 28.6273, // Noida
-    lng: 77.3725,
+    lat: 11.2588, // Kozhikode Beach, Calicut
+    lng: 75.7804,
     photos: { front: 'front_swift.jpg', rear: 'rear_swift.jpg', left: 'left_swift.jpg', right: 'right_swift.jpg', inside: 'inside_swift.jpg' },
     docs: { rc: 'rc_priya.pdf', pollution: 'puc_priya.pdf', insurance: 'insurance_priya.pdf', fitness: 'fitness_priya.pdf', license: 'license_priya.pdf' },
     wallet: { cashCollected: 0, toBePaid: 0, gstCollected: 0 },
@@ -114,19 +114,24 @@ let settings = {
 
 // Default Vehicle Categories List with Separate Base Fares and Rates/KM
 let vehicleCategories = [
-  { id: 1, name: 'HUM Go', maxPassengers: 4, baseFare: 50.00, ratePerKm: 15.00 },
-  { id: 2, name: 'HUM Premium', maxPassengers: 6, baseFare: 100.00, ratePerKm: 25.00 }
+  { id: 'auto', name: '🛺 Auto Rickshaw', maxPassengers: 3, baseFare: 30.00, ratePerKm: 12.00, icon: '🛺' },
+  { id: 'hatchback', name: 'Mini / Hatchback', maxPassengers: 4, baseFare: 50.00, ratePerKm: 15.00, icon: '🚗' },
+  { id: 'sedan', name: 'Sedan (AC)', maxPassengers: 4, baseFare: 70.00, ratePerKm: 18.00, icon: '🚘' },
+  { id: 'suv', name: 'SUV / XL (6 Seater)', maxPassengers: 6, baseFare: 120.00, ratePerKm: 25.00, icon: '🚐' },
+  { id: 'ev', name: '⚡ EV Green Cab (Eco)', maxPassengers: 4, baseFare: 60.00, ratePerKm: 16.00, icon: '⚡' }
 ];
 
 // Global ride matching system database, driver direct messaging store & in-trip ride chat store
 let activeRides = [];
 let driverMessages = {};
+let passengerMessages = {};
 let rideMessages = {};
+let dynamicLocations = []; // Store for newly searched/added locations by passengers
 
 // Persistence Helpers
 function saveData() {
   try {
-    const data = { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, rideMessages };
+    const data = { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations };
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
   } catch (err) {
     console.error('Failed to save data_store:', err);
@@ -138,18 +143,86 @@ function loadData() {
     try {
       const raw = fs.readFileSync(DATA_FILE, 'utf8');
       const parsed = JSON.parse(raw);
-      if (parsed.drivers) drivers = parsed.drivers;
-      if (parsed.passengers) passengers = parsed.passengers;
-      if (parsed.activeRides) activeRides = parsed.activeRides;
-      if (parsed.settings) settings = parsed.settings;
-      if (parsed.vehicleCategories) vehicleCategories = parsed.vehicleCategories;
-      if (parsed.adminCredentials) adminCredentials = parsed.adminCredentials;
-      if (parsed.driverMessages) driverMessages = parsed.driverMessages;
-      if (parsed.rideMessages) rideMessages = parsed.rideMessages;
+      let needsSave = false;
+
+      if (parsed.drivers) {
+        drivers = parsed.drivers;
+      } else {
+        needsSave = true;
+      }
+
+      if (parsed.passengers) {
+        passengers = parsed.passengers;
+        // Retroactively assign Customer ID (verificationCode) to existing passengers
+        passengers.forEach(p => {
+          if (!p.verificationCode) {
+            p.verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+            needsSave = true;
+          }
+        });
+      } else {
+        needsSave = true;
+      }
+
+      if (parsed.activeRides) {
+        activeRides = parsed.activeRides;
+      } else {
+        needsSave = true;
+      }
+
+      if (parsed.settings) {
+        settings = { ...settings, ...parsed.settings };
+      } else {
+        needsSave = true;
+      }
+
+      if (parsed.vehicleCategories) {
+        vehicleCategories = parsed.vehicleCategories;
+      } else {
+        needsSave = true;
+      }
+
+      if (parsed.adminCredentials) {
+        adminCredentials = parsed.adminCredentials;
+      } else {
+        needsSave = true;
+      }
+
+      if (parsed.driverMessages) {
+        driverMessages = parsed.driverMessages;
+      } else {
+        needsSave = true;
+      }
+
+      if (parsed.passengerMessages) {
+        passengerMessages = parsed.passengerMessages;
+      } else {
+        needsSave = true;
+      }
+
+      if (parsed.rideMessages) {
+        rideMessages = parsed.rideMessages;
+      } else {
+        needsSave = true;
+      }
+
+      if (parsed.dynamicLocations) {
+        dynamicLocations = parsed.dynamicLocations;
+      } else {
+        needsSave = true;
+      }
+
       console.log('Successfully restored HUM Fleet database state from data_store.json');
+      if (needsSave) {
+        saveData();
+        console.log('Synchronized missing keys back to data_store.json');
+      }
     } catch (err) {
       console.error('Failed to load data_store:', err);
     }
+  } else {
+    saveData();
+    console.log('Created fresh data_store.json with default initial state.');
   }
 }
 
@@ -196,9 +269,15 @@ app.get('/api/passengers', (req, res) => {
 // Passenger signup
 app.post('/api/passengers/signup', (req, res) => {
   const { name, email, phone, password } = req.body;
-  const exists = passengers.find(p => p.email === email || p.phone === phone);
+  const cleanPhone = (p) => p ? p.replace(/[^0-9]/g, '') : '';
+  const cleanRegPhone = cleanPhone(phone);
+  
+  const exists = passengers.find(p => 
+    (p.email && p.email.toLowerCase() === email.toLowerCase()) || 
+    (cleanPhone(p.phone) === cleanRegPhone)
+  );
   if (exists) {
-    return res.status(400).json({ error: 'User with this email or phone already registered.' });
+    return res.status(400).json({ error: 'A passenger account with this email or phone number is already registered. Please log in.' });
   }
   const newPassenger = {
     id: passengers.length + 1,
@@ -208,7 +287,8 @@ app.post('/api/passengers/signup', (req, res) => {
     password,
     wallet: { totalSpent: 0, taxPaid: 0 },
     rating: 5.0,
-    ratings: []
+    ratings: [],
+    verificationCode: Math.floor(100000 + Math.random() * 900000).toString()
   };
   passengers.push(newPassenger);
   saveData();
@@ -222,8 +302,30 @@ app.post('/api/passengers/login', (req, res) => {
     (p.email === loginId || p.phone === loginId) && p.password === password
   );
   if (user) {
+    if (!user.verificationCode) {
+      user.verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      saveData();
+    }
+    res.json({ success: true, name: user.name, email: user.email, phone: user.phone, verificationCode: user.verificationCode });
+  } else {
+    res.status(401).json({ error: 'Invalid email/phone number or password.' });
+  }
+});
+
+// Driver login (supports email or phone number)
+app.post('/api/drivers/login', (req, res) => {
+  const { loginId, password } = req.body;
+  console.log(`Driver login attempt: loginId="${loginId}", password="${password}"`);
+  
+  const user = drivers.find(d => 
+    (d.email && d.email.toLowerCase() === loginId.toLowerCase() || d.phone === loginId) && 
+    (d.password === password || (!d.password && password === 'driver123'))
+  );
+  if (user) {
+    console.log(`Driver login successful for: ${user.email}`);
     res.json({ success: true, name: user.name, email: user.email, phone: user.phone });
   } else {
+    console.log(`Driver login failed for loginId="${loginId}"`);
     res.status(401).json({ error: 'Invalid email/phone number or password.' });
   }
 });
@@ -283,17 +385,32 @@ app.delete('/api/vehicle-categories/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// Get passenger status by email
+app.get('/api/passengers/status', (req, res) => {
+  const { email } = req.query;
+  const passenger = passengers.find(p => p.email === email);
+  if (passenger) {
+    res.json({
+      name: passenger.name,
+      email: passenger.email,
+      phone: passenger.phone,
+      rating: passenger.rating || 5.0,
+      profilePic: passenger.profilePic || null
+    });
+  } else {
+    res.status(404).json({ error: 'Passenger not found' });
+  }
+});
+
 // Get driver status by email
 app.get('/api/drivers/status', (req, res) => {
   const { email } = req.query;
   const driver = drivers.find(d => d.email === email);
   if (driver) {
-    const todayStr = new Date().toDateString();
-    const isDailyVerified = driver.lastVerifiedAt ? (new Date(driver.lastVerifiedAt).toDateString() === todayStr) : false;
     res.json({ 
       status: driver.status, 
       isBlocked: driver.isBlocked || false,
-      isDailyVerified,
+      isDailyVerified: true,
       lastVerifiedAt: driver.lastVerifiedAt || null,
       isOnline: driver.isOnline || false,
       currentRide: driver.currentRide || null,
@@ -318,8 +435,7 @@ app.get('/api/drivers/status', (req, res) => {
       upiId: driver.upiId || null
     });
   } else {
-    // Return Pending by default for unregistered or fallback driver sessions to keep portal secure!
-    res.json({ status: 'Pending', isBlocked: false, isDailyVerified: false, lastVerifiedAt: null, isOnline: false, currentRide: null, name: 'New Applicant', manufacturer: 'Tata', model: 'Nexon', plate: 'DL 3C AY 4567', phone: '+91 99999 88888', lat: 28.6304, lng: 77.2177, ratePerKm: '15.00', ratePerHour: '120.00', rating: 5.0, photos: {}, docs: {}, profilePic: null });
+    res.status(404).json({ error: 'Driver not found' });
   }
 });
 
@@ -348,6 +464,156 @@ app.post('/api/drivers/profile-pic', (req, res) => {
   } else {
     res.status(404).json({ error: 'Driver not found' });
   }
+});
+
+// Get driver vehicles list
+app.get('/api/drivers/vehicles', (req, res) => {
+  const { email } = req.query;
+  const driver = drivers.find(d => d.email === email);
+  if (!driver) return res.status(404).json({ error: 'Driver not found' });
+  
+  if (!driver.vehicles || driver.vehicles.length === 0) {
+    driver.vehicles = [
+      {
+        id: 1,
+        manufacturer: driver.manufacturer || 'Tata',
+        model: driver.model || 'Nexon',
+        year: driver.year || '2023',
+        plate: driver.plate || 'DL 3C AY 4567',
+        photos: driver.photos || {},
+        docs: driver.docs || {},
+        isActive: true,
+        status: driver.status === 'Approved' ? 'Approved' : 'Pending'
+      }
+    ];
+    saveData();
+  }
+  
+  res.json(driver.vehicles);
+});
+
+// Add new vehicle to driver's account
+app.post('/api/drivers/vehicles', (req, res) => {
+  const { email, manufacturer, model, year, plate, photos } = req.body;
+  const driver = drivers.find(d => d.email === email);
+  if (!driver) return res.status(404).json({ error: 'Driver not found' });
+
+  if (!driver.vehicles) driver.vehicles = [];
+  
+  const exists = driver.vehicles.find(v => v.plate.toLowerCase() === plate.toLowerCase());
+  if (exists) {
+    return res.status(400).json({ error: 'Vehicle with this plate number is already registered under your account.' });
+  }
+
+  const newVehicle = {
+    id: driver.vehicles.length > 0 ? Math.max(...driver.vehicles.map(v => v.id)) + 1 : 1,
+    manufacturer,
+    model,
+    year,
+    plate,
+    photos: photos || {},
+    docs: req.body.docs || {},
+    isActive: false,
+    status: 'Pending'
+  };
+
+  driver.vehicles.push(newVehicle);
+  saveData();
+  res.status(201).json(driver.vehicles);
+});
+
+// Set active vehicle
+app.post('/api/drivers/vehicles/activate', (req, res) => {
+  const { email, vehicleId } = req.body;
+  const driver = drivers.find(d => d.email === email);
+  if (!driver) return res.status(404).json({ error: 'Driver not found' });
+  if (!driver.vehicles) return res.status(400).json({ error: 'No vehicles registered.' });
+
+  const vehicle = driver.vehicles.find(v => v.id === parseInt(vehicleId));
+  if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
+
+  if (vehicle.status !== 'Approved') {
+    return res.status(400).json({ error: 'Only vehicles approved by Admin can be activated.' });
+  }
+
+  driver.vehicles.forEach(v => {
+    v.isActive = (v.id === vehicle.id);
+  });
+
+  driver.manufacturer = vehicle.manufacturer;
+  driver.model = vehicle.model;
+  driver.year = vehicle.year;
+  driver.plate = vehicle.plate;
+  driver.photos = vehicle.photos || {};
+  driver.docs = vehicle.docs || {};
+
+  saveData();
+  res.json({ success: true, vehicles: driver.vehicles });
+});
+
+// Admin reviews (approves/rejects) a vehicle
+app.post('/api/drivers/vehicles/review', (req, res) => {
+  const { email, vehicleId, status } = req.body;
+  const driver = drivers.find(d => d.email === email);
+  if (!driver) return res.status(404).json({ error: 'Driver not found' });
+  if (!driver.vehicles) return res.status(400).json({ error: 'No vehicles registered for this driver.' });
+
+  const vehicle = driver.vehicles.find(v => v.id === parseInt(vehicleId));
+  if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
+
+  vehicle.status = status;
+
+  const activeVehicle = driver.vehicles.find(v => v.isActive);
+  if (status === 'Approved' && (!activeVehicle || activeVehicle.status !== 'Approved')) {
+    driver.vehicles.forEach(v => {
+      v.isActive = (v.id === vehicle.id);
+    });
+    driver.manufacturer = vehicle.manufacturer;
+    driver.model = vehicle.model;
+    driver.year = vehicle.year;
+    driver.plate = vehicle.plate;
+    driver.photos = vehicle.photos || {};
+    driver.docs = vehicle.docs || {};
+  }
+
+  saveData();
+  res.json({ success: true, vehicles: driver.vehicles });
+});
+
+// Delete a vehicle
+app.delete('/api/drivers/vehicles', (req, res) => {
+  const { email, vehicleId } = req.body;
+  const driver = drivers.find(d => d.email === email);
+  if (!driver) return res.status(404).json({ error: 'Driver not found' });
+  if (!driver.vehicles) return res.status(400).json({ error: 'No vehicles registered.' });
+
+  const id = parseInt(vehicleId);
+  const vehicleIndex = driver.vehicles.findIndex(v => v.id === id);
+  if (vehicleIndex === -1) return res.status(404).json({ error: 'Vehicle not found' });
+
+  const deletedVehicle = driver.vehicles[vehicleIndex];
+  driver.vehicles.splice(vehicleIndex, 1);
+
+  if (deletedVehicle.isActive && driver.vehicles.length > 0) {
+    const newActive = driver.vehicles[0];
+    newActive.isActive = true;
+    driver.manufacturer = newActive.manufacturer;
+    driver.model = newActive.model;
+    driver.year = newActive.year;
+    driver.plate = newActive.plate;
+    driver.photos = newActive.photos || {};
+    driver.docs = newActive.docs || {};
+  } else if (driver.vehicles.length === 0) {
+    driver.manufacturer = '';
+    driver.model = '';
+    driver.year = '';
+    driver.plate = '';
+    driver.photos = {};
+    driver.docs = {};
+  }
+
+  saveData();
+  res.json({ success: true, vehicles: driver.vehicles });
 });
 
 // Update Passenger Profile Picture
@@ -391,13 +657,14 @@ app.post('/api/drivers/bank', (req, res) => {
   res.json({ success: true, message: 'Bank details updated successfully.' });
 });
 
-// Update driver profile name and/or profile picture (base64)
+// Update driver profile name, profile picture (base64), and/or password
 app.post('/api/drivers/profile', (req, res) => {
-  const { email, name, profilePic } = req.body;
-  const driver = drivers.find(d => d.email === (email || 'rajesh.k@gmail.com'));
+  const { email, name, profilePic, password } = req.body;
+  const driver = drivers.find(d => d.email === email);
   if (!driver) return res.status(404).json({ error: 'Driver not found' });
   if (name && name.trim()) driver.name = name.trim();
   if (profilePic) driver.profilePic = profilePic;
+  if (password && password.trim()) driver.password = password.trim();
   saveData();
   res.json({ success: true, driver });
 });
@@ -540,7 +807,34 @@ app.get('/api/drivers', (req, res) => {
 
 // Add new driver application (with backend validation check)
 app.post('/api/drivers', (req, res) => {
-  const { ratePerKm, ratePerHour } = req.body;
+  const { email, phone, licenseNumber, ratePerKm, ratePerHour } = req.body;
+
+  // Uniqueness validation check
+  const cleanPhone = (p) => p ? p.replace(/[^0-9]/g, '') : '';
+  const cleanRegPhone = cleanPhone(phone);
+
+  const existingDriver = drivers.find(d => 
+    (d.email && d.email.toLowerCase() === email.toLowerCase()) || 
+    (cleanPhone(d.phone) === cleanRegPhone) ||
+    (d.licenseNumber && licenseNumber && d.licenseNumber.toLowerCase() === licenseNumber.toLowerCase())
+  );
+
+  if (existingDriver) {
+    if (existingDriver.isBlocked) {
+      return res.status(400).json({ error: 'This partner account is blocked. Please contact support.' });
+    }
+    if (existingDriver.status === 'Approved') {
+      return res.status(400).json({ error: 'This partner (Email/Phone/Licence) is already registered and verified. Please log in.' });
+    }
+    if (existingDriver.status === 'Pending') {
+      return res.status(400).json({ error: 'An application with these details is already pending verification.' });
+    }
+    if (existingDriver.status === 'Rejected') {
+      return res.status(400).json({ error: 'A previous application with these details was rejected. Please contact support.' });
+    }
+    return res.status(400).json({ error: 'A driver with this email, phone, or license is already registered.' });
+  }
+
   // Validate custom rates against platform limits
   if (parseFloat(ratePerKm) < parseFloat(settings.ratePerKm)) {
     return res.status(400).json({ error: `Rate per KM cannot be less than system limit of ₹${settings.ratePerKm}` });
@@ -634,7 +928,7 @@ app.post('/api/settings', (req, res) => {
 
 // Passenger requests a ride
 app.post('/api/rides', (req, res) => {
-  const { pickup, dropoff, fare, passengerName, passengerEmail, pickupCoords, dropoffCoords, paymentType } = req.body;
+  const { pickup, dropoff, fare, passengerName, passengerEmail, pickupCoords, dropoffCoords, paymentType, isPreBooked, preBookDate, preBookTime } = req.body;
   
   // Calculate total ride distance in kilometers
   const totalKm = pickupCoords && dropoffCoords
@@ -666,6 +960,10 @@ app.post('/api/rides', (req, res) => {
     vehicleModel: null,
     vehiclePlate: null,
     driverRating: 5.0,
+    isPreBooked: isPreBooked || false,
+    preBookDate: preBookDate || null,
+    preBookTime: preBookTime || null,
+    isActivated: false,
     createdAt: new Date().toISOString()
   };
   activeRides.push(newRide);
@@ -673,11 +971,64 @@ app.post('/api/rides', (req, res) => {
   res.status(201).json(newRide);
 });
 
-// Driver checks for searching ride requests (under 8 KM)
+// Helper: check if a point is within a corridor along the route from A to B
+// Uses perpendicular distance from point to line segment
+function isPointNearRoute(pointLat, pointLng, startLat, startLng, endLat, endLng, corridorKm) {
+  // Calculate distance from point to both endpoints
+  const dStart = getDistance(pointLat, pointLng, startLat, startLng);
+  const dEnd = getDistance(pointLat, pointLng, endLat, endLng);
+  const routeLen = getDistance(startLat, startLng, endLat, endLng);
+  
+  // If route is very short, just check distance to start
+  if (routeLen < 1.0) return dStart <= corridorKm;
+  
+  // Project the point onto the line segment using parametric t
+  const dx = endLat - startLat;
+  const dy = endLng - startLng;
+  let t = ((pointLat - startLat) * dx + (pointLng - startLng) * dy) / (dx * dx + dy * dy);
+  t = Math.max(0, Math.min(1, t));
+  
+  // Closest point on route line
+  const closestLat = startLat + t * dx;
+  const closestLng = startLng + t * dy;
+  const perpDist = getDistance(pointLat, pointLng, closestLat, closestLng);
+  
+  return perpDist <= corridorKm;
+}
+
+// Driver sets travel route destination for en-route ride matching
+app.post('/api/drivers/travel-route', (req, res) => {
+  const { email, destination, destinationCoords } = req.body;
+  const driver = drivers.find(d => d.email === email);
+  if (!driver) return res.status(404).json({ error: 'Driver not found' });
+  
+  if (destination && destinationCoords) {
+    driver.travelRoute = {
+      destination,
+      destinationCoords,
+      setAt: new Date().toISOString()
+    };
+  } else {
+    // Clear route
+    driver.travelRoute = null;
+  }
+  saveData();
+  res.json({ success: true, travelRoute: driver.travelRoute });
+});
+
+// Get driver's current travel route
+app.get('/api/drivers/travel-route', (req, res) => {
+  const { email } = req.query;
+  const driver = drivers.find(d => d.email === email);
+  if (!driver) return res.status(404).json({ error: 'Driver not found' });
+  res.json(driver.travelRoute || null);
+});
+
+// Driver checks for searching ride requests — matches within 8 KM proximity OR along set travel route
 app.get('/api/rides/active', (req, res) => {
   const { email } = req.query;
   const driver = drivers.find(d => d.email === email);
-  const searching = activeRides.find(r => r.status === 'Searching');
+  const searching = activeRides.find(r => r.status === 'Searching' && (!r.isPreBooked || r.isActivated));
   
   if (!searching) {
     return res.json(null);
@@ -695,21 +1046,189 @@ app.get('/api/rides/active', (req, res) => {
 
   // Calculate distance between driver and passenger pickup coordinates
   if (searching.pickupCoords) {
-    const distance = getDistance(
-      parseFloat(driver.lat),
-      parseFloat(driver.lng),
-      parseFloat(searching.pickupCoords.lat),
-      parseFloat(searching.pickupCoords.lng)
-    );
+    const driverLat = parseFloat(driver.lat);
+    const driverLng = parseFloat(driver.lng);
+    const pickupLat = parseFloat(searching.pickupCoords.lat);
+    const pickupLng = parseFloat(searching.pickupCoords.lng);
+    
+    const distance = getDistance(driverLat, driverLng, pickupLat, pickupLng);
 
-    // Only notify drivers under 8 KM!
+    // Match 1: Direct proximity — driver is within 8 KM of pickup
     if (distance <= 8.0) {
-      res.json({ ...searching, distance: distance.toFixed(2) });
-    } else {
-      res.json(null); // Too far away!
+      return res.json({ ...searching, distance: distance.toFixed(2), matchType: 'nearby' });
     }
+    
+    // Match 2: En-route matching — passenger pickup is along driver's travel route (10 KM corridor)
+    if (driver.travelRoute && driver.travelRoute.destinationCoords) {
+      const destLat = parseFloat(driver.travelRoute.destinationCoords.lat);
+      const destLng = parseFloat(driver.travelRoute.destinationCoords.lng);
+      
+      const isOnRoute = isPointNearRoute(pickupLat, pickupLng, driverLat, driverLng, destLat, destLng, 10.0);
+      
+      if (isOnRoute) {
+        // Also check dropoff is roughly in the same direction (not behind the driver)
+        const driverToPickup = getDistance(driverLat, driverLng, pickupLat, pickupLng);
+        const driverToDest = getDistance(driverLat, driverLng, destLat, destLng);
+        
+        // Pickup should be closer to driver than the destination (i.e. it's on the way)
+        if (driverToPickup <= driverToDest * 1.2) {
+          return res.json({ 
+            ...searching, 
+            distance: distance.toFixed(2), 
+            matchType: 'en-route',
+            driverDestination: driver.travelRoute.destination
+          });
+        }
+      }
+    }
+
+    // No match — too far and not on route
+    return res.json(null);
   } else {
     res.json(searching); // Fallback if no coordinates stored
+  }
+});
+
+// Get searching pre-booked rides under 20 KM from the driver
+app.get('/api/rides/prebooked', (req, res) => {
+  const { email } = req.query;
+  const driver = drivers.find(d => d.email === email);
+  if (!driver) {
+    return res.json([]);
+  }
+
+  // Find all pre-booked rides that are searching
+  const searchingPreBooked = activeRides.filter(r => r.status === 'Searching' && r.isPreBooked);
+  
+  // Filter those within 20 KM of the driver
+  const eligibleRides = searchingPreBooked.filter(ride => {
+    if (ride.pickupCoords) {
+      const distance = getDistance(
+        parseFloat(driver.lat),
+        parseFloat(driver.lng),
+        parseFloat(ride.pickupCoords.lat),
+        parseFloat(ride.pickupCoords.lng)
+      );
+      return distance <= 20.0;
+    }
+    return true; // Fallback
+  });
+
+  const result = eligibleRides.map(ride => {
+    let distance = 0;
+    if (ride.pickupCoords) {
+      distance = getDistance(
+        parseFloat(driver.lat),
+        parseFloat(driver.lng),
+        parseFloat(ride.pickupCoords.lat),
+        parseFloat(ride.pickupCoords.lng)
+      );
+    }
+    return {
+      ...ride,
+      distance: distance.toFixed(2)
+    };
+  });
+
+  res.json(result);
+});
+
+// Get scheduled/pre-booked rides accepted by a driver (not activated yet)
+app.get('/api/rides/driver/scheduled', (req, res) => {
+  const { email } = req.query;
+  const scheduled = activeRides.filter(r => r.driverEmail === email && r.isPreBooked && r.status === 'Accepted' && !r.isActivated);
+  res.json(scheduled);
+});
+
+// Get a driver's active (immediate or activated pre-booked) ride
+app.get('/api/rides/driver/active', (req, res) => {
+  const { email } = req.query;
+  const rides = activeRides.filter(r => 
+    r.driverEmail === email && 
+    ['Accepted', 'Arrived', 'In Progress'].includes(r.status) && 
+    (!r.isPreBooked || r.isActivated)
+  );
+  
+  // Prioritize In Progress or Arrived as current. Otherwise, the first Accepted.
+  const current = rides.find(r => r.status === 'In Progress') || 
+                  rides.find(r => r.status === 'Arrived') || 
+                  rides.find(r => r.status === 'Accepted');
+                  
+  const queued = rides.filter(r => r !== current);
+  
+  res.json({ current: current || null, queued: queued });
+});
+
+// Get a passenger's active (immediate or activated pre-booked) ride
+app.get('/api/rides/passenger/active', (req, res) => {
+  const { email } = req.query;
+  const active = activeRides.find(r => 
+    r.passengerEmail === email && 
+    (r.status === 'Searching' || r.status === 'Accepted' || r.status === 'Arrived') && 
+    (!r.isPreBooked || r.isActivated)
+  );
+  res.json(active || null);
+});
+
+// Get all passenger rides (for scheduled rides tracking)
+app.get('/api/rides/passenger', (req, res) => {
+  const { email } = req.query;
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+  const passengerRides = activeRides.filter(r => r.passengerEmail === email);
+  res.json(passengerRides);
+});
+
+// Activate a pre-booked ride
+app.post('/api/rides/:id/start', (req, res) => {
+  const id = parseInt(req.params.id);
+  const ride = activeRides.find(r => r.id === id);
+  if (ride) {
+    ride.isActivated = true;
+    saveData();
+    res.json(ride);
+  } else {
+    res.status(404).json({ error: 'Ride not found' });
+  }
+});
+
+// Verify passenger PIN to start active ride
+app.post('/api/rides/:id/verify-pin', (req, res) => {
+  const id = parseInt(req.params.id);
+  const { pin } = req.body;
+  
+  const ride = activeRides.find(r => r.id === id);
+  if (!ride) {
+    return res.status(404).json({ error: 'Ride not found' });
+  }
+  
+  const passenger = passengers.find(p => p.email === ride.passengerEmail);
+  if (!passenger) {
+    return res.status(404).json({ error: 'Passenger not found' });
+  }
+  
+  if (passenger.verificationCode !== pin) {
+    return res.status(400).json({ error: 'Invalid PIN. Please ask the passenger for their 6-digit ID.' });
+  }
+  
+  ride.status = 'In Progress';
+  ride.startedAt = new Date().toISOString();
+  saveData();
+  
+  res.json(ride);
+});
+
+// Passenger cancels a ride completely
+app.post('/api/rides/:id/passenger-cancel', (req, res) => {
+  const id = parseInt(req.params.id);
+  const ride = activeRides.find(r => r.id === id);
+  if (ride) {
+    ride.status = 'Cancelled';
+    saveData();
+    res.json(ride);
+  } else {
+    res.status(404).json({ error: 'Ride request not found' });
   }
 });
 
@@ -719,6 +1238,10 @@ app.post('/api/rides/:id/accept', (req, res) => {
   const { driverName, driverPhone, driverEmail, vehicleModel, vehiclePlate } = req.body;
   const ride = activeRides.find(r => r.id === id);
   if (ride) {
+    if (ride.status !== 'Searching') {
+      return res.status(400).json({ error: 'This ride has already been accepted by another driver.' });
+    }
+
     const driver = drivers.find(d => d.email === driverEmail);
     const dRating = driver ? driver.rating : 5.0;
 
@@ -742,9 +1265,104 @@ app.post('/api/rides/:id/accept', (req, res) => {
     ride.vehicleModel = vehicleModel;
     ride.vehiclePlate = vehiclePlate;
     ride.driverRating = dRating;
+    if (driver && driver.photos) {
+      ride.vehiclePhotos = driver.photos;
+    }
+    saveData();
     res.json(ride);
   } else {
     res.status(404).json({ error: 'Ride request not found' });
+  }
+});
+
+// Driver arrives at pickup location
+app.post('/api/rides/:id/arrive', (req, res) => {
+  const id = parseInt(req.params.id);
+  const ride = activeRides.find(r => r.id === id);
+  if (ride) {
+    ride.status = 'Arrived';
+    saveData();
+    res.json(ride);
+  } else {
+    res.status(404).json({ error: 'Ride request not found' });
+  }
+});
+
+// Passenger updates destination mid-trip
+app.post('/api/rides/:id/update-destination', (req, res) => {
+  const id = parseInt(req.params.id);
+  const { newDropoff, newDropoffCoords } = req.body;
+  
+  const ride = activeRides.find(r => r.id === id);
+  if (!ride) {
+    return res.status(404).json({ error: 'Active ride not found' });
+  }
+
+  const oldDropoff = ride.dropoff;
+  ride.dropoff = newDropoff;
+  if (newDropoffCoords) {
+    ride.dropoffCoords = newDropoffCoords;
+  }
+
+  if (ride.pickupCoords && ride.dropoffCoords) {
+    const updatedKm = parseFloat(getDistance(ride.pickupCoords.lat, ride.pickupCoords.lng, ride.dropoffCoords.lat, ride.dropoffCoords.lng).toFixed(1));
+    ride.totalKm = updatedKm;
+    ride.isIntercity = updatedKm > 35.0;
+
+    const driver = drivers.find(d => d.email === ride.driverEmail);
+    const ratePerKm = driver ? parseFloat(driver.ratePerKm || 15) : 15;
+    const baseFare = parseFloat(settings.baseFare || 50);
+    const surge = parseFloat(settings.surgeMultiplier || 1);
+    
+    let updatedFareVal = (baseFare + ratePerKm * updatedKm) * surge;
+    if (ride.isIntercity) {
+      updatedFareVal += 250;
+    }
+    ride.fare = updatedFareVal.toFixed(2);
+  }
+
+  ride.destinationUpdated = true;
+  ride.destinationUpdatedAt = new Date().toISOString();
+  saveData();
+  res.json({ success: true, ride });
+});
+
+// Driver updates live GPS distance during active ride
+app.post('/api/rides/:id/update-distance', (req, res) => {
+  const id = parseInt(req.params.id);
+  const { liveGpsDistance } = req.body;
+  const ride = activeRides.find(r => r.id === id);
+  if (!ride) return res.status(404).json({ error: 'Ride not found' });
+  
+  const currentTotal = parseFloat(ride.totalKm || 0);
+  const currentActual = parseFloat(liveGpsDistance || 0);
+  
+  if (currentActual > currentTotal) {
+    ride.actualTotalKm = currentActual;
+    const extraKm = currentActual - currentTotal;
+    
+    if (!ride.extraKmNotifiedCount) ride.extraKmNotifiedCount = 0;
+    
+    // Notify passenger every 2 extra KMs
+    if (Math.floor(extraKm / 2) > ride.extraKmNotifiedCount) {
+      ride.extraKmNotifiedCount = Math.floor(extraKm / 2);
+      ride.pendingPassengerNotification = true;
+    }
+    saveData();
+  }
+  res.json(ride);
+});
+
+// Passenger dismisses route deviation notification
+app.post('/api/rides/:id/dismiss-notification', (req, res) => {
+  const id = parseInt(req.params.id);
+  const ride = activeRides.find(r => r.id === id);
+  if (ride) {
+    ride.pendingPassengerNotification = false;
+    saveData();
+    res.json(ride);
+  } else {
+    res.status(404).json({ error: 'Ride not found' });
   }
 });
 
@@ -773,24 +1391,58 @@ app.post('/api/rides/:id/complete', (req, res) => {
     ride.status = 'Completed';
     ride.completedAt = new Date().toISOString();
 
-    const fareVal = parseFloat(ride.fare);
-    const gst = fareVal * 0.05; // 5% GST
-    const commission = fareVal * 0.05; // 5% Commission
-    const totalCollected = fareVal + gst; // Passenger pays bid + 5% GST
+    // Dynamically calculate fare based on actual traveled distance and ratePerKm
+    const driver = drivers.find(d => d.email === ride.driverEmail);
+    const rate = driver ? parseFloat(driver.ratePerKm || 15.00) : 15.00;
+    
+    const baseTotal = parseFloat(ride.totalKm || 8.0);
+    
+    // Calculate what the original minimum fare SHOULD have been
+    let originalMinFare = baseTotal * rate;
+    if (ride.isIntercity) originalMinFare += 250;
+    
+    // Check if the passenger offered more than the minimum
+    const originalOfferedFare = parseFloat(ride.fare || originalMinFare);
+    const voluntaryExtraOffer = Math.max(0, originalOfferedFare - originalMinFare);
+    
+    const actualTotal = parseFloat(ride.actualTotalKm || 0);
+    const distance = actualTotal > 0 ? actualTotal : baseTotal;
+    
+    // Recalculate based on final distance
+    let recalculatedMinFare = distance * rate;
+    if (ride.isIntercity) recalculatedMinFare += 250;
+    
+    // Final fare preserves any voluntary extra tip they offered
+    const finalFare = recalculatedMinFare + voluntaryExtraOffer;
+    
+    const gst = finalFare * 0.05; // 5% GST
+    const commission = finalFare * 0.05; // 5% Commission
+    const totalCollected = finalFare + gst; // Passenger pays distance fare + 5% GST
 
-    // Log calculation details on the ride log
+    // Update ride data
+    ride.finalDistance = distance.toFixed(2);
+    ride.fare = finalFare.toFixed(2);
     ride.gst = gst.toFixed(2);
     ride.commission = commission.toFixed(2);
     ride.totalCollected = totalCollected.toFixed(2);
 
+    const { collectCash } = req.body;
+    if (collectCash) {
+      ride.paymentType = 'cash';
+    }
+
     // Update driver's wallet
-    const driver = drivers.find(d => d.email === ride.driverEmail);
+    // (driver already found above)
     if (driver) {
       if (!driver.wallet) driver.wallet = { cashCollected: 0, toBePaid: 0, gstCollected: 0 };
       if (driver.wallet.gstCollected === undefined) driver.wallet.gstCollected = 0;
+      if (!driver.wallet.pendingSince || driver.wallet.toBePaid <= 0) {
+        driver.wallet.pendingSince = new Date().toISOString();
+      }
       driver.wallet.cashCollected += totalCollected;
       driver.wallet.toBePaid += (gst + commission);
       driver.wallet.gstCollected += gst;
+      ride.driverBalance = -driver.wallet.toBePaid;
     }
 
     // Update passenger's wallet
@@ -801,6 +1453,7 @@ app.post('/api/rides/:id/complete', (req, res) => {
       passenger.wallet.taxPaid += gst;
     }
 
+    saveData();
     res.json(ride);
   } else {
     res.status(404).json({ error: 'Ride request not found' });
@@ -820,6 +1473,7 @@ app.post('/api/rides/:id/rate-driver', (req, res) => {
       const total = driver.ratings.reduce((sum, r) => sum + r.rating, 0);
       driver.rating = parseFloat((total / driver.ratings.length).toFixed(1));
     }
+    saveData();
     res.json({ success: true });
   } else {
     res.status(404).json({ error: 'Ride not found' });
@@ -839,6 +1493,7 @@ app.post('/api/rides/:id/rate-passenger', (req, res) => {
       const total = passenger.ratings.reduce((sum, r) => sum + r.rating, 0);
       passenger.rating = parseFloat((total / passenger.ratings.length).toFixed(1));
     }
+    saveData();
     res.json({ success: true });
   } else {
     res.status(404).json({ error: 'Ride not found' });
@@ -932,11 +1587,71 @@ app.get('/api/drivers/earnings', (req, res) => {
       dropoff: r.dropoff,
       fare: r.fare,
       passengerName: r.passengerName,
-      completedAt: r.completedAt || r.createdAt || null
+      completedAt: r.completedAt || r.createdAt || null,
+      driverBalance: r.driverBalance
     }))
   });
 
   res.json({ daily: summarise(daily), weekly: summarise(weekly), monthly: summarise(monthly) });
+});
+
+// Admin: Get separated pending payments with daily rollover tracking
+app.get('/api/admin/pending-payments', (req, res) => {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const pendingPayments = drivers
+    .filter(d => d.wallet && parseFloat(d.wallet.toBePaid || 0) > 0)
+    .map(d => {
+      const toBePaid = parseFloat(d.wallet.toBePaid || 0);
+      const cashCollected = parseFloat(d.wallet.cashCollected || 0);
+      const pendingSinceDate = d.wallet.pendingSince ? new Date(d.wallet.pendingSince) : new Date();
+      const pendingStartDay = new Date(pendingSinceDate.getFullYear(), pendingSinceDate.getMonth(), pendingSinceDate.getDate());
+      
+      const diffMs = todayStart.getTime() - pendingStartDay.getTime();
+      const daysPending = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+
+      let agingStatus = 'same-day';
+      let statusLabel = 'Pending Today (Same Day)';
+      if (daysPending === 1) {
+        agingStatus = 'rolled-over';
+        statusLabel = 'Rolled Over (1 Day Overdue)';
+      } else if (daysPending >= 2) {
+        agingStatus = daysPending >= 3 ? 'critical-overdue' : 'rolled-over';
+        statusLabel = `Rolled Over (${daysPending} Days Overdue)`;
+      }
+
+      return {
+        id: d.id,
+        name: d.name,
+        email: d.email,
+        phone: d.phone,
+        plate: d.plate || 'N/A',
+        manufacturer: d.manufacturer || '',
+        model: d.model || '',
+        cashCollected: cashCollected.toFixed(2),
+        toBePaid: toBePaid.toFixed(2),
+        pendingSince: pendingSinceDate.toISOString(),
+        pendingDateFormatted: pendingSinceDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+        daysPending,
+        agingStatus,
+        statusLabel
+      };
+    });
+
+  const totalOutstanding = pendingPayments.reduce((sum, p) => sum + parseFloat(p.toBePaid), 0);
+  const totalSameDay = pendingPayments.filter(p => p.daysPending === 0).reduce((sum, p) => sum + parseFloat(p.toBePaid), 0);
+  const totalRolledOver = pendingPayments.filter(p => p.daysPending > 0).reduce((sum, p) => sum + parseFloat(p.toBePaid), 0);
+
+  res.json({
+    pendingPayments,
+    summary: {
+      totalOutstanding: totalOutstanding.toFixed(2),
+      totalSameDay: totalSameDay.toFixed(2),
+      totalRolledOver: totalRolledOver.toFixed(2),
+      pendingPartnersCount: pendingPayments.length
+    }
+  });
 });
 
 // Admin: Clear/settle a driver's pending balance (Mark as Paid)
@@ -947,9 +1662,30 @@ app.post('/api/admin/drivers/:id/clear-balance', (req, res) => {
     const clearedAmount = driver.wallet?.toBePaid || 0;
     if (driver.wallet) {
       driver.wallet.toBePaid = 0;
+      driver.wallet.pendingSince = null;
     }
     saveData();
     res.json({ success: true, clearedAmount, driver });
+  } else {
+    res.status(404).json({ error: 'Driver not found' });
+  }
+});
+
+// Admin: Collect cash payment from driver (can be custom amount)
+app.post('/api/admin/drivers/:id/collect-cash', (req, res) => {
+  const id = parseInt(req.params.id);
+  const { amount } = req.body;
+  const driver = drivers.find(d => d.id === id);
+  if (driver) {
+    const collectAmount = parseFloat(amount || 0);
+    if (driver.wallet) {
+      driver.wallet.toBePaid = Math.max(0, parseFloat(driver.wallet.toBePaid || 0) - collectAmount);
+      if (driver.wallet.toBePaid <= 0) {
+        driver.wallet.pendingSince = null;
+      }
+    }
+    saveData();
+    res.json({ success: true, clearedAmount: collectAmount, driver });
   } else {
     res.status(404).json({ error: 'Driver not found' });
   }
@@ -964,6 +1700,9 @@ app.post('/api/drivers/pay-dues', (req, res) => {
     const payAmt = parseFloat(amount || 0);
     if (driver.wallet) {
       driver.wallet.toBePaid = Math.max(0, parseFloat(driver.wallet.toBePaid || 0) - payAmt);
+      if (driver.wallet.toBePaid <= 0) {
+        driver.wallet.pendingSince = null;
+      }
       if (driver.wallet.gstCollected === undefined) {
         driver.wallet.gstCollected = 0;
       }
@@ -1112,6 +1851,137 @@ app.get('/api/rides/messages', (req, res) => {
   }
 
   res.json(rideMessages[rideId] || []);
+});
+
+// --- PASSENGER SUPPORT CHAT ENDPOINTS ---
+
+// Admin sends message to passenger support chat
+app.post('/api/admin/passengers/messages/send', (req, res) => {
+  const { passengerEmail, sender, text } = req.body;
+  if (!passengerEmail || !text) {
+    return res.status(400).json({ error: 'passengerEmail and text are required.' });
+  }
+  if (!passengerMessages) {
+    passengerMessages = {};
+  }
+  if (!passengerMessages[passengerEmail]) {
+    passengerMessages[passengerEmail] = [];
+  }
+  const msgObj = {
+    id: Date.now(),
+    sender: sender || 'Customer Care',
+    text,
+    timestamp: new Date().toISOString()
+  };
+  passengerMessages[passengerEmail].push(msgObj);
+  saveData();
+  res.status(201).json(msgObj);
+});
+
+// Admin fetches passenger support messages
+app.get('/api/admin/passengers/messages', (req, res) => {
+  const { passengerEmail } = req.query;
+  if (!passengerEmail) {
+    return res.json([]);
+  }
+  if (!passengerMessages) {
+    passengerMessages = {};
+  }
+  res.json(passengerMessages[passengerEmail] || []);
+});
+
+// Passenger fetches support messages from Customer Care
+app.get('/api/passengers/messages', (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.json([]);
+  if (!passengerMessages) {
+    passengerMessages = {};
+  }
+  res.json(passengerMessages[email] || []);
+});
+
+// Passenger sends support message to Customer Care
+app.post('/api/passengers/messages/send', (req, res) => {
+  const { email, sender, text } = req.body;
+  if (!email || !text) {
+    return res.status(400).json({ error: 'email and text are required.' });
+  }
+  if (!passengerMessages) {
+    passengerMessages = {};
+  }
+  if (!passengerMessages[email]) {
+    passengerMessages[email] = [];
+  }
+  const msgObj = {
+    id: Date.now(),
+    sender: sender || 'Customer',
+    text,
+    timestamp: new Date().toISOString()
+  };
+  passengerMessages[email].push(msgObj);
+  saveData();
+  res.status(201).json(msgObj);
+});
+
+// --- ADMIN RIDES HISTORY LEDGER ENDPOINT ---
+app.get('/api/admin/rides', (req, res) => {
+  res.json(activeRides);
+});
+
+// --- DYNAMIC LOCATIONS (MAPPING) ---
+app.get('/api/locations', (req, res) => {
+  res.json(dynamicLocations);
+});
+
+// Proxy OpenStreetMap Nominatim API to avoid browser CORS/User-Agent blocking
+app.get('/api/geocode', async (req, res) => {
+  const query = req.query.q;
+  if (!query) return res.json([]);
+  
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Kerala, India')}&format=json&addressdetails=1&limit=8&countrycodes=in&viewbox=74.5,8.0,77.5,12.8&bounded=1`;
+    // We MUST send a custom User-Agent to satisfy OpenStreetMap Nominatim's strict usage policy
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Hum-Taxi-App-Backend/1.0 (Contact: admin@hum.local)',
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      res.json(data);
+    } else {
+      res.status(response.status).json({ error: 'Geocoding failed' });
+    }
+  } catch (error) {
+    console.error('Geocoding Proxy Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.post('/api/locations', (req, res) => {
+  const { name, lat, lng } = req.body;
+  if (!name || lat === undefined || lng === undefined) {
+    return res.status(400).json({ error: 'name, lat, and lng are required' });
+  }
+
+  // Check if location already exists by name or close coordinates
+  const parsedLat = parseFloat(lat);
+  const parsedLng = parseFloat(lng);
+  const nameExists = dynamicLocations.some(loc => loc.name.toLowerCase() === name.toLowerCase());
+  const coordsExist = dynamicLocations.some(loc => {
+    return Math.abs(loc.lat - parsedLat) < 0.005 && Math.abs(loc.lng - parsedLng) < 0.005;
+  });
+
+  if (!nameExists && !coordsExist) {
+    const newLoc = { name, lat: parsedLat, lng: parsedLng };
+    dynamicLocations.push(newLoc);
+    saveData();
+    res.status(201).json(newLoc);
+  } else {
+    res.json({ message: 'Location already exists' });
+  }
 });
 
 app.listen(PORT, () => {

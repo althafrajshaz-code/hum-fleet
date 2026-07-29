@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, FileText, LogOut, Key, UserCheck, TrendingUp, Search, MapPin, Navigation, Activity, Map, Radio, Compass, MessageSquare, Send } from 'lucide-react';
+import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, FileText, LogOut, Key, UserCheck, TrendingUp, Search, MapPin, Navigation, Activity, Map, Radio, Compass, MessageSquare, Send, CreditCard, Upload } from 'lucide-react';
 import Button from '../components/Button';
 import './AdminDashboard.css';
 
@@ -13,12 +13,24 @@ const MOCK_PHOTOS = {
   document: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600'
 };
 
+const API_BASE = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
+  ? 'http://localhost:5000'
+  : 'http://localhost:5000';
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('adminActiveTab') || 'approvals');
   const [drivers, setDrivers] = useState([]);
   const [passengers, setPassengers] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState(null);
+
+  // Pending Payments State
+  const [pendingPaymentsData, setPendingPaymentsData] = useState({
+    pendingPayments: [],
+    summary: { totalOutstanding: '0.00', totalSameDay: '0.00', totalRolledOver: '0.00', pendingPartnersCount: 0 }
+  });
+  const [pendingSearch, setPendingSearch] = useState('');
+  const [pendingFilter, setPendingFilter] = useState('all'); // 'all' | 'same-day' | 'rolled-over' | 'critical-overdue'
 
   // Direct Messaging States
   const [messageModalDriver, setMessageModalDriver] = useState(null);
@@ -61,6 +73,18 @@ const AdminDashboard = () => {
   const [previewFile, setPreviewFile] = useState(null);
   const [previewTitle, setPreviewTitle] = useState('');
 
+  // Collect Cash & WhatsApp Statement modal states
+  const [showCollectCashModal, setShowCollectCashModal] = useState(false);
+  const [selectedLedgerDriver, setSelectedLedgerDriver] = useState(null);
+  const [collectAmount, setCollectAmount] = useState('');
+  const [isSubmittingCollection, setIsSubmittingCollection] = useState(false);
+  const [statementImageSrc, setStatementImageSrc] = useState(null);
+
+  // Payment Received & Watermarked PDF Bill Receipt States
+  const [showPaymentReceivedModal, setShowPaymentReceivedModal] = useState(false);
+  const [paidReceiptDetails, setPaidReceiptDetails] = useState(null);
+  const [paidReceiptImageSrc, setPaidReceiptImageSrc] = useState(null);
+
   // System control states
   const [baseFare, setBaseFare] = useState('50.00');
   const [ratePerKm, setRatePerKm] = useState('15.00');
@@ -92,9 +116,21 @@ const AdminDashboard = () => {
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
 
+  const fetchPendingPayments = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/pending-payments`);
+      if (response.ok) {
+        const data = await response.json();
+        setPendingPaymentsData(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch pending payments from backend:", err);
+    }
+  };
+
   const fetchDrivers = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/drivers');
+      const response = await fetch(`${API_BASE}/api/drivers`);
       if (response.ok) {
         const data = await response.json();
         setDrivers(data);
@@ -112,7 +148,7 @@ const AdminDashboard = () => {
 
   const fetchPassengers = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/passengers');
+      const response = await fetch(`${API_BASE}/api/passengers`);
       if (response.ok) {
         const data = await response.json();
         setPassengers(data);
@@ -124,7 +160,7 @@ const AdminDashboard = () => {
 
   const fetchFinancials = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/admin/financials');
+      const response = await fetch(`${API_BASE}/api/admin/financials`);
       if (response.ok) {
         const data = await response.json();
         setFinancials(data);
@@ -136,7 +172,7 @@ const AdminDashboard = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/vehicle-categories');
+      const response = await fetch(`${API_BASE}/api/vehicle-categories`);
       if (response.ok) {
         const data = await response.json();
         setCategories(data);
@@ -148,7 +184,7 @@ const AdminDashboard = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/settings');
+      const response = await fetch(`${API_BASE}/api/settings`);
       if (response.ok) {
         const data = await response.json();
         setBaseFare(data.baseFare);
@@ -171,7 +207,7 @@ const AdminDashboard = () => {
 
   const fetchFleetLive = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/admin/fleet-live');
+      const response = await fetch(`${API_BASE}/api/admin/fleet-live`);
       if (response.ok) {
         const data = await response.json();
         setFleetData(data);
@@ -184,7 +220,7 @@ const AdminDashboard = () => {
   const fetchChatMessages = async (email) => {
     if (!email) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/admin/messages?driverEmail=${encodeURIComponent(email)}`);
+      const response = await fetch(`${API_BASE}/api/admin/messages?driverEmail=${encodeURIComponent(email)}`);
       if (response.ok) {
         const data = await response.json();
         setChatMessages(data);
@@ -198,7 +234,7 @@ const AdminDashboard = () => {
     const text = textToSend || newMessageText;
     if (!text || !text.trim() || !messageModalDriver) return;
     try {
-      const response = await fetch('http://localhost:5000/api/admin/messages/send', {
+      const response = await fetch(`${API_BASE}/api/admin/messages/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -216,6 +252,56 @@ const AdminDashboard = () => {
     }
   };
 
+  const downloadPendingPaymentsCSV = () => {
+    const headers = [
+      'Partner Name',
+      'Phone Number',
+      'Email Address',
+      'Vehicle Plate',
+      'Total Cash Collected (INR)',
+      'Pending Due Amount (INR)',
+      'First Incurred Date',
+      'Days Pending',
+      'Aging Status'
+    ];
+
+    const rows = pendingPaymentsData.pendingPayments.map(p => ({
+      name: p.name,
+      phone: p.phone,
+      email: p.email,
+      plate: p.plate,
+      cashCollected: p.cashCollected,
+      toBePaid: p.toBePaid,
+      date: p.pendingDateFormatted,
+      days: p.daysPending,
+      status: p.statusLabel
+    }));
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => [
+        `"${r.name}"`,
+        `"${r.phone}"`,
+        `"${r.email}"`,
+        `"${r.plate}"`,
+        `"${r.cashCollected}"`,
+        `"${r.toBePaid}"`,
+        `"${r.date}"`,
+        `"${r.days}"`,
+        `"${r.status}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'type: text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `pending_payments_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   useEffect(() => {
     fetchDrivers();
     fetchPassengers();
@@ -223,6 +309,7 @@ const AdminDashboard = () => {
     fetchCategories();
     fetchSettings();
     fetchFleetLive();
+    fetchPendingPayments();
   }, []);
 
   useEffect(() => {
@@ -231,6 +318,7 @@ const AdminDashboard = () => {
       fetchPassengers();
       fetchFinancials();
       fetchFleetLive();
+      fetchPendingPayments();
     }, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -279,21 +367,30 @@ const AdminDashboard = () => {
       (d.model && d.model.toLowerCase().includes(ledgerSearch.toLowerCase()))
     )
     .filter(d => {
-      const pendingBal = d.wallet?.toBePaid || 0;
-      if (ledgerFilter === 'pending') {
-        return pendingBal > 0;
-      }
-      if (ledgerFilter === 'no-pending') {
-        return pendingBal === 0;
-      }
+      const toBePaid = parseFloat(d.wallet?.toBePaid || 0);
+      if (ledgerFilter === 'pending') return toBePaid > 0;
+      if (ledgerFilter === 'no-pending') return toBePaid === 0;
       return true;
     });
+
+  const filteredPendingPayments = (pendingPaymentsData.pendingPayments || []).filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(pendingSearch.toLowerCase()) ||
+                          p.phone.includes(pendingSearch) ||
+                          (p.plate && p.plate.toLowerCase().includes(pendingSearch.toLowerCase()));
+    if (!matchesSearch) return false;
+
+    if (pendingFilter === 'same-day') return p.daysPending === 0;
+    if (pendingFilter === 'rolled-over') return p.daysPending > 0;
+    if (pendingFilter === 'critical-overdue') return p.daysPending >= 3;
+
+    return true;
+  });
 
   const handleApprove = async (driverOrId) => {
     const targetId = typeof driverOrId === 'object' ? (driverOrId.id || driverOrId.email) : driverOrId;
     setDrivers(prev => prev.map(d => (String(d.id) === String(targetId) || d.email === targetId) ? { ...d, status: 'Approved' } : d));
     try {
-      const response = await fetch(`http://localhost:5000/api/drivers/${encodeURIComponent(targetId)}/approve`, {
+      const response = await fetch(`${API_BASE}/api/drivers/${encodeURIComponent(targetId)}/approve`, {
         method: 'POST'
       });
       if (response.ok) {
@@ -309,7 +406,7 @@ const AdminDashboard = () => {
     const targetId = typeof driverOrId === 'object' ? (driverOrId.id || driverOrId.email) : driverOrId;
     setDrivers(prev => prev.map(d => (String(d.id) === String(targetId) || d.email === targetId) ? { ...d, status: 'Rejected' } : d));
     try {
-      const response = await fetch(`http://localhost:5000/api/drivers/${encodeURIComponent(targetId)}/reject`, {
+      const response = await fetch(`${API_BASE}/api/drivers/${encodeURIComponent(targetId)}/reject`, {
         method: 'POST'
       });
       if (response.ok) {
@@ -325,7 +422,7 @@ const AdminDashboard = () => {
     if (!window.confirm(`Block ${name} from receiving any trips?`)) return;
     setDrivers(prev => prev.map(d => (String(d.id) === String(id) || d.email === id) ? { ...d, isBlocked: true } : d));
     try {
-      const response = await fetch(`http://localhost:5000/api/drivers/${encodeURIComponent(id)}/block`, { method: 'POST' });
+      const response = await fetch(`${API_BASE}/api/drivers/${encodeURIComponent(id)}/block`, { method: 'POST' });
       if (response.ok) {
         fetchDrivers();
       } else {
@@ -340,7 +437,7 @@ const AdminDashboard = () => {
     if (!window.confirm(`Restore trip access for ${name}?`)) return;
     setDrivers(prev => prev.map(d => (String(d.id) === String(id) || d.email === id) ? { ...d, isBlocked: false } : d));
     try {
-      const response = await fetch(`http://localhost:5000/api/drivers/${encodeURIComponent(id)}/unblock`, { method: 'POST' });
+      const response = await fetch(`${API_BASE}/api/drivers/${encodeURIComponent(id)}/unblock`, { method: 'POST' });
       if (response.ok) {
         fetchDrivers();
       } else {
@@ -354,7 +451,7 @@ const AdminDashboard = () => {
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/api/settings', {
+      const response = await fetch(`${API_BASE}/api/settings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -401,7 +498,7 @@ const AdminDashboard = () => {
       let response;
       if (editingCategory) {
         // Edit existing category
-        response = await fetch(`http://localhost:5000/api/vehicle-categories/${editingCategory.id}`, {
+        response = await fetch(`${API_BASE}/api/vehicle-categories/${editingCategory.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -410,7 +507,7 @@ const AdminDashboard = () => {
         });
       } else {
         // Create new category
-        response = await fetch('http://localhost:5000/api/vehicle-categories', {
+        response = await fetch(`${API_BASE}/api/vehicle-categories`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -453,7 +550,7 @@ const AdminDashboard = () => {
 
   const handleDeleteCategory = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/vehicle-categories/${id}`, {
+      const response = await fetch(`${API_BASE}/api/vehicle-categories/${id}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -487,7 +584,7 @@ const AdminDashboard = () => {
       `${d.manufacturer} ${d.model}`,
       d.plate,
       (d.wallet?.cashCollected || 0).toFixed(2),
-      (d.wallet?.toBePaid || 0).toFixed(2),
+      (-(d.wallet?.toBePaid || 0)).toFixed(2),
       ((d.wallet?.cashCollected || 0) - (d.wallet?.toBePaid || 0)).toFixed(2),
       d.bank?.bankName || 'N/A',
       d.bank?.holderName || 'N/A',
@@ -511,10 +608,93 @@ const AdminDashboard = () => {
     document.body.removeChild(link);
   };
 
+  const downloadDailyLedgerCSV = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/rides`);
+      if (!response.ok) {
+        alert('Failed to fetch rides data from server.');
+        return;
+      }
+      const allRides = await response.json();
+      
+      const todayStr = new Date().toDateString();
+      const dailyRides = allRides.filter(r => 
+        r.status === 'Completed' && 
+        new Date(r.completedAt || r.createdAt || Date.now()).toDateString() === todayStr
+      );
+
+      const headers = [
+        'Driver Name',
+        'Phone Number',
+        'Email Address',
+        'Vehicle Plate',
+        'Rides Completed Today',
+        'Daily Cash Collected (INR)',
+        'Daily GST Collected from Customer (5%) (INR)',
+        'Daily Platform Commission (5%) (INR)',
+        'Daily Net Platform Dues Added (INR)'
+      ];
+
+      const rows = drivers.map(d => {
+        const driverDailyRides = dailyRides.filter(r => r.driverEmail === d.email);
+        const totalCash = driverDailyRides.reduce((sum, r) => sum + parseFloat(r.totalCollected || 0), 0);
+        const totalGST = driverDailyRides.reduce((sum, r) => sum + parseFloat(r.gst || 0), 0);
+        const totalCommission = driverDailyRides.reduce((sum, r) => sum + parseFloat(r.commission || 0), 0);
+        const totalDuesAdded = totalGST + totalCommission;
+
+        return {
+          name: d.name,
+          phone: d.phone,
+          email: d.email,
+          plate: d.plate || 'N/A',
+          count: driverDailyRides.length,
+          totalCash,
+          totalGST,
+          totalCommission,
+          totalDuesAdded
+        };
+      })
+      .filter(d => d.count > 0)
+      .map(d => [
+        d.name,
+        d.phone,
+        d.email,
+        d.plate,
+        d.count,
+        d.totalCash.toFixed(2),
+        d.totalGST.toFixed(2),
+        d.totalCommission.toFixed(2),
+        (-d.totalDuesAdded).toFixed(2)
+      ]);
+
+      if (rows.length === 0) {
+        alert('No completed driver ledger entries found for today.');
+        return;
+      }
+
+      const csvRows = [headers.map(h => `"${h}"`).join(',')];
+      rows.forEach(r => {
+        csvRows.push(r.map(val => `"${val}"`).join(','));
+      });
+
+      const csvContent = "data:text/csv;charset=utf-8," + csvRows.join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `daily_driver_ledger_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Error generating daily driver ledger:', err);
+      alert('Failed to connect to ledger API.');
+    }
+  };
+
   // Monthly, weekly, and daily completed rides report exporter
   const downloadReportCSV = async (range) => {
     try {
-      const response = await fetch('http://localhost:5000/api/admin/rides');
+      const response = await fetch(`${API_BASE}/api/admin/rides`);
       if (!response.ok) {
         alert('Failed to fetch rides report from server.');
         return;
@@ -597,7 +777,7 @@ const AdminDashboard = () => {
   const handleClearBalance = async (driverId, driverName, amount) => {
     if (!window.confirm(`Mark ₹${parseFloat(amount).toFixed(2)} pending balance of ${driverName} as paid and clear it?`)) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/admin/drivers/${driverId}/clear-balance`, {
+      const response = await fetch(`${API_BASE}/api/admin/drivers/${driverId}/clear-balance`, {
         method: 'POST'
       });
       if (response.ok) {
@@ -613,13 +793,681 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleOpenCollectCashModal = (driver) => {
+    setSelectedLedgerDriver(driver);
+    setCollectAmount(parseFloat(driver.wallet?.toBePaid || 0).toFixed(2));
+    setStatementImageSrc(null);
+    setShowCollectCashModal(true);
+    // Let state apply first, then generate statement image
+    setTimeout(() => {
+      generateStatementImage(driver);
+    }, 100);
+  };
+
+  const generatePaidReceiptCanvas = (driver, amountPaid, receiptId, paymentDate, remainingBalance) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 650;
+    canvas.height = 780;
+    const ctx = canvas.getContext('2d');
+
+    // Background Gradient (Dark Slate & Emerald)
+    const grad = ctx.createLinearGradient(0, 0, 0, 780);
+    grad.addColorStop(0, '#0f172a');
+    grad.addColorStop(1, '#1e293b');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 650, 780);
+
+    // Border Frame
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(15, 15, 620, 750);
+
+    // WATERMARK (HUM FLEET PLATFORMS)
+    ctx.save();
+    ctx.translate(325, 390);
+    ctx.rotate(-25 * Math.PI / 180);
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.08)';
+    ctx.font = 'bold 58px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('HUM FLEET', 0, -30);
+    ctx.font = 'bold 32px Arial, sans-serif';
+    ctx.fillText('OFFICIAL RECEIPT', 0, 20);
+    ctx.restore();
+
+    // Header Logo & Company Name
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 24px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('HUM FLEET PLATFORMS', 325, 65);
+
+    // Receipt Subtitle
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 15px Arial, sans-serif';
+    ctx.fillText('OFFICIAL PAYMENT RECEIPT & TAX INVOICE', 325, 95);
+
+    // Receipt Meta Box
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.fillRect(40, 115, 570, 45);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(40, 115, 570, 45);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px Arial, sans-serif';
+    ctx.fillText(`Receipt No: ${receiptId}`, 55, 142);
+    ctx.textAlign = 'right';
+    ctx.fillText(`Date & Time: ${paymentDate}`, 595, 142);
+
+    // DRIVER INFORMATION BOX (Name, Phone, Vehicle Number)
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.05)';
+    ctx.fillRect(40, 175, 570, 140);
+    ctx.strokeStyle = 'rgba(16, 185, 129, 0.3)';
+    ctx.strokeRect(40, 175, 570, 140);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 14px Arial, sans-serif';
+    ctx.fillText('DRIVER PARTNER DETAILS', 55, 200);
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = '13px Arial, sans-serif';
+    ctx.fillText(`Driver Name:`, 55, 230);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 14px Arial, sans-serif';
+    ctx.fillText(driver.name || 'Partner', 160, 230);
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = '13px Arial, sans-serif';
+    ctx.fillText(`Mobile No:`, 55, 260);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 14px Arial, sans-serif';
+    ctx.fillText(driver.phone || 'N/A', 160, 260);
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = '13px Arial, sans-serif';
+    ctx.fillText(`Vehicle Reg:`, 55, 290);
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 15px monospace';
+    ctx.fillText(`${driver.manufacturer || ''} ${driver.model || ''} (${driver.plate || 'N/A'})`, 160, 290);
+
+    // PAYMENT BREAKDOWN TABLE
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.fillRect(40, 330, 570, 35);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px Arial, sans-serif';
+    ctx.fillText('Description', 55, 352);
+    ctx.textAlign = 'right';
+    ctx.fillText('Amount (INR)', 595, 352);
+
+    const comm = (parseFloat(amountPaid) * 0.5).toFixed(2);
+    const gst = (parseFloat(amountPaid) * 0.5).toFixed(2);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = '13px Arial, sans-serif';
+    ctx.fillText('Platform Base Commission (5%)', 55, 395);
+    ctx.fillText('Government GST Tax (5%)', 55, 430);
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#10b981';
+    ctx.fillText(`₹${comm}`, 595, 395);
+    ctx.fillText(`₹${gst}`, 595, 430);
+
+    // TOTAL AMOUNT RECEIVED BOX
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+    ctx.fillRect(40, 460, 570, 50);
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(40, 460, 570, 50);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 16px Arial, sans-serif';
+    ctx.fillText('TOTAL PAYMENT RECEIVED', 55, 492);
+
+    ctx.textAlign = 'right';
+    ctx.font = 'bold 22px Arial, sans-serif';
+    ctx.fillText(`₹${parseFloat(amountPaid).toFixed(2)}`, 595, 492);
+
+    // REMAINING BALANCE STATUS
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '13px Arial, sans-serif';
+    ctx.fillText('Remaining Dues Balance:', 55, 540);
+    ctx.fillStyle = parseFloat(remainingBalance) > 0 ? '#ef4444' : '#10b981';
+    ctx.font = 'bold 14px Arial, sans-serif';
+    ctx.fillText(parseFloat(remainingBalance) > 0 ? `₹${parseFloat(remainingBalance).toFixed(2)}` : '₹0.00 (PAID IN FULL)', 220, 540);
+
+    // OFFICIAL "PAID" SEAL STAMP (DRAWN ON CANVAS)
+    ctx.save();
+    ctx.translate(480, 630);
+    ctx.rotate(-12 * Math.PI / 180);
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 3.5;
+    ctx.strokeRect(-90, -40, 180, 80);
+    ctx.strokeStyle = '#059669';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(-84, -34, 168, 68);
+
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 26px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PAID', 0, -4);
+
+    ctx.font = 'bold 10px Arial, sans-serif';
+    ctx.fillText('PAYMENT RECEIVED', 0, 14);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '9px Arial, sans-serif';
+    ctx.fillText('HUM FLEET VERIFIED', 0, 28);
+    ctx.restore();
+
+    // FOOTER NOTICE
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px Arial, sans-serif';
+    ctx.fillText('Computer-generated official receipt · HUM Fleet Platforms Pvt. Ltd.', 325, 740);
+
+    return canvas.toDataURL('image/png');
+  };
+
+  const handlePrintPDFReceipt = (details) => {
+    if (!details) return;
+    const { driver, amountPaid, receiptId, paymentDate, remainingBalance } = details;
+    const win = window.open('', '_blank', 'width=800,height=900');
+    if (!win) {
+      alert('Pop-up blocked! Please allow pop-ups to view/print PDF receipt.');
+      return;
+    }
+    const comm = (parseFloat(amountPaid) * 0.5).toFixed(2);
+    const gst = (parseFloat(amountPaid) * 0.5).toFixed(2);
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>HUM Fleet Payment Receipt - ${receiptId}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+          body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+          }
+          .receipt-box {
+            position: relative;
+            background: #ffffff;
+            width: 100%;
+            max-width: 680px;
+            border-radius: 16px;
+            border: 2px solid #e2e8f0;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            overflow: hidden;
+          }
+          /* WATERMARK */
+          .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 72px;
+            font-weight: 900;
+            color: rgba(16, 185, 129, 0.08);
+            white-space: nowrap;
+            pointer-events: none;
+            user-select: none;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+          }
+          .watermark-sub {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 36px;
+            font-weight: 800;
+            color: rgba(16, 185, 129, 0.05);
+            white-space: nowrap;
+            pointer-events: none;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px dashed #cbd5e1;
+            padding-bottom: 20px;
+            margin-bottom: 24px;
+          }
+          .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+          .logo-badge {
+            background: #10b981;
+            color: #ffffff;
+            font-weight: 900;
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 18px;
+            letter-spacing: 1px;
+          }
+          .company-name {
+            font-size: 18px;
+            font-weight: 800;
+            color: #0f172a;
+          }
+          .receipt-title {
+            text-align: right;
+          }
+          .receipt-title h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 800;
+            color: #10b981;
+            text-transform: uppercase;
+          }
+          .receipt-meta {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+          }
+          .details-card {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+          }
+          .detail-item {
+            font-size: 13px;
+          }
+          .detail-label {
+            color: #64748b;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+          }
+          .detail-val {
+            font-weight: 800;
+            color: #0f172a;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+          }
+          th {
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 10px 14px;
+            text-align: left;
+          }
+          td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 13px;
+          }
+          .total-row td {
+            font-weight: 800;
+            font-size: 15px;
+            background: #f8fafc;
+            border-top: 2px solid #0f172a;
+          }
+          .seal-container {
+            position: absolute;
+            bottom: 60px;
+            right: 40px;
+            transform: rotate(-12deg);
+            pointer-events: none;
+          }
+          .paid-seal {
+            border: 4px double #10b981;
+            color: #10b981;
+            padding: 10px 20px;
+            border-radius: 12px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+          }
+          .paid-seal-text {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            line-height: 1;
+          }
+          .paid-seal-sub {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-top: 4px;
+            text-transform: uppercase;
+          }
+          .footer {
+            margin-top: 40px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 16px;
+            font-size: 11px;
+            color: #94a3b8;
+            display: flex;
+            justify-content: space-between;
+          }
+          @media print {
+            body { background: #ffffff; padding: 0; }
+            .receipt-box { border: none; box-shadow: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="receipt-box">
+          <div class="watermark">HUM FLEET</div>
+          <div class="watermark-sub">HUM FLEET PLATFORMS</div>
+          
+          <div class="header">
+            <div class="brand-logo">
+              <div class="logo-badge">HUM</div>
+              <div>
+                <div class="company-name">HUM FLEET PLATFORMS</div>
+                <div style="font-size: 11px; color: #64748b;">Operations Control & Settlement Center</div>
+              </div>
+            </div>
+            <div class="receipt-title">
+              <h2>OFFICIAL RECEIPT</h2>
+              <div class="receipt-meta">Receipt #: <strong>${receiptId}</strong></div>
+              <div class="receipt-meta">Date: ${paymentDate}</div>
+            </div>
+          </div>
+
+          <div class="details-card">
+            <div class="detail-item">
+              <div class="detail-label">Driver Partner Name</div>
+              <div class="detail-val">${driver.name}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Mobile Contact Number</div>
+              <div class="detail-val">${driver.phone}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Vehicle Model & Make</div>
+              <div class="detail-val">${driver.manufacturer || ''} ${driver.model || 'N/A'}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Vehicle Plate / Registration Number</div>
+              <div class="detail-val" style="font-family: monospace; font-size: 14px; color: #10b981;">${driver.plate || 'N/A'}</div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Description / Breakdown</th>
+                <th style="text-align: right;">Amount (INR)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Platform Base Commission (5%)</td>
+                <td style="text-align: right;">₹${comm}</td>
+              </tr>
+              <tr>
+                <td>Government GST Tax (5%)</td>
+                <td style="text-align: right;">₹${gst}</td>
+              </tr>
+              <tr class="total-row">
+                <td style="color: #10b981;">TOTAL PAYMENT RECEIVED</td>
+                <td style="text-align: right; color: #10b981; font-size: 18px;">₹${parseFloat(amountPaid).toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); padding: 12px 16px; border-radius: 10px; margin-bottom: 24px; display: flex; justify-content: space-between; font-size: 13px;">
+            <span style="color: #64748b; font-weight: 600;">Remaining Platform Dues Balance:</span>
+            <strong style="color: ${parseFloat(remainingBalance) > 0 ? '#ef4444' : '#10b981'}; font-weight: 800;">
+              ${parseFloat(remainingBalance) > 0 ? `₹${parseFloat(remainingBalance).toFixed(2)}` : '✓ ZERO DUES (PAID IN FULL)'}
+            </strong>
+          </div>
+
+          <div class="seal-container">
+            <div class="paid-seal">
+              <div class="paid-seal-text">★ PAID ★</div>
+              <div class="paid-seal-sub">PAYMENT RECEIVED</div>
+              <div style="font-size: 8px; margin-top: 2px; color: #64748b;">HUM FLEET VERIFIED</div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <span>Computer generated official tax invoice receipt. Valid without physical signature.</span>
+            <span>HUM Fleet Platforms Pvt. Ltd.</span>
+          </div>
+        </div>
+        <script>
+          window.onload = () => { window.print(); };
+        </script>
+      </body>
+      </html>
+    `);
+    win.document.close();
+  };
+
+  const handleSharePaidReceiptWhatsApp = () => {
+    if (!paidReceiptDetails || !paidReceiptImageSrc) return;
+    const { driver, amountPaid, receiptId, remainingBalance } = paidReceiptDetails;
+
+    const img = new Image();
+    img.src = paidReceiptImageSrc;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      canvas.toBlob(async (blob) => {
+        try {
+          const item = new ClipboardItem({ "image/png": blob });
+          await navigator.clipboard.write([item]);
+          alert("📋 Watermarked Official Receipt image copied to clipboard! Opening WhatsApp... You can paste (Ctrl+V) the receipt image directly into the driver's chat.");
+        } catch (err) {
+          console.error("Clipboard copy failed:", err);
+          alert("Opening WhatsApp Web with text receipt notification.");
+        }
+
+        const phone = driver.phone.replace(/[^0-9]/g, '');
+        const formattedPhone = phone.length === 10 ? `91${phone}` : phone;
+        const msg = encodeURIComponent(`Dear ${driver.name} (Phone: ${driver.phone}, Vehicle: ${driver.manufacturer || ''} ${driver.model || ''} - ${driver.plate || 'N/A'}), your payment of ₹${parseFloat(amountPaid).toFixed(2)} has been RECEIVED & VERIFIED by HUM Fleet. Receipt #: ${receiptId}. Remaining Balance: ₹${remainingBalance}. (Official Watermarked PDF Receipt image has been copied to your clipboard - press Ctrl+V to paste it).`);
+        window.open(`https://web.whatsapp.com/send?phone=${formattedPhone}&text=${msg}`, '_blank');
+      });
+    };
+  };
+
+  const handleCollectCash = async (e) => {
+    e.preventDefault();
+    if (!selectedLedgerDriver) return;
+    setIsSubmittingCollection(true);
+    try {
+      const amountVal = parseFloat(collectAmount);
+      const response = await fetch(`${API_BASE}/api/admin/drivers/${selectedLedgerDriver.id}/collect-cash`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ amount: amountVal })
+      });
+      if (response.ok) {
+        const receiptId = `HUM-REC-${Date.now().toString().slice(-6)}`;
+        const paymentDate = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+        const remBal = Math.max(0, (selectedLedgerDriver.wallet?.toBePaid || 0) - amountVal).toFixed(2);
+        
+        const details = {
+          driver: selectedLedgerDriver,
+          amountPaid: amountVal,
+          receiptId,
+          paymentDate,
+          remainingBalance: remBal
+        };
+
+        const canvasDataUrl = generatePaidReceiptCanvas(selectedLedgerDriver, amountVal, receiptId, paymentDate, remBal);
+
+        setPaidReceiptDetails(details);
+        setPaidReceiptImageSrc(canvasDataUrl);
+        setShowCollectCashModal(false);
+        setShowPaymentReceivedModal(true);
+        fetchDrivers();
+      } else {
+        alert('Failed to record cash payment.');
+      }
+    } catch (err) {
+      console.error('Error collecting cash:', err);
+      alert('Failed to connect to server.');
+    } finally {
+      setIsSubmittingCollection(false);
+    }
+  };
+
+  const generateStatementImage = (driver) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 600;
+    canvas.height = 700;
+    const ctx = canvas.getContext('2d');
+
+    // Draw background gradient (sleek dark design)
+    const grad = ctx.createLinearGradient(0, 0, 0, 700);
+    grad.addColorStop(0, '#0f172a');
+    grad.addColorStop(1, '#1e293b');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 600, 700);
+
+    // Draw header border
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(15, 15, 570, 670);
+
+    // Title logo
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 24px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('HUM FLEET PLATFORMS', 300, 70);
+
+    // Subtitle
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px Arial, sans-serif';
+    ctx.fillText('OUTSTANDING DUES STATEMENT', 300, 105);
+
+    // Metadata lines
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '13px Arial, sans-serif';
+    ctx.fillText(`Statement Date: ${new Date().toLocaleDateString('en-IN')}`, 45, 160);
+    ctx.fillText(`Driver Partner: ${driver.name}`, 45, 190);
+    ctx.fillText(`Phone Number: ${driver.phone}`, 45, 220);
+    ctx.fillText(`Vehicle Model: ${driver.manufacturer || 'N/A'} ${driver.model || 'N/A'}`, 45, 250);
+    ctx.fillText(`Plate Number: ${driver.plate || 'N/A'}`, 45, 280);
+
+    // Table Header Box
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.fillRect(45, 320, 510, 40);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px Arial, sans-serif';
+    ctx.fillText('Description', 60, 345);
+    ctx.textAlign = 'right';
+    ctx.fillText('Amount (INR)', 530, 345);
+
+    // Itemized values
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = '14px Arial, sans-serif';
+    ctx.fillText('Platform Base Commission (5%)', 60, 395);
+    ctx.fillText('Government GST on Commission (5%)', 60, 435);
+
+    const pending = parseFloat(driver.wallet?.toBePaid || 0);
+    const comm = pending * 0.5;
+    const gst = pending * 0.5;
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ef4444';
+    ctx.fillText(`-₹${comm.toFixed(2)}`, 530, 395);
+    ctx.fillText(`-₹${gst.toFixed(2)}`, 530, 435);
+
+    // Total box
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+    ctx.fillRect(45, 470, 510, 50);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 15px Arial, sans-serif';
+    ctx.fillText('Total Outstanding Dues', 60, 502);
+    ctx.textAlign = 'right';
+    ctx.fillText(`-₹${pending.toFixed(2)}`, 530, 502);
+
+    // Payment Info Section
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 12px Arial, sans-serif';
+    ctx.fillText('PAYMENT INSTRUCTIONS', 300, 560);
+    ctx.font = '12px Arial, sans-serif';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillText('Please settle your platform dues directly via the Driver Partner App', 300, 585);
+    ctx.fillText('or transfer using UPI ID: humfleet@okaxis', 300, 608);
+
+    // Footer notice
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 11px Arial, sans-serif';
+    ctx.fillText('⚠️ Notice: Cash trip access will be locked if dues exceed ₹1,500.', 300, 650);
+
+    // Set state
+    setStatementImageSrc(canvas.toDataURL('image/png'));
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!selectedLedgerDriver || !statementImageSrc) return;
+
+    // Create a temporary image to generate blob
+    const img = new Image();
+    img.src = statementImageSrc;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      canvas.toBlob(async (blob) => {
+        try {
+          const item = new ClipboardItem({ "image/png": blob });
+          await navigator.clipboard.write([item]);
+          alert("📋 Statement invoice image copied to clipboard! Opening WhatsApp... You can paste (Ctrl+V) the statement image directly into the driver's chat.");
+        } catch (err) {
+          console.error("Clipboard copy failed:", err);
+          alert("Could not automatically copy image to clipboard. Opening WhatsApp Web with text statement reminder.");
+        }
+
+        // Open WhatsApp Web
+        const phone = selectedLedgerDriver.phone.replace(/[^0-9]/g, '');
+        const formattedPhone = phone.length === 10 ? `91${phone}` : phone;
+        const reminderText = encodeURIComponent(`Dear ${selectedLedgerDriver.name}, here is your outstanding HUM Fleet platform dues statement of -₹${parseFloat(selectedLedgerDriver.wallet?.toBePaid || 0).toFixed(2)}. Please settle it immediately. (Invoice statement image statement has been copied to your clipboard - press Ctrl+V to paste it).`);
+        window.open(`https://web.whatsapp.com/send?phone=${formattedPhone}&text=${reminderText}`, '_blank');
+      }, "image/png");
+    };
+  };
+
   const handleSaveCredentials = async (e) => {
     e.preventDefault();
     setProfileError('');
     setProfileSuccess('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/admin/update-credentials', {
+      const response = await fetch(`${API_BASE}/api/admin/update-credentials`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -669,13 +1517,11 @@ const AdminDashboard = () => {
       <div className="admin-container container">
         {/* Sidebar Nav */}
         <aside className="admin-sidebar glass-card">
-          <div className="admin-profile">
-            <div className="admin-avatar">
-              <Shield size={24} />
-            </div>
+          <div className="admin-profile" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img src="/hum_fleet_official_logo.jpg" alt="HUM Fleet" style={{ height: '42px', width: 'auto', borderRadius: '6px' }} />
             <div>
-              <h3>Admin Panel</h3>
-              <p>HUM Fleet Control</p>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Admin Panel</h3>
+              <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>HUM Fleet Control</p>
             </div>
           </div>
           <nav className="admin-nav" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -715,6 +1561,19 @@ const AdminDashboard = () => {
               onClick={() => setActiveTab('ledger')}
             >
               <DollarSign size={18} /> Partner Ledger
+            </button>
+            <button 
+              className={`admin-nav-item ${activeTab === 'pending-payments' ? 'active' : ''}`}
+              onClick={() => setActiveTab('pending-payments')}
+              style={{ position: 'relative' }}
+            >
+              <CreditCard size={18} color={pendingPaymentsData.summary.pendingPartnersCount > 0 ? '#ef4444' : 'currentColor'} /> 
+              Pending Payments
+              {pendingPaymentsData.summary.pendingPartnersCount > 0 && (
+                <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#ffffff', fontSize: '10px', fontWeight: '800', borderRadius: '10px', padding: '1px 7px' }}>
+                  {pendingPaymentsData.summary.pendingPartnersCount} Due
+                </span>
+              )}
             </button>
             <button 
               className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
@@ -851,6 +1710,9 @@ const AdminDashboard = () => {
                         <div className="profile-grid">
                           <div><strong>Phone:</strong> {selectedDriver.phone}</div>
                           <div><strong>Email:</strong> {selectedDriver.email}</div>
+                          {selectedDriver.licenseNumber && (
+                             <div style={{ gridColumn: '1 / -1' }}><strong>Licence Number:</strong> <span style={{ fontFamily: 'monospace', fontWeight: '800', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>{selectedDriver.licenseNumber}</span></div>
+                          )}
                           <div><strong>Vehicle Make:</strong> {selectedDriver.manufacturer}</div>
                           <div><strong>Vehicle Model:</strong> {selectedDriver.model}</div>
                           <div><strong>Mfg. Year:</strong> {selectedDriver.year}</div>
@@ -933,8 +1795,10 @@ const AdminDashboard = () => {
                               { id: 'pollution', label: 'Pollution (PUC)' },
                               { id: 'insurance', label: 'Insurance' },
                               { id: 'fitness', label: 'Fitness Cert.' },
-                              { id: 'license', label: 'Driving Licence (DL)' }
-                            ].map((doc) => {
+                              { id: 'license', label: 'Driving Licence (DL)' },
+                              { id: 'licenseFront', label: 'DL (Front)' },
+                              { id: 'licenseBack', label: 'DL (Back)' }
+                            ].filter(doc => selectedDriver.docs?.[doc.id]).map((doc) => {
                               const data = selectedDriver.docs?.[doc.id];
                               const src = getDocSrc(data);
                               return (
@@ -1535,6 +2399,14 @@ const AdminDashboard = () => {
                   </select>
                   
                   <Button 
+                    variant="outline" 
+                    onClick={downloadDailyLedgerCSV}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '38px', borderColor: '#10b981', color: '#10b981' }}
+                  >
+                    <FileText size={16} /> Download Daily Ledger (CSV)
+                  </Button>
+                  
+                  <Button 
                     variant="primary" 
                     onClick={downloadLedgerCSV}
                     style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '38px' }}
@@ -1569,13 +2441,13 @@ const AdminDashboard = () => {
                             {d.manufacturer} {d.model} (<span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: '600' }}>{d.plate}</span>)
                           </td>
                           <td style={{ padding: '16px', fontWeight: '600', color: 'var(--primary)' }}>₹{parseFloat(d.wallet?.cashCollected || 0).toFixed(2)}</td>
-                          <td style={{ padding: '16px', fontWeight: '700', color: '#ef4444' }}>₹{parseFloat(d.wallet?.toBePaid || 0).toFixed(2)}</td>
+                          <td style={{ padding: '16px', fontWeight: '700', color: '#ef4444' }}>-₹{parseFloat(d.wallet?.toBePaid || 0).toFixed(2)}</td>
                           <td style={{ padding: '16px', fontWeight: '700', color: 'var(--primary)' }}>
                             ₹{parseFloat((d.wallet?.cashCollected || 0) - (d.wallet?.toBePaid || 0)).toFixed(2)}
                           </td>
                           <td style={{ padding: '16px', textAlign: 'center' }}>
-                            {parseFloat(d.wallet?.toBePaid || 0) > 1500 ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                              {parseFloat(d.wallet?.toBePaid || 0) > 1500 ? (
                                 <span style={{
                                   display: 'inline-flex', alignItems: 'center', gap: '4px',
                                   background: 'rgba(239,68,68,0.1)', color: '#ef4444',
@@ -1584,24 +2456,26 @@ const AdminDashboard = () => {
                                 }}>
                                   🔒 Cash Locked
                                 </span>
+                              ) : (
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                  background: 'rgba(16,185,129,0.1)', color: '#10b981',
+                                  border: '1px solid rgba(16,185,129,0.25)', borderRadius: '20px',
+                                  padding: '2px 10px', fontSize: '10px', fontWeight: '700'
+                                }}>
+                                  ✓ Cash Active
+                                </span>
+                              )}
+                              {parseFloat(d.wallet?.toBePaid || 0) > 0 && (
                                 <Button
                                   variant="outline"
-                                  onClick={() => handleClearBalance(d.id, d.name, d.wallet?.toBePaid || 0)}
+                                  onClick={() => handleOpenCollectCashModal(d)}
                                   style={{ borderColor: '#10b981', color: '#10b981', padding: '4px 10px', fontSize: '11px', fontWeight: '700' }}
                                 >
-                                  ✓ Mark as Paid
+                                  ✅ Payment Received
                                 </Button>
-                              </div>
-                            ) : (
-                              <span style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                background: 'rgba(16,185,129,0.1)', color: '#10b981',
-                                border: '1px solid rgba(16,185,129,0.25)', borderRadius: '20px',
-                                padding: '2px 10px', fontSize: '10px', fontWeight: '700'
-                              }}>
-                                ✓ Cash Active
-                              </span>
-                            )}
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1615,7 +2489,7 @@ const AdminDashboard = () => {
                           ₹{filteredLedgerDrivers.reduce((sum, d) => sum + (d.wallet?.cashCollected || 0), 0).toFixed(2)}
                         </td>
                         <td style={{ padding: '16px', color: '#ef4444', fontWeight: '800' }}>
-                          ₹{filteredLedgerDrivers.reduce((sum, d) => sum + (d.wallet?.toBePaid || 0), 0).toFixed(2)}
+                          -₹{filteredLedgerDrivers.reduce((sum, d) => sum + (d.wallet?.toBePaid || 0), 0).toFixed(2)}
                         </td>
                         <td style={{ padding: '16px', color: 'var(--primary)', fontWeight: '800' }}>
                           ₹{filteredLedgerDrivers.reduce((sum, d) => sum + ((d.wallet?.cashCollected || 0) - (d.wallet?.toBePaid || 0)), 0).toFixed(2)}
@@ -1648,6 +2522,196 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
+            </div>
+          )}
+
+          {/* TAB: Dedicated Pending Payments Section */}
+          {activeTab === 'pending-payments' && (
+            <div className="tab-pane">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <CreditCard color="#ef4444" size={28} /> Pending Payments & Dues Control
+                  </h2>
+                  <p className="tab-subtitle">
+                    Dedicated view for outstanding partner balances. Dues uncollected on the same day automatically roll over daily with aging indicators until cleared.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type="text" 
+                      className="input-field" 
+                      placeholder="Search partner, phone, plate..." 
+                      value={pendingSearch}
+                      onChange={(e) => setPendingSearch(e.target.value)}
+                      style={{ padding: '8px 12px 8px 34px', width: '220px', fontSize: '13px' }}
+                    />
+                    <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                  </div>
+
+                  <select 
+                    className="input-field" 
+                    value={pendingFilter} 
+                    onChange={(e) => setPendingFilter(e.target.value)}
+                    style={{ 
+                      padding: '8px 12px', 
+                      width: '210px', 
+                      fontSize: '13px', 
+                      fontWeight: '600',
+                      color: '#ffffff',
+                      background: '#1a2035',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: '8px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="all" style={{ background: '#1a2035', color: '#ffffff' }}>All Pending Dues</option>
+                    <option value="same-day" style={{ background: '#1a2035', color: '#3b82f6' }}>Pending Today (Same Day)</option>
+                    <option value="rolled-over" style={{ background: '#1a2035', color: '#f59e0b' }}>Rolled Over (1+ Days)</option>
+                    <option value="critical-overdue" style={{ background: '#1a2035', color: '#ef4444' }}>Critical Overdue (&gt; 3 Days)</option>
+                  </select>
+
+                  <Button 
+                    variant="outline" 
+                    onClick={downloadPendingPaymentsCSV}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '38px', borderColor: '#ef4444', color: '#ef4444' }}
+                  >
+                    <FileText size={16} /> Export Pending Dues (CSV)
+                  </Button>
+                </div>
+              </div>
+
+              {/* Summary Cards Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '12px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#ef4444', textTransform: 'uppercase' }}>Total Outstanding Dues</span>
+                    <AlertCircle size={20} color="#ef4444" />
+                  </div>
+                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#ffffff', marginTop: '8px', marginBottom: '0' }}>
+                    -₹{pendingPaymentsData.summary.totalOutstanding}
+                  </h3>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Across all active partner accounts</span>
+                </div>
+
+                <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: '12px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase' }}>Due Today (Same Day)</span>
+                    <Check size={20} color="#3b82f6" />
+                  </div>
+                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#ffffff', marginTop: '8px', marginBottom: '0' }}>
+                    -₹{pendingPaymentsData.summary.totalSameDay}
+                  </h3>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Incurred today & pending collection</span>
+                </div>
+
+                <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '12px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#f59e0b', textTransform: 'uppercase' }}>Rolled-Over Dues</span>
+                    <TrendingUp size={20} color="#f59e0b" />
+                  </div>
+                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#ffffff', marginTop: '8px', marginBottom: '0' }}>
+                    -₹{pendingPaymentsData.summary.totalRolledOver}
+                  </h3>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Uncollected from previous days</span>
+                </div>
+
+                <div style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.25)', borderRadius: '12px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#a855f7', textTransform: 'uppercase' }}>Pending Partners</span>
+                    <Users size={20} color="#a855f7" />
+                  </div>
+                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#ffffff', marginTop: '8px', marginBottom: '0' }}>
+                    {pendingPaymentsData.summary.pendingPartnersCount}
+                  </h3>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Drivers with balance due &gt; ₹0</span>
+                </div>
+              </div>
+
+              {/* Table of Pending Payments */}
+              {filteredPendingPayments.length === 0 ? (
+                <p className="empty-state">No pending payment dues matching your criteria.</p>
+              ) : (
+                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'rgba(255,255,255,0.01)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Partner Name</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Contact</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Vehicle Plate</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Cash Collected</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Pending Due Amount</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>First Incurred Date</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Aging / Days Pending</th>
+                        <th style={{ padding: '16px', fontWeight: '700', textAlign: 'center' }}>Rollover Status</th>
+                        <th style={{ padding: '16px', fontWeight: '700', textAlign: 'center' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPendingPayments.map((p) => (
+                        <tr key={p.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} className="table-row-hover">
+                          <td style={{ padding: '16px', fontWeight: '600' }}>{p.name}</td>
+                          <td style={{ padding: '16px', color: 'var(--text-main)', fontWeight: '500' }}>{p.phone}</td>
+                          <td style={{ padding: '16px', color: 'var(--text-main)' }}>
+                            {p.manufacturer} {p.model} (<span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: '600' }}>{p.plate}</span>)
+                          </td>
+                          <td style={{ padding: '16px', fontWeight: '600', color: 'var(--primary)' }}>₹{p.cashCollected}</td>
+                          <td style={{ padding: '16px', fontWeight: '800', color: '#ef4444', fontSize: '15px' }}>-₹{p.toBePaid}</td>
+                          <td style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)' }}>{p.pendingDateFormatted}</td>
+                          <td style={{ padding: '16px', fontWeight: '700' }}>
+                            {p.daysPending === 0 ? (
+                              <span style={{ color: '#3b82f6' }}>0 Days (Today)</span>
+                            ) : p.daysPending === 1 ? (
+                              <span style={{ color: '#f59e0b' }}>1 Day Overdue</span>
+                            ) : (
+                              <span style={{ color: '#ef4444' }}>{p.daysPending} Days Overdue</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '4px',
+                              background: p.daysPending === 0 ? 'rgba(59,130,246,0.1)' : p.daysPending < 3 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.15)',
+                              color: p.daysPending === 0 ? '#3b82f6' : p.daysPending < 3 ? '#f59e0b' : '#ef4444',
+                              border: `1px solid ${p.daysPending === 0 ? 'rgba(59,130,246,0.3)' : p.daysPending < 3 ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.4)'}`,
+                              borderRadius: '20px', padding: '4px 12px', fontSize: '11px', fontWeight: '800'
+                            }}>
+                              {p.statusLabel}
+                            </span>
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                              <Button 
+                                variant="primary" 
+                                style={{ padding: '6px 12px', fontSize: '12px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', fontWeight: '700' }}
+                                onClick={() => {
+                                  setSelectedLedgerDriver(drivers.find(d => d.id === p.id) || p);
+                                  setCollectAmount(p.toBePaid);
+                                  setShowCollectCashModal(true);
+                                }}
+                              >
+                                ✅ Payment Received
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                style={{ padding: '6px 10px', fontSize: '12px', borderColor: '#3b82f6', color: '#3b82f6' }}
+                                onClick={() => {
+                                  const driverObj = drivers.find(d => d.id === p.id) || p;
+                                  setMessageModalDriver(driverObj);
+                                  fetchChatMessages(driverObj.email);
+                                }}
+                              >
+                                <MessageSquare size={14} /> Reminder
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -2084,7 +3148,7 @@ const AdminDashboard = () => {
                 height="100%"
                 style={{ border: 0 }}
                 loading="lazy"
-                src={`https://maps.google.com/maps?q=${selectedMapDriver.lat || 28.4950},${selectedMapDriver.lng || 77.0896}&z=15&output=embed`}
+                src={`https://maps.google.com/maps?q=${selectedMapDriver.lat || 10.0088},${selectedMapDriver.lng || 76.3606}&z=15&output=embed`}
               />
             </div>
 
@@ -2200,6 +3264,240 @@ const AdminDashboard = () => {
                 <Send size={16} /> Send
               </Button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========== COLLECT CASH MODAL ========== */}
+      {showCollectCashModal && selectedLedgerDriver && (
+        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '640px', padding: '24px', borderRadius: '24px', background: 'var(--bg-card)', border: '1px solid var(--border)', display: 'flex', gap: '20px', flexDirection: 'column' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <DollarSign size={20} color="var(--primary)" />
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800' }}>Payment Received from Driver</h3>
+              </div>
+              <button onClick={() => setShowCollectCashModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              {/* Left Side: Statement Preview & Share */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)', alignSelf: 'flex-start' }}>
+                  📄 Statement Receipt Preview
+                </div>
+                {statementImageSrc ? (
+                  <img 
+                    src={statementImageSrc} 
+                    alt="Dues Statement" 
+                    style={{ 
+                      width: '100%', 
+                      maxWidth: '260px', 
+                      borderRadius: '12px', 
+                      border: '1px solid var(--border)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)' 
+                    }} 
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border)', borderRadius: '12px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                    Generating statement image...
+                  </div>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={handleShareWhatsApp}
+                  style={{
+                    width: '100%',
+                    background: '#25D366',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '10px',
+                    padding: '10px',
+                    fontSize: '12.5px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  💬 Copy Image & Open WhatsApp
+                </button>
+              </div>
+
+              {/* Right Side: Cash Collection Form */}
+              <form onSubmit={handleCollectCash} style={{ display: 'flex', flexDirection: 'column', gap: '14px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Driver Partner</span>
+                  <strong style={{ fontSize: '15px', color: 'var(--text-main)' }}>{selectedLedgerDriver.name}</strong>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Phone Number</span>
+                  <span style={{ fontSize: '13px', color: 'var(--text-main)', fontWeight: '600' }}>{selectedLedgerDriver.phone}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Total Pending Balance</span>
+                  <strong style={{ fontSize: '18px', color: '#ef4444' }}>-₹{parseFloat(selectedLedgerDriver.wallet?.toBePaid || 0).toFixed(2)}</strong>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Amount Received (INR)</label>
+                  <input 
+                    type="number" 
+                    className="input-field" 
+                    step="0.01"
+                    min="0.01"
+                    max={parseFloat(selectedLedgerDriver.wallet?.toBePaid || 0)}
+                    value={collectAmount}
+                    onChange={(e) => setCollectAmount(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <Button 
+                  variant="primary" 
+                  type="submit" 
+                  disabled={isSubmittingCollection}
+                  style={{ marginTop: '8px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', fontWeight: '800' }}
+                >
+                  {isSubmittingCollection ? 'Processing...' : '✅ Record Payment Received & Generate PDF Bill'}
+                </Button>
+              </form>
+            </div>
+            
+          </div>
+        </div>
+      )}
+
+      {/* ========== PAYMENT RECEIVED & WATERMARKED PDF BILL MODAL ========== */}
+      {showPaymentReceivedModal && paidReceiptDetails && (
+        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(5px)', position: 'fixed', inset: 0, zIndex: 1150, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '680px', padding: '24px', borderRadius: '24px', background: 'var(--bg-card)', border: '1.5px solid #10b981', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '92vh', overflowY: 'auto' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '6px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Check size={16} /> PAYMENT RECEIVED & VERIFIED
+                </div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Official Watermarked PDF Bill Receipt</h3>
+              </div>
+              <button onClick={() => setShowPaymentReceivedModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+
+            {/* Receipt Details & Canvas Image Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: '20px', alignItems: 'center' }}>
+              {/* Left Column: Driver Info & Financial Breakdown */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '11px', color: '#10b981', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Receipt ID: {paidReceiptDetails.receiptId}
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Driver Partner Name</span>
+                  <strong style={{ fontSize: '15px', color: 'var(--text-main)' }}>{paidReceiptDetails.driver.name}</strong>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Mobile Number</span>
+                  <span style={{ fontSize: '13px', color: 'var(--text-main)', fontWeight: '600' }}>{paidReceiptDetails.driver.phone}</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Vehicle Model & License Plate</span>
+                  <span style={{ fontSize: '13px', color: '#10b981', fontWeight: '700', fontFamily: 'monospace' }}>
+                    {paidReceiptDetails.driver.manufacturer || ''} {paidReceiptDetails.driver.model || ''} ({paidReceiptDetails.driver.plate || 'N/A'})
+                  </span>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Payment Received</span>
+                  <strong style={{ fontSize: '22px', color: '#10b981' }}>₹{parseFloat(paidReceiptDetails.amountPaid).toFixed(2)}</strong>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Remaining Dues Balance</span>
+                  <strong style={{ fontSize: '13px', color: parseFloat(paidReceiptDetails.remainingBalance) > 0 ? '#ef4444' : '#10b981' }}>
+                    {parseFloat(paidReceiptDetails.remainingBalance) > 0 ? `₹${parseFloat(paidReceiptDetails.remainingBalance).toFixed(2)}` : '✓ ZERO BALANCE (FULL SETTLEMENT)'}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Right Column: Watermarked Receipt Image Preview */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', alignSelf: 'flex-start' }}>
+                  📄 Watermarked Bill & PAID Seal Preview
+                </div>
+                {paidReceiptImageSrc ? (
+                  <img 
+                    src={paidReceiptImageSrc} 
+                    alt="Watermarked Paid Receipt" 
+                    style={{ 
+                      width: '100%', 
+                      maxWidth: '290px', 
+                      borderRadius: '12px', 
+                      border: '1.5px solid #10b981',
+                      boxShadow: '0 8px 24px rgba(16,185,129,0.2)' 
+                    }} 
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border)', borderRadius: '12px', color: 'var(--text-muted)' }}>
+                    Generating PDF Receipt...
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons: Print PDF & Share to Driver via WhatsApp */}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <button
+                type="button"
+                onClick={() => handlePrintPDFReceipt(paidReceiptDetails)}
+                style={{
+                  flex: 1,
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  fontSize: '13px',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                📄 Download / Print PDF Bill
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSharePaidReceiptWhatsApp}
+                style={{
+                  flex: 1,
+                  background: '#25D366',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  fontSize: '13px',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(37,211,102,0.25)'
+                }}
+              >
+                💬 Share Receipt to Driver via WhatsApp
+              </button>
+            </div>
+
           </div>
         </div>
       )}

@@ -22,7 +22,9 @@ const DriverSignup = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
 
   // Step 2: Vehicle Details
   const [manufacturer, setManufacturer] = useState('');
@@ -48,7 +50,8 @@ const DriverSignup = () => {
     rc: null,
     insurance: null,
     fitness: null,
-    license: null
+    licenseFront: null,
+    licenseBack: null
   });
 
   // Step 5: Live Face Verification (Camera Capture Base64 data)
@@ -146,7 +149,7 @@ const DriverSignup = () => {
 
     if (step === 2) {
       try {
-        const response = await fetch('http://localhost:5000/api/settings');
+        const response = await fetch('https://hum-backend-production-fd4c.up.railway.app/api/settings');
         if (response.ok) {
           const settingsData = await response.json();
           if (parseFloat(ratePerKm) < parseFloat(settingsData.ratePerKm)) {
@@ -183,12 +186,14 @@ const DriverSignup = () => {
       name,
       email,
       phone: `+91 ${phone}`,
+      password,
       manufacturer,
       model,
       year,
       plate,
       ratePerKm,
       ratePerHour,
+      licenseNumber,
       photos,
       docs,
       facePhoto,
@@ -201,8 +206,15 @@ const DriverSignup = () => {
       }
     };
 
+    const getBackendUrl = () => {
+      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')) {
+        return 'http://localhost:5000';
+      }
+      return import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    };
+
     try {
-      const response = await fetch('http://localhost:5000/api/drivers', {
+      const response = await fetch(`${getBackendUrl()}/api/drivers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -213,12 +225,12 @@ const DriverSignup = () => {
         localStorage.setItem('driverEmail', email);
         navigate('/driver');
       } else {
-        alert('Failed to submit application.');
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to submit application.');
       }
     } catch (err) {
-      console.error('Error submitting to backend, using fallback client-side flow:', err);
-      localStorage.setItem('driverEmail', email);
-      navigate('/driver');
+      console.error('Error submitting to backend:', err);
+      alert('Failed to connect to registration server. Please verify the server is running.');
     }
   };
 
@@ -295,27 +307,71 @@ const DriverSignup = () => {
                 required
               />
             </div>
-            <div className="input-group">
+            <div className="input-group" style={{ position: 'relative' }}>
               <div className="input-icon"><Lock size={18} /></div>
               <input 
-                type="password" 
+                type={showPassword ? "text" : "password"} 
                 className="input-field with-icon" 
                 placeholder="Password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                style={{ paddingRight: '40px' }}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 2
+                }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
-            <div className="input-group">
+            <div className="input-group" style={{ position: 'relative' }}>
               <div className="input-icon"><Lock size={18} /></div>
               <input 
-                type="password" 
+                type={showPassword ? "text" : "password"} 
                 className="input-field with-icon" 
                 placeholder="Confirm Password" 
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                style={{ paddingRight: '40px' }}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 2
+                }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
             <Button variant="primary" type="submit" className="full-width">
               Continue
@@ -496,15 +552,29 @@ const DriverSignup = () => {
         {step === 4 && (
           <form className="auth-form" onSubmit={handleNextStep}>
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-              Please upload compliance documents. JPEG or PDF format is accepted.
+              Please enter your licence details and upload compliance documents. JPEG or PDF format is accepted.
             </p>
+
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+              <label>Driving Licence Number</label>
+              <input 
+                type="text" 
+                className="input-field" 
+                placeholder="Enter DL number (e.g. DL1420110012345)"
+                value={licenseNumber}
+                onChange={(e) => setLicenseNumber(e.target.value.toUpperCase())}
+                required
+              />
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
               {[
                 { id: 'rc', label: 'Registration (RC)' },
                 { id: 'pollution', label: 'Pollution (PUC)' },
                 { id: 'insurance', label: 'Insurance Policy' },
                 { id: 'fitness', label: 'Fitness Certificate' },
-                { id: 'license', label: 'Driving Licence (DL)' }
+                { id: 'licenseFront', label: 'Licence (Front Side)' },
+                { id: 'licenseBack', label: 'Licence (Back Side)' }
               ].map((doc) => (
                 <div key={doc.id} className="photo-upload-box" style={{ 
                   border: '2px dashed var(--border)', 

@@ -221,6 +221,44 @@
   100% { transform: scale(1); opacity: 0.3; }
 }
 
+/* Radar Sonar Sweep & Ripple Animations for Trip Searching */
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes sonar-ripple {
+  0% { transform: scale(0.3); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Vehicle Arriving Splash Modal pop-in */
+@keyframes vehicle-arriving-modal {
+  0%   { opacity: 0; transform: scale(0.82) translateY(24px); }
+  60%  { opacity: 1; transform: scale(1.04) translateY(-4px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Map banner slide-down */
+@keyframes vehicle-arriving-bar {
+  0%   { opacity: 0; transform: translateY(-28px) scale(0.96); }
+  70%  { opacity: 1; transform: translateY(4px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Bouncing car icon in the map banner */
+@keyframes car-bounce {
+  0%   { transform: translateY(0px); }
+  100% { transform: translateY(-5px); }
+}
+
+/* Pulsing ring around the car icon in the modal */
+@keyframes car-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.5), 0 0 30px rgba(16,185,129,0.3); }
+  50%  { box-shadow: 0 0 0 14px rgba(16,185,129,0), 0 0 40px rgba(16,185,129,0.4); }
+  100% { box-shadow: 0 0 0 0 rgba(16,185,129,0), 0 0 30px rgba(16,185,129,0.3); }
+}
+
 .incoming-request h3 {
   color: var(--primary);
   margin-bottom: 16px;
@@ -355,8 +393,13 @@
     gap: 8px;
   }
 
+
   .request-actions button {
     width: 100%;
   }
 }
 
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

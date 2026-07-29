@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import Button from '../components/Button';
 import './Auth.css';
 
@@ -10,6 +11,7 @@ const PassengerSignup = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -20,8 +22,15 @@ const PassengerSignup = () => {
     }
     setValidationError('');
 
+    const getBackendUrl = () => {
+      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')) {
+        return 'http://localhost:5000';
+      }
+      return import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    };
+
     try {
-      const response = await fetch('http://localhost:5000/api/passengers/signup', {
+      const response = await fetch(`${getBackendUrl()}/api/passengers/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -38,6 +47,7 @@ const PassengerSignup = () => {
         const user = await response.json();
         localStorage.setItem('passengerEmail', user.email);
         localStorage.setItem('passengerName', user.name);
+        if (user.verificationCode) localStorage.setItem('passengerVerificationCode', user.verificationCode);
         navigate('/passenger');
       } else {
         const data = await response.json();
@@ -121,27 +131,73 @@ const PassengerSignup = () => {
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="password">Password</label>
-              <input 
-                type="password" 
-                id="password" 
-                className="input-field" 
-                placeholder="••••••••" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required 
-              />
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  id="password" 
+                  className="input-field" 
+                  placeholder="••••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ paddingRight: '40px' }}
+                  required 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <div className="form-group">
               <label htmlFor="confirmPassword">Confirm Password</label>
-              <input 
-                type="password" 
-                id="confirmPassword" 
-                className="input-field" 
-                placeholder="••••••••" 
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required 
-              />
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  id="confirmPassword" 
+                  className="input-field" 
+                  placeholder="••••••••" 
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  style={{ paddingRight: '40px' }}
+                  required 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
           </div>
 

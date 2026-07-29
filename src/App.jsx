@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import LandingPage from './pages/LandingPage';
@@ -8,9 +8,20 @@ import PassengerDashboard from './pages/PassengerDashboard';
 import DriverLogin from './pages/DriverLogin';
 import DriverSignup from './pages/DriverSignup';
 import DriverDashboard from './pages/DriverDashboard';
+import './index.css';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
-import './index.css';
+
+const AdminRedirect = () => {
+  useEffect(() => {
+    window.location.href = 'https://admin-cms-liard.vercel.app/';
+  }, []);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh', color: 'var(--text-muted)', fontSize: '16px' }}>
+      Redirecting to Operations Control Center...
+    </div>
+  );
+};
 
 function App() {
   return (
