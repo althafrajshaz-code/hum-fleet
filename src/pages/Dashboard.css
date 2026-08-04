@@ -1,12 +1,14 @@
 .dashboard-page {
   padding-top: 96px;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .dashboard-container {
   display: flex;
   gap: 24px;
   height: calc(100vh - 120px);
+  height: calc(100dvh - 120px);
 }
 
 .dashboard-sidebar {
@@ -58,9 +60,11 @@
   transition: all 0.2s ease;
 }
 
-.ride-option:hover {
-  border-color: var(--primary);
-  transform: translateY(-2px);
+@media (hover: hover) {
+  .ride-option:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+  }
 }
 
 .ride-option.selected {
@@ -160,10 +164,12 @@
   transition: all 0.3s ease;
 }
 
-.stat-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+@media (hover: hover) {
+  .stat-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  }
 }
 
 .stat-label {
@@ -337,6 +343,7 @@
     padding-top: 68px;
     padding-bottom: 24px;
     min-height: 100vh;
+    min-height: 100dvh;
   }
 
   .dashboard-container {
@@ -385,7 +392,15 @@
   }
 
   .incoming-request {
-    padding: 14px;
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    z-index: 1000;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    background: var(--bg-card);
+    padding: 16px;
+    border-radius: 16px;
   }
 
   .request-actions {

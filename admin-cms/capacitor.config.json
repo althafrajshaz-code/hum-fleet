@@ -1,0 +1,9 @@
+{
+  "appId": "com.humfleet.admin",
+  "appName": "HUM Admin",
+  "webDir": "dist",
+  "server": {
+    "cleartext": true,
+    "url": "https://admin-cms-liard.vercel.app"
+  }
+}

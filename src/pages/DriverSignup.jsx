@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Lock, Eye, EyeOff, FileText, Camera, Check } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Lock, EyeOff, Eye, Car, CreditCard, ChevronRight, CheckCircle, Navigation, ShieldCheck, FileText, Camera, Check } from 'lucide-react';
+import { compressImage } from '../utils/imageCompressor';
 import Button from '../components/Button';
 import './Auth.css';
 
-const INDIAN_VEHICLES = {
-  Tata: ['Nexon', 'Punch', 'Altroz', 'Harrier', 'Tiago', 'Tigor', 'Safari'],
-  Mahindra: ['XUV700', 'Thar', 'Scorpio-N', 'Bolero', 'XUV300'],
-  'Maruti Suzuki': ['Swift', 'Baleno', 'Brezza', 'Dzire', 'Ertiga', 'WagonR', 'Alto'],
-  Hyundai: ['Creta', 'i20', 'Venue', 'Verna', 'Grand i10 Nios', 'Alcazar'],
-  Honda: ['City', 'Amaze', 'Elevate']
-};
+const getBackendUrl = () => { return 'https://server-ashen-beta.vercel.app'; };
 
 const DriverSignup = () => {
   const navigate = useNavigate();
@@ -25,15 +20,29 @@ const DriverSignup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
+  const [isDriverOnly, setIsDriverOnly] = useState(false);
+  const [languages, setLanguages] = useState([]);
 
   // Step 2: Vehicle Details
   const [manufacturer, setManufacturer] = useState('');
+  const [customManufacturer, setCustomManufacturer] = useState('');
   const [model, setModel] = useState('');
-  const [modelsList, setModelsList] = useState([]);
-  const [plate, setPlate] = useState('');
+  const [customModel, setCustomModel] = useState('');
   const [year, setYear] = useState('');
+  const [plate, setPlate] = useState('');
+  const [vehicleCategory, setVehicleCategory] = useState('');
+  const [modelsList, setModelsList] = useState([]);
+  const [vehicleCatalog, setVehicleCatalog] = useState({});
+
+  useEffect(() => {
+    fetch(`${getBackendUrl()}/api/vehicles/catalog`)
+      .then(res => res.json())
+      .then(data => setVehicleCatalog(data))
+      .catch(err => console.error("Error fetching vehicle catalog:", err));
+  }, []);
   const [ratePerKm, setRatePerKm] = useState('15.00');
   const [ratePerHour, setRatePerHour] = useState('120.00');
+  const [isPinkVehicle, setIsPinkVehicle] = useState(false);
 
   // Step 3: Photos (Base64 data)
   const [photos, setPhotos] = useState({
@@ -51,7 +60,9 @@ const DriverSignup = () => {
     insurance: null,
     fitness: null,
     licenseFront: null,
-    licenseBack: null
+    licenseBack: null,
+    aadharFront: null,
+    aadharBack: null
   });
 
   // Step 5: Live Face Verification (Camera Capture Base64 data)
@@ -100,40 +111,42 @@ const DriverSignup = () => {
 
   // Populate models list based on manufacturer
   useEffect(() => {
-    if (manufacturer) {
-      setModelsList(INDIAN_VEHICLES[manufacturer] || []);
+    if (manufacturer && manufacturer !== 'Other') {
+      setModelsList(vehicleCatalog[manufacturer] || []);
       setModel(''); // Reset model selection
     } else {
       setModelsList([]);
       setModel('');
     }
-  }, [manufacturer]);
+  }, [manufacturer, vehicleCatalog]);
 
   // Handle Photo selection and conversion to Base64
-  const handlePhotoChange = (side, file) => {
+  const handlePhotoChange = async (side, file) => {
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
+      try {
+        const base64 = await compressImage(file);
         setPhotos(prev => ({
           ...prev,
-          [side]: reader.result // Save Base64 data URL
+          [side]: base64
         }));
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
-  // Handle Document selection and conversion to Base64
-  const handleDocChange = (docType, file) => {
+  // Handle Document selection and conversion
+  const handleDocChange = async (docType, file) => {
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
+      try {
+        const base64 = await compressImage(file);
         setDocs(prev => ({
           ...prev,
-          [docType]: reader.result // Save Base64 data URL
+          [docType]: base64
         }));
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -145,11 +158,15 @@ const DriverSignup = () => {
         return;
       }
       setValidationError('');
+      if (isDriverOnly) {
+        setStep(4);
+        return;
+      }
     }
 
     if (step === 2) {
       try {
-        const response = await fetch('https://hum-backend-production-fd4c.up.railway.app/api/settings');
+        const response = await fetch(`${getBackendUrl()}/api/settings`);
         if (response.ok) {
           const settingsData = await response.json();
           if (parseFloat(ratePerKm) < parseFloat(settingsData.ratePerKm)) {
@@ -170,7 +187,11 @@ const DriverSignup = () => {
   };
 
   const handlePrevStep = () => {
-    setStep(prev => prev - 1);
+    if (step === 4 && isDriverOnly) {
+      setStep(1);
+    } else {
+      setStep(prev => prev - 1);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -187,12 +208,16 @@ const DriverSignup = () => {
       email,
       phone: `+91 ${phone}`,
       password,
-      manufacturer,
-      model,
+      manufacturer: customManufacturer || manufacturer,
+      model: customModel || model,
       year,
       plate,
+      vehicleCategory,
       ratePerKm,
       ratePerHour,
+      isPinkVehicle,
+      isDriverOnly,
+      languages,
       licenseNumber,
       photos,
       docs,
@@ -204,13 +229,6 @@ const DriverSignup = () => {
         ifscCode,
         holderName
       }
-    };
-
-    const getBackendUrl = () => {
-      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')) {
-        return 'http://localhost:5000';
-      }
-      return import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
     };
 
     try {
@@ -296,16 +314,24 @@ const DriverSignup = () => {
                 required
               />
             </div>
-            <div className="input-group">
-              <div className="input-icon"><Phone size={18} /></div>
-              <input 
-                type="tel" 
-                className="input-field with-icon" 
-                placeholder="Phone Number (10 digits)" 
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                required
-              />
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', gap: '8px', height: '48px' }}>
+                <span className="input-field" style={{ width: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.05)', fontWeight: 'bold', padding: 0 }}>
+                  +91
+                </span>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <div className="input-icon"><Phone size={18} /></div>
+                  <input 
+                    type="tel" 
+                    className="input-field with-icon" 
+                    placeholder="98765 43210" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    pattern="[0-9]{10}"
+                    required
+                  />
+                </div>
+              </div>
             </div>
             <div className="input-group" style={{ position: 'relative' }}>
               <div className="input-icon"><Lock size={18} /></div>
@@ -373,7 +399,42 @@ const DriverSignup = () => {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            <Button variant="primary" type="submit" className="full-width">
+            
+            <div className="form-group" style={{ marginTop: '16px' }}>
+              <label>Languages Known</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '8px' }}>
+                {['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Marathi', 'Arabic'].map(lang => (
+                  <label key={lang} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox"
+                      checked={languages.includes(lang)}
+                      onChange={(e) => {
+                        if (e.target.checked) setLanguages([...languages, lang]);
+                        else setLanguages(languages.filter(l => l !== lang));
+                      }}
+                      style={{ accentColor: 'var(--primary)', width: '16px', height: '16px' }}
+                    />
+                    {lang}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '16px', background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', color: 'var(--primary)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={isDriverOnly} 
+                  onChange={(e) => setIsDriverOnly(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                />
+                <span>👨‍✈️ Register as Driver Only (No Vehicle)</span>
+              </label>
+              <p style={{ margin: '6px 0 0 28px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                Select this if you do not have your own vehicle and only wish to drive passenger's vehicles. You will skip vehicle registration steps.
+              </p>
+            </div>
+            <Button variant="primary" type="submit" className="full-width" style={{ marginTop: '16px' }}>
               Continue
             </Button>
           </form>
@@ -381,20 +442,57 @@ const DriverSignup = () => {
 
         {step === 2 && (
           <form className="auth-form" onSubmit={handleNextStep}>
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Vehicle Category</label>
+              <select 
+                className="input-field" 
+                value={vehicleCategory}
+                onChange={(e) => setVehicleCategory(e.target.value)}
+                required
+              >
+                <option value="">Select Category</option>
+                <option value="🛺 Auto Rickshaw">🛺 Auto Rickshaw</option>
+                <option value="🚙 Mini / Hatchback">🚙 Mini / Hatchback</option>
+                <option value="🚘 Sedan (AC)">🚘 Sedan (AC)</option>
+                <option value="🚐 SUV / XL (6 Seater)">🚐 SUV / XL (6 Seater)</option>
+                <option value="⚡ EV Green Cab (Eco)">⚡ EV Green Cab (Eco)</option>
+                <option value="💎 Premium / Luxury">💎 Premium / Luxury</option>
+              </select>
+            </div>
+            
             <div className="form-row">
               <div className="form-group" style={{ flex: 1 }}>
                 <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Manufacturer</label>
                 <select 
                   className="input-field" 
                   value={manufacturer}
-                  onChange={(e) => setManufacturer(e.target.value)}
+                  onChange={(e) => {
+                    setManufacturer(e.target.value);
+                    if (e.target.value === 'Other') {
+                      setModel('Other');
+                    } else {
+                      setModel('');
+                    }
+                  }}
                   required
                 >
                   <option value="">Select Brand</option>
-                  {Object.keys(INDIAN_VEHICLES).map(brand => (
+                  {Object.keys(vehicleCatalog).map(brand => (
                     <option key={brand} value={brand}>{brand}</option>
                   ))}
+                  <option value="Other">Other</option>
                 </select>
+                {manufacturer === 'Other' && (
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="Enter Manufacturer"
+                    value={customManufacturer}
+                    onChange={(e) => setCustomManufacturer(e.target.value)}
+                    style={{ marginTop: '8px' }}
+                    required
+                  />
+                )}
               </div>
 
               <div className="form-group" style={{ flex: 1 }}>
@@ -403,14 +501,26 @@ const DriverSignup = () => {
                   className="input-field" 
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  disabled={!manufacturer}
+                  disabled={!manufacturer || manufacturer === 'Other'}
                   required
                 >
                   <option value="">Select Model</option>
                   {modelsList.map(mod => (
                     <option key={mod} value={mod}>{mod}</option>
                   ))}
+                  <option value="Other">Other</option>
                 </select>
+                {model === 'Other' && (
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="Enter Model"
+                    value={customModel}
+                    onChange={(e) => setCustomModel(e.target.value)}
+                    style={{ marginTop: '8px' }}
+                    required
+                  />
+                )}
               </div>
             </div>
 
@@ -442,33 +552,19 @@ const DriverSignup = () => {
               </div>
             </div>
 
-            {/* Custom driver rate per KM and per Hour */}
-            <div className="form-row">
-              <div className="form-group" style={{ flex: 1 }}>
-                <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Minimum Rate per KM (₹)</label>
+            <div className="form-group" style={{ marginTop: '16px', background: 'rgba(236, 72, 153, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(236, 72, 153, 0.3)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', color: '#ec4899' }}>
                 <input 
-                  type="number" 
-                  className="input-field" 
-                  placeholder="e.g. 15.00" 
-                  value={ratePerKm}
-                  onChange={(e) => setRatePerKm(e.target.value)}
-                  min="0"
-                  required
+                  type="checkbox" 
+                  checked={isPinkVehicle} 
+                  onChange={(e) => setIsPinkVehicle(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#ec4899' }}
                 />
-              </div>
-
-              <div className="form-group" style={{ flex: 1 }}>
-                <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Minimum Rate per Hour (₹)</label>
-                <input 
-                  type="number" 
-                  className="input-field" 
-                  placeholder="e.g. 120.00" 
-                  value={ratePerHour}
-                  onChange={(e) => setRatePerHour(e.target.value)}
-                  min="0"
-                  required
-                />
-              </div>
+                <span>🌸 Register as a Pink Vehicle (Female Driver)</span>
+              </label>
+              <p style={{ margin: '6px 0 0 28px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                This allows female passengers to specifically request you for a safer and more comfortable ride experience.
+              </p>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
@@ -569,12 +665,16 @@ const DriverSignup = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
               {[
-                { id: 'rc', label: 'Registration (RC)' },
-                { id: 'pollution', label: 'Pollution (PUC)' },
-                { id: 'insurance', label: 'Insurance Policy' },
-                { id: 'fitness', label: 'Fitness Certificate' },
                 { id: 'licenseFront', label: 'Licence (Front Side)' },
-                { id: 'licenseBack', label: 'Licence (Back Side)' }
+                { id: 'licenseBack', label: 'Licence (Back Side)' },
+                { id: 'aadharFront', label: 'Aadhar (Front Side)' },
+                { id: 'aadharBack', label: 'Aadhar (Back Side)' },
+                ...(!isDriverOnly ? [
+                  { id: 'rc', label: 'Registration (RC)' },
+                  { id: 'pollution', label: 'Pollution (PUC)' },
+                  { id: 'insurance', label: 'Insurance Policy' },
+                  { id: 'fitness', label: 'Fitness Certificate' }
+                ] : [])
               ].map((doc) => (
                 <div key={doc.id} className="photo-upload-box" style={{ 
                   border: '2px dashed var(--border)', 

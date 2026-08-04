@@ -3,6 +3,7 @@
   align-items: center;
   justify-content: center;
   min-height: calc(100vh - 72px);
+  min-height: calc(100dvh - 72px);
   padding-top: 72px;
   background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.05), var(--bg-main) 70%);
 }
@@ -77,6 +78,7 @@
   .auth-page {
     padding: 76px 12px 24px 12px;
     min-height: 100vh;
+    min-height: 100dvh;
     align-items: flex-start;
   }
 

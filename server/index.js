@@ -10,6 +10,48 @@ const DATA_FILE = path.join(__dirname, 'data_store.json');
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Root status page
+app.get('/', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HUM Fleet API Server</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0b0f17; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #151c2c; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 48px 40px; max-width: 480px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+    .badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.3); border-radius: 999px; padding: 6px 16px; font-size: 13px; font-weight: 600; margin-bottom: 24px; }
+    .dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+    p { color: #64748b; font-size: 15px; margin-bottom: 32px; }
+    .info { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; text-align: left; }
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: #64748b; }
+    .info-value { color: #f8fafc; font-weight: 500; }
+    .green { color: #10b981; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge"><span class="dot"></span> Server Online</div>
+    <h1>HUM Fleet API</h1>
+    <p>Backend operations server for HUM Fleet ride management platform.</p>
+    <div class="info">
+      <div class="info-row"><span class="info-label">Status</span><span class="info-value green">● Running</span></div>
+      <div class="info-row"><span class="info-label">Environment</span><span class="info-value">Production</span></div>
+      <div class="info-row"><span class="info-label">API Base</span><span class="info-value">/api/*</span></div>
+      <div class="info-row"><span class="info-label">Uptime</span><span class="info-value">${Math.floor(process.uptime())}s</span></div>
+    </div>
+  </div>
+</body>
+</html>`);
+});
 
 let adminCredentials = {
   username: 'admin',
@@ -293,6 +335,82 @@ app.post('/api/passengers/signup', (req, res) => {
   passengers.push(newPassenger);
   saveData();
   res.status(201).json(newPassenger);
+});
+
+// Passenger Google OAuth sign-in / sign-up
+app.post('/api/passengers/google-auth', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'No token provided.' });
+
+    let googleUser;
+
+    if (token === 'mock_token') {
+      // Mock user for testing without a real Google client id
+      googleUser = { name: 'Test User', email: 'testuser@gmail.com', picture: '' };
+    } else {
+      // Verify token with Google and fetch profile
+      const https = require('https');
+      const profileData = await new Promise((resolve, reject) => {
+        https.get(
+          `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`,
+          (r) => {
+            let body = '';
+            r.on('data', (chunk) => { body += chunk; });
+            r.on('end', () => {
+              try { resolve(JSON.parse(body)); }
+              catch (e) { reject(new Error('Invalid Google response')); }
+            });
+          }
+        ).on('error', reject);
+      });
+
+      if (profileData.error || profileData.error_description) {
+        return res.status(401).json({ error: 'Invalid or expired Google token.' });
+      }
+      googleUser = { name: profileData.name, email: profileData.email, picture: profileData.picture };
+    }
+
+    if (!googleUser.email) {
+      return res.status(400).json({ error: 'Could not retrieve email from Google account.' });
+    }
+
+    // Find existing passenger or create one
+    let passenger = passengers.find(p => p.email && p.email.toLowerCase() === googleUser.email.toLowerCase());
+
+    if (!passenger) {
+      passenger = {
+        id: passengers.length + 1,
+        name: googleUser.name || googleUser.email.split('@')[0],
+        email: googleUser.email,
+        phone: '',
+        password: null, // Google-auth accounts have no password
+        googleAuth: true,
+        wallet: { totalSpent: 0, taxPaid: 0 },
+        rating: 5.0,
+        ratings: [],
+        verificationCode: Math.floor(100000 + Math.random() * 900000).toString()
+      };
+      passengers.push(passenger);
+      saveData();
+    } else {
+      if (!passenger.verificationCode) {
+        passenger.verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+        saveData();
+      }
+    }
+
+    res.json({
+      success: true,
+      name: passenger.name,
+      email: passenger.email,
+      phone: passenger.phone,
+      verificationCode: passenger.verificationCode
+    });
+  } catch (err) {
+    console.error('Google auth error:', err);
+    res.status(500).json({ error: 'Google authentication failed. Please try again.' });
+  }
 });
 
 // Passenger login (supports email or phone number)

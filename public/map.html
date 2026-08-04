@@ -3,217 +3,250 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HUM Map Dispatcher</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <title>HUM Map Dispatcher (Google Maps)</title>
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: #09090b;
-    }
-    #map {
-      width: 100vw;
-      height: 100vh;
-    }
+    body { margin: 0; padding: 0; background: #09090b; }
+    #map { width: 100vw; height: 100vh; }
     .locate-btn {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      z-index: 1000;
-      background: #10b981;
-      color: white;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 700;
+      position: absolute; top: 16px; right: 16px; z-index: 1000;
+      background: #10b981; color: white; border: none; padding: 10px 16px;
+      border-radius: 8px; cursor: pointer; font-weight: 700;
       font-family: system-ui, -apple-system, sans-serif;
       box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
       transition: background 0.2s ease, transform 0.1s ease;
     }
-    .locate-btn:hover {
-      background: #059669;
-    }
-    .locate-btn:active {
-      transform: scale(0.95);
-    }
+    .locate-btn:hover { background: #059669; }
+    .locate-btn:active { transform: scale(0.95); }
   </style>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCpXvo_52Na7w7cZCPhstuPzwVzKFzRgdU&libraries=places"></script>
 </head>
 <body>
   <button class="locate-btn" onclick="locateUser()">Locate Me</button>
   <div id="map"></div>
   <script>
-    // Initialize map centered on Ernakulam, Kochi, Kerala
-    var map = L.map('map', { zoomControl: false }).setView([9.9777, 76.2758], 13);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
+    let map;
+    let pickupMarker;
+    let dropoffMarker;
+    let carMarker;
+    let directionsService;
+    let directionsRenderer;
+    let geocoder;
+    let nearbyDriverMarkers = [];
 
-    L.control.zoom({
-      position: 'bottomright'
-    }).addTo(map);
+    function initMap() {
+      const defaultLoc = { lat: 9.9777, lng: 76.2758 }; // Kochi
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 13,
+        center: defaultLoc,
+        disableDefaultUI: true,
+        zoomControl: true,
+        styles: [
+          { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+          { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+          { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+          { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
+          { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
+          { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+          { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+          { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+          { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+          { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
+          { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
+          { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
+          { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+          { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
+          { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] },
+        ],
+      });
 
-    // Marker icons
-    var greenIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41]
-    });
-
-    var redIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41]
-    });
-
-    // Pin markers
-    var pickupMarker = L.marker([9.9777, 76.2758], { icon: greenIcon, draggable: true }).addTo(map);
-    var dropoffMarker = null;
-    var routePolyline = null;
-    var carMarker = null;
-
-    function reverseGeocode(lat, lng) {
-      fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng, {
-        headers: {
-          'Accept-Language': 'en'
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({
+        map: map,
+        suppressMarkers: true,
+        polylineOptions: {
+          strokeColor: '#10b981',
+          strokeOpacity: 0.8,
+          strokeWeight: 5
         }
-      })
-      .then(response => response.json())
-      .then(data => {
-        var address = data.display_name || (lat.toFixed(4) + ", " + lng.toFixed(4));
-        window.parent.postMessage({ type: 'MAP_LOCATION_SELECTED', address: address, lat: lat, lng: lng }, '*');
-      })
-      .catch(err => {
-        console.error("Geocoding failed:", err);
-        window.parent.postMessage({ type: 'MAP_LOCATION_SELECTED', address: lat.toFixed(5) + ", " + lng.toFixed(5), lat: lat, lng: lng }, '*');
+      });
+      geocoder = new google.maps.Geocoder();
+
+      pickupMarker = new google.maps.Marker({
+        position: defaultLoc,
+        map: map,
+        draggable: true,
+        icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
+      });
+
+      map.addListener("click", (e) => {
+        if (carMarker) return;
+        const latLng = e.latLng;
+        pickupMarker.setPosition(latLng);
+        map.panTo(latLng);
+        reverseGeocode(latLng);
+      });
+
+      pickupMarker.addListener("dragend", (e) => {
+        reverseGeocode(e.latLng);
+      });
+
+      locateUser(true);
+    }
+
+    function reverseGeocode(latLng) {
+      geocoder.geocode({ location: latLng }, (results, status) => {
+        if (status === "OK" && results[0]) {
+          window.parent.postMessage({ type: 'MAP_LOCATION_SELECTED', address: results[0].formatted_address, lat: latLng.lat(), lng: latLng.lng() }, '*');
+        } else {
+          window.parent.postMessage({ type: 'MAP_LOCATION_SELECTED', address: latLng.lat().toFixed(5) + ", " + latLng.lng().toFixed(5), lat: latLng.lat(), lng: latLng.lng() }, '*');
+        }
       });
     }
 
-    // Click on map to place pin
-    map.on('click', function(e) {
-      if (carMarker) return; // Prevent clicking during active trip animation
-      pickupMarker.setLatLng(e.latlng);
-      map.panTo(e.latlng);
-      reverseGeocode(e.latlng.lat, e.latlng.lng);
-    });
-
-    // Drag pin to update location
-    pickupMarker.on('dragend', function(e) {
-      var position = pickupMarker.getLatLng();
-      reverseGeocode(position.lat, position.lng);
-    });
-
-    // Browser Geolocation
     function locateUser(isSilent) {
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-          var lat = position.coords.latitude;
-          var lng = position.coords.longitude;
-          var newLatLng = new L.LatLng(lat, lng);
-          pickupMarker.setLatLng(newLatLng);
-          map.setView(newLatLng, 16);
-          reverseGeocode(lat, lng);
-        }, function(error) {
-          if (!isSilent) {
-            alert("Location permission denied. Defaulting to New Delhi center.");
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const pos = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            pickupMarker.setPosition(pos);
+            map.setCenter(pos);
+            map.setZoom(16);
+            reverseGeocode(new google.maps.LatLng(pos.lat, pos.lng));
+          },
+          () => {
+            if (!isSilent) alert("Location permission denied. Defaulting to Kochi.");
           }
-        });
+        );
       } else {
-        if (!isSilent) {
-          alert("Geolocation is not supported by this browser.");
-        }
+        if (!isSilent) alert("Geolocation is not supported by this browser.");
       }
     }
 
-    // Auto-locate user on startup
-    locateUser(true);
-
-    // --- PARENT WINDOW EVENT MESSAGES ---
     window.addEventListener('message', function(event) {
       if (!event.data) return;
 
       if (event.data.type === 'DRAW_ROUTE') {
-        var pk = event.data.pickup;
-        var dp = event.data.dropoff;
+        const pk = event.data.pickup;
+        const dp = event.data.dropoff;
 
-        // Reset any existing elements
-        if (dropoffMarker) map.removeLayer(dropoffMarker);
-        if (routePolyline) map.removeLayer(routePolyline);
-        if (carMarker) map.removeLayer(carMarker);
+        if (dropoffMarker) dropoffMarker.setMap(null);
+        if (carMarker) carMarker.setMap(null);
+        
+        pickupMarker.setPosition(pk);
+        dropoffMarker = new google.maps.Marker({
+          position: dp,
+          map: map,
+          icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+        });
 
-        // Place pickup marker
-        pickupMarker.setLatLng([pk.lat, pk.lng]);
+        const request = {
+          origin: pk,
+          destination: dp,
+          travelMode: 'DRIVING'
+        };
 
-        // Place drop-off marker
-        dropoffMarker = L.marker([dp.lat, dp.lng], { icon: redIcon }).addTo(map);
-
-        // Draw routing polyline line
-        routePolyline = L.polyline([[pk.lat, pk.lng], [dp.lat, dp.lng]], {
-          color: '#10b981',
-          weight: 4,
-          opacity: 0.8,
-          dashArray: '10, 10'
-        }).addTo(map);
-
-        // Fit map bounds to show full route
-        var bounds = L.latLngBounds([[pk.lat, pk.lng], [dp.lat, dp.lng]]);
-        map.fitBounds(bounds, { padding: [60, 60] });
+        directionsService.route(request, (result, status) => {
+          if (status == 'OK') {
+            directionsRenderer.setDirections(result);
+          }
+        });
       }
 
       if (event.data.type === 'ANIMATE_CAR') {
-        var pk = event.data.pickup;
-        var dp = event.data.dropoff;
+        const pk = event.data.pickup;
+        const dp = event.data.dropoff;
 
-        if (carMarker) map.removeLayer(carMarker);
+        if (carMarker) carMarker.setMap(null);
 
-        var carIcon = L.divIcon({
-          html: '<div style="font-size: 32px; transform: scaleX(-1); filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));">🚗</div>',
-          iconSize: [32, 32],
-          iconAnchor: [16, 16]
+        carMarker = new google.maps.Marker({
+          position: pk,
+          map: map,
+          icon: {
+            url: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><text y="24" font-size="24">🚗</text></svg>',
+            scaledSize: new google.maps.Size(32, 32),
+            anchor: new google.maps.Point(16, 16)
+          }
         });
 
-        carMarker = L.marker([pk.lat, pk.lng], { icon: carIcon }).addTo(map);
-
-        var startTime = null;
-        var duration = 9000; // Animate over 9 seconds
+        let startTime = null;
+        const duration = 9000;
 
         function animate(timestamp) {
           if (!startTime) startTime = timestamp;
-          var progress = (timestamp - startTime) / duration;
-          if (progress > 1) progress = 1;
+          const progress = Math.min((timestamp - startTime) / duration, 1);
 
-          var curLat = pk.lat + (dp.lat - pk.lat) * progress;
-          var curLng = pk.lng + (dp.lng - pk.lng) * progress;
-
-          carMarker.setLatLng([curLat, curLng]);
+          const curLat = pk.lat + (dp.lat - pk.lat) * progress;
+          const curLng = pk.lng + (dp.lng - pk.lng) * progress;
+          
+          carMarker.setPosition({ lat: curLat, lng: curLng });
 
           if (progress < 1) {
             requestAnimationFrame(animate);
           } else {
-            // Arrived! Pop up success
-            carMarker.bindPopup("<b>Arrived!</b>").openPopup();
+            const infowindow = new google.maps.InfoWindow({ content: "<b>Arrived!</b>" });
+            infowindow.open(map, carMarker);
           }
         }
         requestAnimationFrame(animate);
       }
 
+      if (event.data.type === 'UPDATE_CAR_LOCATION') {
+        const { lat, lng } = event.data;
+        if (!carMarker) {
+          carMarker = new google.maps.Marker({
+            position: { lat, lng },
+            map: map,
+            icon: {
+              url: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><text y="24" font-size="24">🚗</text></svg>',
+              scaledSize: new google.maps.Size(32, 32),
+              anchor: new google.maps.Point(16, 16)
+            }
+          });
+        } else {
+          carMarker.setPosition({ lat, lng });
+        }
+      }
+
       if (event.data.type === 'RESET_MAP') {
-        if (dropoffMarker) map.removeLayer(dropoffMarker);
-        if (routePolyline) map.removeLayer(routePolyline);
-        if (carMarker) map.removeLayer(carMarker);
-        pickupMarker.setLatLng([28.6304, 77.2177]);
-        map.setView([28.6304, 77.2177], 13);
+        if (dropoffMarker) dropoffMarker.setMap(null);
+        if (carMarker) carMarker.setMap(null);
+        if (directionsRenderer) directionsRenderer.setDirections({routes: []});
+        nearbyDriverMarkers.forEach(m => m.setMap(null));
+        nearbyDriverMarkers = [];
+        
+        const center = { lat: 28.6304, lng: 77.2177 };
+        pickupMarker.setPosition(center);
+        map.setCenter(center);
+        map.setZoom(13);
+      }
+
+      if (event.data.type === 'SHOW_NEARBY_DRIVERS') {
+        const drivers = event.data.drivers || [];
+        nearbyDriverMarkers.forEach(m => m.setMap(null));
+        nearbyDriverMarkers = [];
+        
+        drivers.forEach(driver => {
+          const marker = new google.maps.Marker({
+            position: { lat: parseFloat(driver.lat), lng: parseFloat(driver.lng) },
+            map: map,
+            icon: {
+              url: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><text y="16" font-size="16">🚕</text></svg>',
+              scaledSize: new google.maps.Size(20, 20),
+              anchor: new google.maps.Point(10, 10)
+            }
+          });
+          nearbyDriverMarkers.push(marker);
+        });
       }
     });
+
+    window.onload = initMap;
   </script>
 </body>
 </html>

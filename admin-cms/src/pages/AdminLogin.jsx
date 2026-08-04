@@ -4,9 +4,7 @@ import { Shield, Lock, Eye, EyeOff } from 'lucide-react';
 import Button from '../components/Button';
 import './Auth.css';
 
-const API_BASE = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
-  ? 'http://localhost:5000'
-  : 'http://localhost:5000';
+const API_BASE = 'https://server-ashen-beta.vercel.app';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -26,6 +24,7 @@ const AdminLogin = () => {
         body: JSON.stringify({ username, password })
       });
       if (response.ok) {
+        localStorage.setItem('adminAuthenticated', 'true');
         navigate('/dashboard');
       } else {
         const data = await response.json();

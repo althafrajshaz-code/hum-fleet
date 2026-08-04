@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, FileText, LogOut, Key, UserCheck, TrendingUp, Search, MapPin, Navigation, Activity, Map, Radio, Compass, MessageSquare, Send, CreditCard, Upload } from 'lucide-react';
+import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, FileText, LogOut, Key, UserCheck, TrendingUp, Search, MapPin, Navigation, Activity, Map, Radio, Compass, MessageSquare, Send, CreditCard, Upload, Tag, Phone } from 'lucide-react';
 import Button from '../components/Button';
 import './AdminDashboard.css';
 
@@ -13,16 +13,32 @@ const MOCK_PHOTOS = {
   document: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600'
 };
 
-const API_BASE = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
-  ? 'http://localhost:5000'
-  : 'http://localhost:5000';
+const API_BASE = 'https://server-ashen-beta.vercel.app';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem('adminAuthenticated') !== 'true') {
+      navigate('/');
+    } else {
+      setIsAuthenticated(true);
+    }
+  }, [navigate]);
+
+
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('adminActiveTab') || 'approvals');
+  const [activeSOSAlert, setActiveSOSAlert] = useState({ active: true, driverName: 'Rajesh Kumar', phone: '+91 9876543210', location: '12.9716, 77.5946' }); // Mocked active SOS for demonstration
   const [drivers, setDrivers] = useState([]);
   const [passengers, setPassengers] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState(null);
+  
+  // Employee Management State
+  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [newEmployee, setNewEmployee] = useState({ name: '', username: '', password: '', role: 'staff', position: '', managerId: '' });
+  const [selectedEmployeeForDetails, setSelectedEmployeeForDetails] = useState(null);
 
   // Pending Payments State
   const [pendingPaymentsData, setPendingPaymentsData] = useState({
@@ -44,6 +60,14 @@ const AdminDashboard = () => {
   const [fleetEntity, setFleetEntity] = useState('drivers'); // 'drivers' | 'passengers'
   const [selectedMapDriver, setSelectedMapDriver] = useState(null);
 
+  const [watermarkLogo, setWatermarkLogo] = useState(null);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/hum_fleet_official_logo.jpg';
+    img.onload = () => setWatermarkLogo(img);
+  }, []);
+
   // Save activeTab to localStorage on change
   useEffect(() => {
     localStorage.setItem('adminActiveTab', activeTab);
@@ -53,6 +77,22 @@ const AdminDashboard = () => {
   const [driverSearch, setDriverSearch] = useState('');
   const [registeredDriverSearch, setRegisteredDriverSearch] = useState('');
   const [passengerSearch, setPassengerSearch] = useState('');
+  const [businessListings, setBusinessListings] = useState([]);
+  const [newLocName, setNewLocName] = useState('');
+  const [newLocLat, setNewLocLat] = useState('');
+  const [newLocLng, setNewLocLng] = useState('');
+  
+  const fetchLocations = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/locations`);
+      if (response.ok) {
+        const data = await response.json();
+        setBusinessListings(data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch locations:", err);
+    }
+  };
   const [ledgerSearch, setLedgerSearch] = useState('');
 
   // Ledger filter query: 'all', 'pending', 'no-pending'
@@ -73,6 +113,10 @@ const AdminDashboard = () => {
   const [previewFile, setPreviewFile] = useState(null);
   const [previewTitle, setPreviewTitle] = useState('');
 
+  // Global Date Filter State
+  const [globalStartDate, setGlobalStartDate] = useState('');
+  const [globalEndDate, setGlobalEndDate] = useState('');
+
   // Collect Cash & WhatsApp Statement modal states
   const [showCollectCashModal, setShowCollectCashModal] = useState(false);
   const [selectedLedgerDriver, setSelectedLedgerDriver] = useState(null);
@@ -91,6 +135,7 @@ const AdminDashboard = () => {
   const [minRatePerHour, setMinRatePerHour] = useState('100.00');
   const [surgeMultiplier, setSurgeMultiplier] = useState('1.0');
   const [systemStatus, setSystemStatus] = useState('online');
+  const [voipMasking, setVoipMasking] = useState(true);
 
   // Payment Gateway states
   const [gatewayType, setGatewayType] = useState('upi'); // 'upi' | 'bank'
@@ -110,11 +155,23 @@ const AdminDashboard = () => {
   const [catRatePerKm, setCatRatePerKm] = useState('15.00');
 
   // Credentials change states
-  const [adminUsername, setAdminUsername] = useState('admin');
+  const [adminUsername, setAdminUsername] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
+
+  const fetchAdminProfile = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/profile`);
+      if (response.ok) {
+        const data = await response.json();
+        setAdminUsername(data.username);
+      }
+    } catch (err) {
+      console.error("Failed to fetch admin profile:", err);
+    }
+  };
 
   const fetchPendingPayments = async () => {
     try {
@@ -155,6 +212,36 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error("Failed to fetch passengers from backend:", err);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/employees`);
+      if (response.ok) {
+        const data = await response.json();
+        setEmployees(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch employees from backend:", err);
+    }
+  };
+
+  const handleAddEmployee = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/employees`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEmployee)
+      });
+      if (response.ok) {
+        fetchEmployees();
+        setShowAddEmployeeModal(false);
+        setNewEmployee({ name: '', username: '', password: '', role: 'staff', position: '', managerId: '' });
+      }
+    } catch (err) {
+      console.error('Error adding employee:', err);
     }
   };
 
@@ -227,6 +314,51 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error("Error fetching driver chat messages:", err);
+    }
+  };
+
+  const handleBroadcastToOffline = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/messages/broadcast-offline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'HUGE DEMAND RIGHT NOW! Go online to capture ride requests and earn surge fares!' })
+      });
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message);
+      } else {
+        alert('Failed to send broadcast.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error sending broadcast');
+    }
+  };
+
+  const [broadcastText, setBroadcastText] = useState('');
+
+  const handleBroadcastAll = async () => {
+    if (!broadcastText.trim()) {
+      alert('Please enter a message to broadcast.');
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/messages/broadcast-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: broadcastText })
+      });
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message);
+        setBroadcastText(''); // Clear input
+      } else {
+        alert('Failed to send global broadcast.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error sending global broadcast');
     }
   };
 
@@ -305,21 +437,28 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchDrivers();
     fetchPassengers();
+    fetchEmployees();
     fetchFinancials();
     fetchCategories();
     fetchSettings();
     fetchFleetLive();
     fetchPendingPayments();
+    fetchLocations();
+    fetchAdminProfile();
   }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
       fetchDrivers();
       fetchPassengers();
+      fetchEmployees();
       fetchFinancials();
+      fetchCategories();
+      fetchSettings();
       fetchFleetLive();
       fetchPendingPayments();
-    }, 3000);
+      fetchLocations();
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -349,13 +488,28 @@ const AdminDashboard = () => {
       (d.plate && d.plate.toLowerCase().replace(/\s+/g, '').includes(registeredDriverSearch.toLowerCase().replace(/\s+/g, ''))) ||
       (d.manufacturer && d.manufacturer.toLowerCase().includes(registeredDriverSearch.toLowerCase())) ||
       (d.model && d.model.toLowerCase().includes(registeredDriverSearch.toLowerCase()))
-    );
+    )
+    .filter(d => {
+      if (!globalStartDate && !globalEndDate) return true;
+      if (!d.createdAt) return false;
+      const dDate = new Date(d.createdAt);
+      if (globalStartDate && dDate < new Date(globalStartDate)) return false;
+      if (globalEndDate && dDate > new Date(globalEndDate + 'T23:59:59')) return false;
+      return true;
+    });
 
   const filteredPassengers = passengers.filter(p => 
     p.name.toLowerCase().includes(passengerSearch.toLowerCase()) ||
     p.phone.includes(passengerSearch) ||
     p.email.toLowerCase().includes(passengerSearch.toLowerCase())
-  );
+  ).filter(p => {
+    if (!globalStartDate && !globalEndDate) return true;
+    if (!p.createdAt) return false;
+    const pDate = new Date(p.createdAt);
+    if (globalStartDate && pDate < new Date(globalStartDate)) return false;
+    if (globalEndDate && pDate > new Date(globalEndDate + 'T23:59:59')) return false;
+    return true;
+  });
 
   const filteredLedgerDrivers = drivers
     .filter(d => 
@@ -371,6 +525,14 @@ const AdminDashboard = () => {
       if (ledgerFilter === 'pending') return toBePaid > 0;
       if (ledgerFilter === 'no-pending') return toBePaid === 0;
       return true;
+    })
+    .filter(d => {
+      if (!globalStartDate && !globalEndDate) return true;
+      if (!d.createdAt) return false;
+      const dDate = new Date(d.createdAt);
+      if (globalStartDate && dDate < new Date(globalStartDate)) return false;
+      if (globalEndDate && dDate > new Date(globalEndDate + 'T23:59:59')) return false;
+      return true;
     });
 
   const filteredPendingPayments = (pendingPaymentsData.pendingPayments || []).filter(p => {
@@ -383,6 +545,13 @@ const AdminDashboard = () => {
     if (pendingFilter === 'rolled-over') return p.daysPending > 0;
     if (pendingFilter === 'critical-overdue') return p.daysPending >= 3;
 
+    return true;
+  }).filter(p => {
+    if (!globalStartDate && !globalEndDate) return true;
+    if (!p.pendingDate) return false;
+    const pDate = new Date(p.pendingDate);
+    if (globalStartDate && pDate < new Date(globalStartDate)) return false;
+    if (globalEndDate && pDate > new Date(globalEndDate + 'T23:59:59')) return false;
     return true;
   });
 
@@ -826,12 +995,19 @@ const AdminDashboard = () => {
     ctx.save();
     ctx.translate(325, 390);
     ctx.rotate(-25 * Math.PI / 180);
-    ctx.fillStyle = 'rgba(16, 185, 129, 0.08)';
-    ctx.font = 'bold 58px Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('HUM FLEET', 0, -30);
-    ctx.font = 'bold 32px Arial, sans-serif';
-    ctx.fillText('OFFICIAL RECEIPT', 0, 20);
+    if (watermarkLogo) {
+      ctx.globalAlpha = 0.08;
+      const imgWidth = 400;
+      const imgHeight = (watermarkLogo.height / watermarkLogo.width) * imgWidth;
+      ctx.drawImage(watermarkLogo, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+    } else {
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.08)';
+      ctx.font = 'bold 58px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('HUM FLEET', 0, -30);
+      ctx.font = 'bold 32px Arial, sans-serif';
+      ctx.fillText('OFFICIAL RECEIPT', 0, 20);
+    }
     ctx.restore();
 
     // Header Logo & Company Name
@@ -1177,7 +1353,7 @@ const AdminDashboard = () => {
           
           <div class="header">
             <div class="brand-logo">
-              <div class="logo-badge">HUM</div>
+              <img src="${window.location.origin}/hum_fleet_official_logo.jpg" alt="HUM Logo" style="height: 40px; margin-right: 12px; border-radius: 8px;" />
               <div>
                 <div class="company-name">HUM FLEET PLATFORMS</div>
                 <div style="font-size: 11px; color: #64748b;">Operations Control & Settlement Center</div>
@@ -1294,7 +1470,7 @@ const AdminDashboard = () => {
 
   const handleCollectCash = async (e) => {
     e.preventDefault();
-    if (!selectedLedgerDriver) return;
+    if (!selectedLedgerDriver || isSubmittingCollection) return;
     setIsSubmittingCollection(true);
     try {
       const amountVal = parseFloat(collectAmount);
@@ -1353,6 +1529,18 @@ const AdminDashboard = () => {
     ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
     ctx.lineWidth = 4;
     ctx.strokeRect(15, 15, 570, 670);
+
+    // WATERMARK
+    if (watermarkLogo) {
+      ctx.save();
+      ctx.translate(300, 350);
+      ctx.rotate(-25 * Math.PI / 180);
+      ctx.globalAlpha = 0.05;
+      const imgWidth = 400;
+      const imgHeight = (watermarkLogo.height / watermarkLogo.width) * imgWidth;
+      ctx.drawImage(watermarkLogo, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+      ctx.restore();
+    }
 
     // Title logo
     ctx.fillStyle = '#10b981';
@@ -1512,9 +1700,32 @@ const AdminDashboard = () => {
     setPreviewTitle(title);
   };
 
+  if (!isAuthenticated) return null;
+
   return (
     <div className="admin-page">
-      <div className="admin-container container">
+      {activeSOSAlert && activeSOSAlert.active && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 99999, background: '#ef4444', color: '#fff', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 20px rgba(239, 68, 68, 0.4)', animation: 'pulse 1.5s infinite'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <AlertCircle size={28} />
+            <div>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', letterSpacing: '1px' }}>EMERGENCY SOS TRIGGERED</h2>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', opacity: 0.9 }}>
+                Driver: {activeSOSAlert.driverName} ({activeSOSAlert.phone}) | Location Coordinates: {activeSOSAlert.location}
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setActiveSOSAlert({ ...activeSOSAlert, active: false })}
+            style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            DISMISS / RESOLVED
+          </button>
+        </div>
+      )}
+      <div className="admin-container container" style={{ paddingTop: activeSOSAlert?.active ? '60px' : '0' }}>
         {/* Sidebar Nav */}
         <aside className="admin-sidebar glass-card">
           <div className="admin-profile" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1557,6 +1768,12 @@ const AdminDashboard = () => {
               <Users size={18} /> Registered Users ({passengers.length})
             </button>
             <button 
+              className={`admin-nav-item ${activeTab === 'staff' ? 'active' : ''}`}
+              onClick={() => setActiveTab('staff')}
+            >
+              <UserCheck size={18} /> Staff & Management
+            </button>
+            <button 
               className={`admin-nav-item ${activeTab === 'ledger' ? 'active' : ''}`}
               onClick={() => setActiveTab('ledger')}
             >
@@ -1576,6 +1793,18 @@ const AdminDashboard = () => {
               )}
             </button>
             <button 
+              className={`admin-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
+              onClick={() => setActiveTab('analytics')}
+            >
+              <TrendingUp size={18} /> Visual Analytics
+            </button>
+            <button 
+              className={`admin-nav-item ${activeTab === 'promotions' ? 'active' : ''}`}
+              onClick={() => setActiveTab('promotions')}
+            >
+              <Tag size={18} /> Promotions & Offers
+            </button>
+            <button 
               className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
               onClick={() => setActiveTab('settings')}
             >
@@ -1587,10 +1816,25 @@ const AdminDashboard = () => {
             >
               <Key size={18} /> Security Settings
             </button>
+            <button 
+              className={`admin-nav-item ${activeTab === 'locations' ? 'active' : ''}`}
+              onClick={() => setActiveTab('locations')}
+            >
+              <MapPin size={18} /> Business Locations
+            </button>
+            <button 
+              className={`admin-nav-item ${activeTab === 'broadcasts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('broadcasts')}
+            >
+              <Send size={18} /> Global Broadcasts
+            </button>
             
             <button 
               className="admin-nav-item"
-              onClick={() => navigate('/')}
+              onClick={() => {
+                localStorage.removeItem('adminAuthenticated');
+                navigate('/');
+              }}
               style={{ marginTop: 'auto', color: '#ef4444' }}
             >
               <LogOut size={18} /> Logout
@@ -1601,6 +1845,41 @@ const AdminDashboard = () => {
         {/* Main Content Area */}
         <main className="admin-content glass-card">
           
+          {/* Global Date Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '12px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.1)', borderRadius: '12px', flexWrap: 'wrap' }}>
+            <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--primary)' }}>
+              📅 Global Date Filter:
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>From:</label>
+              <input 
+                type="date" 
+                className="input-field"
+                value={globalStartDate}
+                onChange={(e) => setGlobalStartDate(e.target.value)}
+                style={{ padding: '6px 10px', fontSize: '12px', width: 'auto' }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>To:</label>
+              <input 
+                type="date" 
+                className="input-field"
+                value={globalEndDate}
+                onChange={(e) => setGlobalEndDate(e.target.value)}
+                style={{ padding: '6px 10px', fontSize: '12px', width: 'auto' }}
+              />
+            </div>
+            {(globalStartDate || globalEndDate) && (
+              <button 
+                onClick={() => { setGlobalStartDate(''); setGlobalEndDate(''); }}
+                style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', marginLeft: 'auto' }}
+              >
+                Clear Filter
+              </button>
+            )}
+          </div>
+
           {/* Top Row: General Statistics */}
           <div className="admin-stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
             <div className="admin-stat-box">
@@ -2083,7 +2362,7 @@ const AdminDashboard = () => {
 
               {/* PASSENGERS VIEW */}
               {fleetEntity === 'passengers' && (
-                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'rgba(255,255,255,0.01)' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflowX: 'auto', background: 'rgba(255,255,255,0.01)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left' }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
@@ -2191,7 +2470,15 @@ const AdminDashboard = () => {
                           </div>
                           <div>
                             <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: 'var(--text-main)' }}>{d.name}</h4>
-                            <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: '800' }}>★ {d.rating || '5.0'} Rating</span>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px' }}>
+                              <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800' }}>★ {d.rating || '5.0'}</span>
+                              <span style={{ 
+                                background: (d.totalTrips || 0) >= 50 ? 'linear-gradient(45deg, #FFD700, #FDB931)' : (d.totalTrips || 0) >= 10 ? 'linear-gradient(45deg, #C0C0C0, #E5E4E2)' : 'linear-gradient(45deg, #cd7f32, #b87333)',
+                                color: '#000', fontSize: '10px', fontWeight: '900', borderRadius: '12px', padding: '2px 6px', textShadow: '0px 1px 1px rgba(255,255,255,0.3)', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
+                              }}>
+                                🏆 {(d.totalTrips || 0) >= 50 ? 'GOLD' : (d.totalTrips || 0) >= 10 ? 'SILVER' : 'BRONZE'}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
@@ -2309,7 +2596,7 @@ const AdminDashboard = () => {
               {filteredPassengers.length === 0 ? (
                 <p className="empty-state">No matching registered passengers found.</p>
               ) : (
-                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'rgba(255,255,255,0.01)' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflowX: 'auto', background: 'rgba(255,255,255,0.01)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left' }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
@@ -2339,6 +2626,141 @@ const AdminDashboard = () => {
                           <td style={{ padding: '16px', color: '#f59e0b' }}>₹{parseFloat(p.wallet?.taxPaid || 0).toFixed(2)}</td>
                         </tr>
                       ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: Staff & Management */}
+          {activeTab === 'staff' && (
+            <div className="tab-pane animate-fade-in">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div>
+                  <h2>Staff & Management</h2>
+                  <p className="tab-subtitle">Manage internal staff, managers and view their attendance.</p>
+                </div>
+                <Button variant="primary" onClick={() => setShowAddEmployeeModal(true)}>
+                  + Add Employee
+                </Button>
+              </div>
+
+              {employees.length === 0 ? (
+                <div className="empty-state">No employees found.</div>
+              ) : (
+                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflowX: 'auto', background: 'var(--card-bg)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg-hover)', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ padding: '16px' }}>Name</th>
+                        <th style={{ padding: '16px' }}>Role</th>
+                        <th style={{ padding: '16px' }}>Status</th>
+                        <th style={{ padding: '16px' }}>Today's Sign In</th>
+                        <th style={{ padding: '16px' }}>Today's Sign Out</th>
+                        <th style={{ padding: '16px', textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {employees.map(emp => {
+                        const today = new Date().toISOString().split('T')[0];
+                        const todayAttendance = emp.attendance?.find(a => a.date === today);
+                        return (
+                          <tr key={emp.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '16px' }}>
+                              <div style={{ fontWeight: 600 }}>{emp.name}</div>
+                              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>@{emp.username}</div>
+                              {emp.position && <div style={{ fontSize: '11px', color: 'var(--primary)', marginTop: '2px' }}>{emp.position}</div>}
+                            </td>
+                            <td style={{ padding: '16px', textTransform: 'capitalize' }}>
+                              <span style={{ 
+                                padding: '4px 8px', 
+                                borderRadius: '4px', 
+                                fontSize: '12px', 
+                                background: emp.role === 'manager' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                color: emp.role === 'manager' ? '#3b82f6' : '#10b981'
+                              }}>
+                                {emp.role}
+                              </span>
+                            </td>
+                            <td style={{ padding: '16px' }}>
+                              <span style={{ 
+                                padding: '4px 8px', 
+                                borderRadius: '4px', 
+                                fontSize: '12px', 
+                                background: emp.isBlocked ? 'rgba(239, 68, 68, 0.1)' : (emp.status === 'pending' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)'),
+                                color: emp.isBlocked ? '#ef4444' : (emp.status === 'pending' ? '#f59e0b' : '#10b981')
+                              }}>
+                                {emp.isBlocked ? 'Blocked' : (emp.status === 'pending' ? 'Pending' : 'Approved')}
+                              </span>
+                            </td>
+                            <td style={{ padding: '16px' }}>
+                              {todayAttendance?.signIn ? new Date(todayAttendance.signIn).toLocaleTimeString() : '-'}
+                            </td>
+                            <td style={{ padding: '16px' }}>
+                              {todayAttendance?.signOut ? new Date(todayAttendance.signOut).toLocaleTimeString() : '-'}
+                            </td>
+                            <td style={{ padding: '16px', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                <button 
+                                  onClick={() => setSelectedEmployeeForDetails(emp)}
+                                  style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                                >
+                                  View Details
+                                </button>
+                                {emp.status === 'pending' && !emp.isBlocked && (
+                                  <button 
+                                    onClick={async () => {
+                                      await fetch(`${API_BASE}/api/admin/employees/${emp.id}/approve`, { method: 'POST' });
+                                      fetchEmployees();
+                                    }}
+                                    style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                                  >
+                                    Approve
+                                  </button>
+                                )}
+                                {emp.status === 'approved' && !emp.isBlocked && (
+                                  <button 
+                                    onClick={async () => {
+                                      if (window.confirm('Block this employee?')) {
+                                        await fetch(`${API_BASE}/api/admin/employees/${emp.id}/block`, { method: 'POST' });
+                                        fetchEmployees();
+                                      }
+                                    }}
+                                    style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                                  >
+                                    Block
+                                  </button>
+                                )}
+                                {emp.isBlocked && (
+                                  <button 
+                                    onClick={async () => {
+                                      if (window.confirm('Unblock this employee?')) {
+                                        await fetch(`${API_BASE}/api/admin/employees/${emp.id}/unblock`, { method: 'POST' });
+                                        fetchEmployees();
+                                      }
+                                    }}
+                                    style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                                  >
+                                    Unblock
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={async () => {
+                                    if (window.confirm('Delete this employee?')) {
+                                      await fetch(`${API_BASE}/api/admin/employees/${emp.id}`, { method: 'DELETE' });
+                                      fetchEmployees();
+                                    }
+                                  }}
+                                  style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', padding: '6px' }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -2419,7 +2841,7 @@ const AdminDashboard = () => {
               {filteredLedgerDrivers.length === 0 ? (
                 <p className="empty-state">No matching driver ledger accounts found.</p>
               ) : (
-                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'rgba(255,255,255,0.01)' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflowX: 'auto', background: 'rgba(255,255,255,0.01)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left' }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
@@ -2634,7 +3056,7 @@ const AdminDashboard = () => {
               {filteredPendingPayments.length === 0 ? (
                 <p className="empty-state">No pending payment dues matching your criteria.</p>
               ) : (
-                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'rgba(255,255,255,0.01)' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflowX: 'auto', background: 'rgba(255,255,255,0.01)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left' }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
@@ -2715,6 +3137,146 @@ const AdminDashboard = () => {
             </div>
           )}
 
+          {/* TAB: Analytics */}
+          {activeTab === 'analytics' && (
+            <div className="tab-pane animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+              <div>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <TrendingUp size={24} color="var(--primary)" /> Business Visual Analytics
+                </h2>
+                <p className="tab-subtitle">Real-time revenue metrics, ride volume, and platform growth graphs.</p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+                  {/* Revenue Chart Mockup */}
+                  <div className="glass-card" style={{ padding: '20px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '16px' }}>Revenue (Last 7 Days)</h3>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '180px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                      {[40, 70, 50, 90, 60, 100, 80].map((h, i) => (
+                        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ width: '100%', height: `${h}%`, background: 'linear-gradient(to top, rgba(59, 130, 246, 0.2), #3b82f6)', borderRadius: '4px 4px 0 0', position: 'relative' }}>
+                            <span style={{ position: 'absolute', top: '-20px', left: '50%', transform: 'translateX(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>₹{h*120}</span>
+                          </div>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Day {i+1}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ride Volume Chart Mockup */}
+                  <div className="glass-card" style={{ padding: '20px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '16px' }}>Ride Volume (Last 7 Days)</h3>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '180px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                      {[30, 50, 45, 80, 55, 95, 75].map((h, i) => (
+                        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ width: '100%', height: `${h}%`, background: 'linear-gradient(to top, rgba(16, 185, 129, 0.2), #10b981)', borderRadius: '4px 4px 0 0', position: 'relative' }}>
+                            <span style={{ position: 'absolute', top: '-20px', left: '50%', transform: 'translateX(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>{h*2}</span>
+                          </div>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Day {i+1}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Metrics */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginTop: '20px' }}>
+                  <div className="glass-card" style={{ padding: '16px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Total Commission</span>
+                    <h3 style={{ margin: '8px 0 0 0', color: '#10b981', fontSize: '20px' }}>₹1,42,500</h3>
+                  </div>
+                  <div className="glass-card" style={{ padding: '16px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Active Drivers</span>
+                    <h3 style={{ margin: '8px 0 0 0', color: '#3b82f6', fontSize: '20px' }}>428</h3>
+                  </div>
+                  <div className="glass-card" style={{ padding: '16px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Completed Trips</span>
+                    <h3 style={{ margin: '8px 0 0 0', color: '#f59e0b', fontSize: '20px' }}>12,840</h3>
+                  </div>
+                  <div className="glass-card" style={{ padding: '16px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Avg Rating</span>
+                    <h3 style={{ margin: '8px 0 0 0', color: '#8b5cf6', fontSize: '20px' }}>4.82</h3>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Promotions */}
+          {activeTab === 'promotions' && (
+            <div className="tab-pane animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+              <div>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Tag size={24} color="var(--primary)" /> Promotions & Offer Codes
+                </h2>
+                <p className="tab-subtitle">Manage discount promo codes and promotional campaigns.</p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px', marginTop: '20px' }}>
+                  {/* Create New Promo */}
+                  <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 'bold' }}>Create New Promo</h3>
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', display: 'block' }}>Promo Code</label>
+                      <input type="text" className="input-field" placeholder="e.g. SUMMER50" style={{ textTransform: 'uppercase' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', display: 'block' }}>Discount Type</label>
+                      <select className="input-field">
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="fixed">Fixed Amount (INR)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', display: 'block' }}>Discount Value</label>
+                      <input type="number" className="input-field" placeholder="e.g. 50" />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', display: 'block' }}>Valid Until</label>
+                      <input type="date" className="input-field" />
+                    </div>
+                    <button type="button" style={{ background: 'var(--primary)', color: '#000', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => alert('New promo code created successfully!')}>Generate Code</button>
+                  </div>
+
+                  {/* Active Promos List */}
+                  <div className="glass-card" style={{ padding: '20px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '16px' }}>Active Promotional Codes</h3>
+                    <div className="table-responsive">
+                      <table className="admin-table">
+                        <thead>
+                          <tr>
+                            <th>Code</th>
+                            <th>Discount</th>
+                            <th>Usage</th>
+                            <th>Expires</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><strong style={{ color: 'var(--primary)', letterSpacing: '1px' }}>HUM50</strong></td>
+                            <td>50% OFF</td>
+                            <td>45/100</td>
+                            <td>Dec 31, 2026</td>
+                            <td><span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '12px' }}>Active</span></td>
+                            <td><button style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>Deactivate</button></td>
+                          </tr>
+                          <tr>
+                            <td><strong style={{ color: 'var(--primary)', letterSpacing: '1px' }}>WELCOME250</strong></td>
+                            <td>₹250 OFF</td>
+                            <td>912/Unlim</td>
+                            <td>Never</td>
+                            <td><span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '12px' }}>Active</span></td>
+                            <td><button style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>Deactivate</button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 4: System Settings */}
           {activeTab === 'settings' && (
             <div className="tab-pane" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
@@ -2785,6 +3347,60 @@ const AdminDashboard = () => {
                         <option value="online">Online (Accepting all users)</option>
                         <option value="maintenance">Maintenance (Admins Only)</option>
                       </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '20px', marginBottom: '20px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <MapPin size={18} color="#f59e0b" /> Dynamic Surge Geofencing Zones
+                    </h3>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                      Define specific zones that will override the global surge multiplier during high-demand events (e.g. Airports, Stadiums).
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px', background: 'rgba(245,158,11,0.05)', padding: '16px', borderRadius: '12px', border: '1px dashed #f59e0b' }}>
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '6px', display: 'block' }}>Active Zones</label>
+                        <div style={{ background: 'var(--bg-card)', padding: '8px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>
+                            <span>Kochi International Airport</span>
+                            <span style={{ color: '#ef4444', fontWeight: 'bold' }}>2.0x</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                            <span>Jawaharlal Nehru Stadium</span>
+                            <span style={{ color: '#ef4444', fontWeight: 'bold' }}>1.5x</span>
+                          </div>
+                        </div>
+                        <button type="button" style={{ width: '100%', marginTop: '12px', background: 'transparent', border: '1px solid #f59e0b', color: '#f59e0b', padding: '6px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>+ Add New Zone</button>
+                      </div>
+                      <div style={{ background: '#121624', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '12px', minHeight: '120px' }}>
+                        [Interactive Map Placeholder for Drawing Geo-Fences]
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* NUMBER MASKING (VOIP) SETTINGS */}
+                  <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '20px', marginBottom: '20px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Phone size={18} color="#3b82f6" /> Number Masking (VoIP) Privacy
+                    </h3>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                      Enforce number masking to protect passenger and driver privacy. When enabled, all calls route through the HUM PBX system.
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(59, 130, 246, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={voipMasking} 
+                            onChange={(e) => setVoipMasking(e.target.checked)} 
+                            style={{ width: '18px', height: '18px', accentColor: '#3b82f6', cursor: 'pointer' }}
+                          />
+                          Enable Global Call Masking
+                        </label>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        Status: <span style={{ color: voipMasking ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{voipMasking ? 'ACTIVE (Calls Routed via PBX)' : 'INACTIVE (Direct Dialing)'}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -2920,7 +3536,7 @@ const AdminDashboard = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: '24px', marginTop: '16px' }}>
                   {/* Category Table */}
-                  <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'rgba(255,255,255,0.01)' }}>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflowX: 'auto', background: 'rgba(255,255,255,0.01)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
                       <thead>
                         <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
@@ -2932,7 +3548,7 @@ const AdminDashboard = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {categories.map((cat) => (
+                        {(Array.isArray(categories) ? categories : []).map((cat) => (
                           <tr key={cat.id} style={{ borderBottom: '1px solid var(--border)' }} className="table-row-hover">
                             <td style={{ padding: '12px 16px', fontWeight: '600' }}>{cat.name}</td>
                             <td style={{ padding: '12px 16px', color: 'var(--text-main)' }}>{cat.maxPassengers} Passengers</td>
@@ -2948,7 +3564,7 @@ const AdminDashboard = () => {
                               <button 
                                 onClick={() => handleDeleteCategory(cat.id)}
                                 style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}
-                                disabled={categories.length <= 1} // Retain at least 1 category!
+                                disabled={(Array.isArray(categories) ? categories : []).length <= 1} // Retain at least 1 category!
                               >
                                 Delete
                               </button>
@@ -3032,7 +3648,139 @@ const AdminDashboard = () => {
             </div>
           )}
 
+          {/* TAB: Global Broadcasts */}
+          {activeTab === 'broadcasts' && (
+            <div className="admin-card fade-in">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', fontWeight: '800' }}>
+                <Send size={22} color="var(--primary)" /> Global Broadcasts
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '20px' }}>
+                Send global announcements, surge alerts, or promotional offers to all users or offline drivers.
+              </p>
+              
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px' }}>Broadcast to Everyone</h3>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <Send size={18} color="var(--primary)" />
+                  <input 
+                    type="text" 
+                    placeholder="Type a global offer or announcement..." 
+                    value={broadcastText}
+                    onChange={(e) => setBroadcastText(e.target.value)}
+                    style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-main, #000)', outline: 'none', fontSize: '13px', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}
+                  />
+                  <Button variant="primary" onClick={handleBroadcastAll} style={{ padding: '6px 16px', fontSize: '12px' }}>
+                    Broadcast
+                  </Button>
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '8px', color: '#ef4444' }}>High Demand Surge Alert</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                  Instantly push an alert to all offline drivers that there is high demand in the area.
+                </p>
+                <Button variant="primary" onClick={handleBroadcastToOffline} style={{ padding: '8px 16px', fontSize: '12px', background: '#ef4444', color: '#fff', border: 'none' }}>
+                  <AlertCircle size={14} style={{ marginRight: '6px' }} />
+                  Alert All Offline Drivers
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* TAB 5: Security Credentials */}
+          {activeTab === 'locations' && (
+            <div className="admin-card fade-in">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', fontWeight: '800' }}>
+                <MapPin size={22} color="var(--primary)" /> Business / Location Listings
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '20px' }}>
+                Add custom business names and coordinates (e.g. Lulu Mall, Kochi) to ensure they always appear when passengers search.
+              </p>
+
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px' }}>Add New Location</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', alignItems: 'end' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Business/Location Name</label>
+                    <input 
+                      type="text" 
+                      className="input-field" 
+                      placeholder="e.g. Lulu Mall, Kochi"
+                      value={newLocName}
+                      onChange={(e) => setNewLocName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Latitude</label>
+                    <input 
+                      type="number" 
+                      className="input-field" 
+                      placeholder="e.g. 10.0275"
+                      value={newLocLat}
+                      onChange={(e) => setNewLocLat(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Longitude</label>
+                    <input 
+                      type="number" 
+                      className="input-field" 
+                      placeholder="e.g. 76.3082"
+                      value={newLocLng}
+                      onChange={(e) => setNewLocLng(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ marginTop: '16px' }}
+                  onClick={async () => {
+                    if(!newLocName || !newLocLat || !newLocLng) return alert('Fill all fields');
+                    const res = await fetch(`${API_BASE}/api/locations`, {
+                      method: 'POST',
+                      headers: {'Content-Type': 'application/json'},
+                      body: JSON.stringify({ name: newLocName, lat: parseFloat(newLocLat), lng: parseFloat(newLocLng) })
+                    });
+                    if(res.ok) {
+                      setNewLocName(''); setNewLocLat(''); setNewLocLng('');
+                      fetchLocations();
+                      alert('Location added!');
+                    } else {
+                      const data = await res.json();
+                      alert(data.message || data.error || 'Error adding location');
+                    }
+                  }}
+                >
+                  <MapPin size={16} /> Add to Map Registry
+                </button>
+              </div>
+
+              <div className="table-responsive">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Location Name</th>
+                      <th>Coordinates (Lat, Lng)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {businessListings.length === 0 ? (
+                      <tr><td colSpan="2" style={{ textAlign: 'center', padding: '20px' }}>No custom locations added.</td></tr>
+                    ) : (
+                      businessListings.map((loc, i) => (
+                        <tr key={i}>
+                          <td style={{ fontWeight: '700' }}>{loc.name}</td>
+                          <td style={{ fontFamily: 'monospace' }}>{loc.lat}, {loc.lng}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'profile' && (
             <div className="tab-pane">
               <h2>Admin Credentials Control</h2>
@@ -3062,23 +3810,24 @@ const AdminDashboard = () => {
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Current Security Password</label>
+                    <label>Current Security Password (Required to save changes)</label>
                     <input 
                       type="password" 
                       className="input-field" 
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)} 
                       required
+                      placeholder="Enter current password to verify"
                     />
                   </div>
                   <div className="form-group">
-                    <label>New Security Password</label>
+                    <label>New Security Password (Optional)</label>
                     <input 
                       type="password" 
                       className="input-field" 
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)} 
-                      required
+                      placeholder="Leave blank to keep current"
                     />
                   </div>
                 </div>
@@ -3264,6 +4013,139 @@ const AdminDashboard = () => {
                 <Send size={16} /> Send
               </Button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========== ADD EMPLOYEE MODAL ========== */}
+      {showAddEmployeeModal && (
+        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '24px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0 }}>Add New Employee</h3>
+              <button onClick={() => setShowAddEmployeeModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            <form onSubmit={handleAddEmployee} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Name</label>
+                <input required type="text" className="input-field" value={newEmployee.name} onChange={e => setNewEmployee({...newEmployee, name: e.target.value})} style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Username</label>
+                <input required type="text" className="input-field" value={newEmployee.username} onChange={e => setNewEmployee({...newEmployee, username: e.target.value})} style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Password</label>
+                <input required type="password" className="input-field" value={newEmployee.password} onChange={e => setNewEmployee({...newEmployee, password: e.target.value})} style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Position</label>
+                <input required type="text" className="input-field" value={newEmployee.position} onChange={e => setNewEmployee({...newEmployee, position: e.target.value})} style={{ width: '100%' }} placeholder="e.g. Area Manager, Support Staff" />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Role</label>
+                <select className="input-field" value={newEmployee.role} onChange={e => setNewEmployee({...newEmployee, role: e.target.value})} style={{ width: '100%' }}>
+                  <option value="staff">Staff</option>
+                  <option value="manager">Manager</option>
+                </select>
+              </div>
+              <Button type="submit" variant="primary" style={{ marginTop: '8px' }}>Create Account</Button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========== EMPLOYEE DETAILS MODAL ========== */}
+      {selectedEmployeeForDetails && (
+        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '20px' }}>{selectedEmployeeForDetails.name}</h3>
+                <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '14px' }}>
+                  {selectedEmployeeForDetails.role} | {selectedEmployeeForDetails.position} | @{selectedEmployeeForDetails.username}
+                </p>
+              </div>
+              <button onClick={() => setSelectedEmployeeForDetails(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              {/* Bank Details */}
+              <div style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <h4 style={{ margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <DollarSign size={18} color="var(--primary)" /> Bank Account Details
+                </h4>
+                {selectedEmployeeForDetails.bankDetails ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Bank Name</div>
+                      <div style={{ fontWeight: '500' }}>{selectedEmployeeForDetails.bankDetails.bankName || '-'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Account Number</div>
+                      <div style={{ fontWeight: '500' }}>{selectedEmployeeForDetails.bankDetails.accountNo || '-'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>IFSC Code</div>
+                      <div style={{ fontWeight: '500' }}>{selectedEmployeeForDetails.bankDetails.ifscCode || '-'}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>No bank details provided.</div>
+                )}
+              </div>
+
+              {/* KYC Documents */}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <h4 style={{ margin: '0 0 12px 0', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>KYC Documents</h4>
+                {selectedEmployeeForDetails.documents ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>Aadhaar Card (Front)</div>
+                      {selectedEmployeeForDetails.documents.aadhaarFront ? (
+                         <img src={selectedEmployeeForDetails.documents.aadhaarFront} alt="Aadhaar Front" style={{ width: '100%', height: '150px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
+                      ) : <div style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', borderRadius: '4px' }}>Not Uploaded</div>}
+                    </div>
+
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>Aadhaar Card (Back)</div>
+                      {selectedEmployeeForDetails.documents.aadhaarBack ? (
+                         <img src={selectedEmployeeForDetails.documents.aadhaarBack} alt="Aadhaar Back" style={{ width: '100%', height: '150px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
+                      ) : <div style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', borderRadius: '4px' }}>Not Uploaded</div>}
+                    </div>
+
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>PAN Card (Front)</div>
+                      {selectedEmployeeForDetails.documents.panFront ? (
+                         <img src={selectedEmployeeForDetails.documents.panFront} alt="PAN Front" style={{ width: '100%', height: '150px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
+                      ) : <div style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', borderRadius: '4px' }}>Not Uploaded</div>}
+                    </div>
+
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>PAN Card (Back)</div>
+                      {selectedEmployeeForDetails.documents.panBack ? (
+                         <img src={selectedEmployeeForDetails.documents.panBack} alt="PAN Back" style={{ width: '100%', height: '150px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
+                      ) : <div style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', borderRadius: '4px' }}>Not Uploaded</div>}
+                    </div>
+
+                    <div style={{ gridColumn: '1 / -1', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>Bank Proof (Cancelled Check / Passbook)</div>
+                      {selectedEmployeeForDetails.documents.bankProof ? (
+                         <img src={selectedEmployeeForDetails.documents.bankProof} alt="Bank Proof" style={{ width: '100%', height: '200px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
+                      ) : <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', borderRadius: '4px' }}>Not Uploaded</div>}
+                    </div>
+
+                  </div>
+                ) : (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>No documents provided.</div>
+                )}
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+              <Button variant="outline" onClick={() => setSelectedEmployeeForDetails(null)}>Close</Button>
+            </div>
           </div>
         </div>
       )}

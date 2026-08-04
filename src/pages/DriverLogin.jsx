@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
+import { auth, googleProvider } from '../firebase';
+import { signInWithPopup } from 'firebase/auth';
 import Button from '../components/Button';
 import './Auth.css';
 
@@ -11,11 +13,22 @@ const DriverLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
-  const getBackendUrl = () => {
-    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')) {
-      return 'http://localhost:5000';
+  const getBackendUrl = () => { return 'https://server-ashen-beta.vercel.app'; };
+
+  const handleGoogleAuth = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      localStorage.setItem('driverEmail', user.email);
+      localStorage.setItem('driverName', user.displayName || 'Driver');
+      
+      // Proceed directly for now
+      navigate('/driver');
+    } catch (err) {
+      console.error(err);
+      setError('Google Sign-In was unsuccessful: ' + err.message);
     }
-    return import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
   };
 
   const handleSubmit = async (e) => {
@@ -120,6 +133,37 @@ const DriverLogin = () => {
           <Button variant="primary" type="submit" className="full-width" style={{ marginTop: '8px' }}>
             Login as Driver
           </Button>
+
+          <div style={{ display: 'flex', alignItems: 'center', margin: '8px 0' }}>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border-color, rgba(255, 255, 255, 0.1))' }}></div>
+            <span style={{ padding: '0 12px', color: 'var(--text-muted)', fontSize: '13px', fontWeight: '500' }}>OR</span>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border-color, rgba(255, 255, 255, 0.1))' }}></div>
+          </div>
+
+          <button 
+            type="button" 
+            className="input-field" 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '12px', 
+              background: 'white', 
+              color: '#333', 
+              fontWeight: '600',
+              cursor: 'pointer',
+              border: 'none',
+              padding: '12px',
+              transition: 'all 0.2s ease',
+              marginTop: '4px'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+            onClick={handleGoogleAuth}
+          >
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: '20px', height: '20px' }} />
+            Sign in with Google
+          </button>
         </form>
         <div className="auth-footer">
           New to HUM Fleet? <Link to="/driver/signup" className="auth-link">Apply to Drive</Link>

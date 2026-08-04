@@ -1,0 +1,23 @@
+const fs = require('fs');
+const path = require('path');
+
+function replaceInDir(dir) {
+  if (!fs.existsSync(dir)) return;
+  const files = fs.readdirSync(dir);
+  for (const file of files) {
+    const fullPath = path.join(dir, file);
+    if (fs.statSync(fullPath).isDirectory()) {
+      replaceInDir(fullPath);
+    } else if (fullPath.endsWith('.jsx') || fullPath.endsWith('.js')) {
+      let content = fs.readFileSync(fullPath, 'utf8');
+      if (content.includes('http://localhost:5000')) {
+        content = content.replace(/http:\/\/localhost:5000/g, 'https://hum-fleet-backend.loca.lt');
+        fs.writeFileSync(fullPath, content);
+        console.log('Updated', fullPath);
+      }
+    }
+  }
+}
+
+replaceInDir(path.join(__dirname, 'src'));
+replaceInDir(path.join(__dirname, 'admin-cms', 'src'));

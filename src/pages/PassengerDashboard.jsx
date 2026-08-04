@@ -4,9 +4,9 @@ import { MapPin, Navigation, Car, AlertCircle, Phone, CheckCircle, DollarSign, W
 import Button from '../components/Button';
 import './Dashboard.css';
 
-const API_BASE = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
+const API_BASE = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.protocol !== 'capacitor:')
   ? 'http://localhost:5000'
-  : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000');
+  : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
 
 
 const KERALA_LOCATIONS = [

@@ -1,0 +1,20 @@
+{
+  "appId": "com.humfleet.main",
+  "appName": " HUM Fleet",
+  "webDir": "dist",
+  "server": {
+    "cleartext": true
+  },
+  "android": {
+    "backgroundColor": "#0b0f17",
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": false,
+    "overScrollMode": "never"
+  },
+  "plugins": {
+    "Keyboard": {
+      "resize": "none",
+      "resizeOnFullScreen": false
+    }
+  }
+}

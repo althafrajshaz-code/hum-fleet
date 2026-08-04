@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
+import { useGoogleLogin } from '@react-oauth/google';
 import Button from '../components/Button';
 import './Auth.css';
 
@@ -14,6 +15,34 @@ const PassengerSignup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState('');
 
+  const handleGoogleAuth = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const getBackendUrl = () => { return 'https://server-ashen-beta.vercel.app'; };
+        const response = await fetch(`${getBackendUrl()}/api/passengers/google-auth`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: tokenResponse.access_token })
+        });
+
+        if (response.ok) {
+          const user = await response.json();
+          localStorage.setItem('passengerEmail', user.email);
+          localStorage.setItem('passengerName', user.name);
+          if (user.verificationCode) localStorage.setItem('passengerVerificationCode', user.verificationCode);
+          navigate('/passenger');
+        } else {
+          const data = await response.json();
+          setValidationError(data.error || 'Google Authentication failed.');
+        }
+      } catch (err) {
+        console.error(err);
+        setValidationError('Failed to connect to backend server.');
+      }
+    },
+    onError: () => setValidationError('Google Sign-Up was unsuccessful.'),
+  });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) {
@@ -22,12 +51,7 @@ const PassengerSignup = () => {
     }
     setValidationError('');
 
-    const getBackendUrl = () => {
-      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')) {
-        return 'http://localhost:5000';
-      }
-      return import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-    };
+    const getBackendUrl = () => { return 'https://server-ashen-beta.vercel.app'; };
 
     try {
       const response = await fetch(`${getBackendUrl()}/api/passengers/signup`, {
@@ -121,7 +145,7 @@ const PassengerSignup = () => {
                 placeholder="98765 43210" 
                 pattern="[0-9]{10}"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 required 
               />
             </div>
@@ -204,6 +228,59 @@ const PassengerSignup = () => {
           <Button variant="primary" type="submit" className="full-width" style={{ marginTop: '8px' }}>
             Sign Up
           </Button>
+
+          <div style={{ display: 'flex', alignItems: 'center', margin: '8px 0' }}>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border-color, rgba(255, 255, 255, 0.1))' }}></div>
+            <span style={{ padding: '0 12px', color: 'var(--text-muted)', fontSize: '13px', fontWeight: '500' }}>OR</span>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border-color, rgba(255, 255, 255, 0.1))' }}></div>
+          </div>
+
+          <button 
+            type="button" 
+            className="input-field" 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '12px', 
+              background: 'white', 
+              color: '#333', 
+              fontWeight: '600',
+              cursor: 'pointer',
+              border: 'none',
+              padding: '12px',
+              transition: 'all 0.2s ease',
+              marginTop: '4px'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+            onClick={() => {
+              const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE';
+              if (googleClientId === 'YOUR_GOOGLE_CLIENT_ID_HERE' || !googleClientId) {
+                // Mock flow for testing
+                const getBackendUrl = () => { return 'https://server-ashen-beta.vercel.app'; };
+                fetch(`${getBackendUrl()}/api/passengers/google-auth`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ token: 'mock_token' })
+                })
+                .then(res => res.json())
+                .then(user => {
+                  if (user.error) throw new Error(user.error);
+                  localStorage.setItem('passengerEmail', user.email);
+                  localStorage.setItem('passengerName', user.name);
+                  if (user.verificationCode) localStorage.setItem('passengerVerificationCode', user.verificationCode);
+                  navigate('/passenger');
+                })
+                .catch(err => setValidationError(err.message || 'Mock Authentication failed.'));
+              } else {
+                handleGoogleAuth();
+              }
+            }}
+          >
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: '20px', height: '20px' }} />
+            Sign up with Google
+          </button>
         </form>
         <div className="auth-footer">
           Already have an account? <Link to="/passenger/login" className="auth-link">Login</Link>

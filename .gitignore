@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Android build outputs
+*.aab
+*.apk
+*.keystore
