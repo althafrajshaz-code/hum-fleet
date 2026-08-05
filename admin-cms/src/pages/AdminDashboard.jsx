@@ -33,7 +33,7 @@ const AdminDashboard = () => {
 
 
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('adminActiveTab') || 'approvals');
-  const [activeSOSAlert, setActiveSOSAlert] = useState({ active: true, driverName: 'Rajesh Kumar', phone: '+91 9876543210', location: '12.9716, 77.5946' }); // Mocked active SOS for demonstration
+  const [activeSOSAlert, setActiveSOSAlert] = useState(null);
   const [drivers, setDrivers] = useState([]);
   const [passengers, setPassengers] = useState([]);
   const [employees, setEmployees] = useState([]);
