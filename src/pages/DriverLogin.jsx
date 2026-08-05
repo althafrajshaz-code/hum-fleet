@@ -6,14 +6,20 @@ import { signInWithPopup } from 'firebase/auth';
 import Button from '../components/Button';
 import './Auth.css';
 
+const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
+  ? 'https://hum-fleet-backend.loca.lt'
+  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
+    ? 'http://localhost:5000'
+    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.onrender.com');
+
+const getBackendUrl = () => { return API_BASE; };
+
 const DriverLogin = () => {
   const navigate = useNavigate();
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-
-  const getBackendUrl = () => { return 'https://server-ashen-beta.vercel.app'; };
 
   const handleGoogleAuth = async () => {
     try {

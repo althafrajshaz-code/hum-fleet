@@ -13,7 +13,11 @@ const MOCK_PHOTOS = {
   document: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600'
 };
 
-const API_BASE = 'https://server-ashen-beta.vercel.app';
+const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
+  ? 'https://hum-fleet-backend.loca.lt'
+  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+    ? 'http://localhost:5000'
+    : 'https://server-ashen-beta.onrender.com';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();

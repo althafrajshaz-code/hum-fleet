@@ -32,7 +32,7 @@ const LandingPage = () => {
                 <button onClick={() => navigate('/passenger/signup')} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '700', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline', marginTop: '6px' }}>
                   Create Account
                 </button>
-                <a href="https://server-ashen-beta.vercel.app/apks/HUM_Passenger.apk?v=2.0" download style={{ color: '#10b981', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px', padding: '8px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px' }}>
+                <a href="https://server-ashen-beta.onrender.com/apks/HUM_Passenger.apk?v=2.0" download style={{ color: '#10b981', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px', padding: '8px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px' }}>
                   <Download size={16} /> Download Passenger App
                 </a>
               </div>
@@ -47,7 +47,7 @@ const LandingPage = () => {
                 <button onClick={() => navigate('/driver/signup')} style={{ background: 'none', border: 'none', color: 'var(--secondary)', fontWeight: '700', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline', marginTop: '6px' }}>
                   Apply to Drive
                 </button>
-                <a href="https://server-ashen-beta.vercel.app/apks/HUM_Driver.apk?v=2.0" download style={{ color: '#3b82f6', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px', padding: '8px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px' }}>
+                <a href="https://server-ashen-beta.onrender.com/apks/HUM_Driver.apk?v=2.0" download style={{ color: '#3b82f6', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px', padding: '8px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px' }}>
                   <Download size={16} /> Download Driver App
                 </a>
               </div>

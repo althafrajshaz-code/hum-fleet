@@ -5,7 +5,7 @@ const NEW_API_BASE = `const API_BASE = (typeof window !== 'undefined' && window.
   ? 'https://hum-fleet-backend.loca.lt'
   : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
     ? 'http://localhost:5000'
-    : 'https://hum-fleet-backend.onrender.com';`;
+    : 'https://server-ashen-beta.onrender.com';`;
 
 const regexAPI = /const API_BASE = [\s\S]*?(?=(?:\r?\n){2,}|const |let |var |function |export )/m;
 
@@ -30,9 +30,14 @@ const files = [
   'd:/Althaf/hum/admin-cms/src/pages/StaffDashboard.jsx',
   'd:/Althaf/hum/admin-cms/src/pages/StaffLogin.jsx',
   'd:/Althaf/hum/admin-cms/src/pages/StaffRegister.jsx',
-  'd:/Althaf/hum/src/pages/AdminDashboard.jsx',
   'd:/Althaf/hum/src/pages/DriverDashboard.jsx',
+  'd:/Althaf/hum/src/pages/DriverLogin.jsx',
+  'd:/Althaf/hum/src/pages/DriverSignup.jsx',
   'd:/Althaf/hum/src/pages/PassengerDashboard.jsx',
+  'd:/Althaf/hum/src/pages/PassengerLogin.jsx',
+  'd:/Althaf/hum/src/pages/PassengerSignup.jsx',
+  'd:/Althaf/hum/src/pages/PublicTracking.jsx',
+  'd:/Althaf/hum/src/components/RazorpayCheckout.jsx',
 ];
 
 files.forEach(patchFile);

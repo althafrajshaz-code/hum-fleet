@@ -6,6 +6,14 @@ import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
 import Button from '../components/Button';
 import './Auth.css';
 
+const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
+  ? 'https://hum-fleet-backend.loca.lt'
+  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
+    ? 'http://localhost:5000'
+    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.onrender.com');
+
+const getBackendUrl = () => { return API_BASE; };
+
 const PassengerLogin = () => {
   const navigate = useNavigate();
   const [loginId, setLoginId] = useState('');
@@ -32,9 +40,7 @@ const PassengerLogin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
     try {
-      const getBackendUrl = () => { return 'https://server-ashen-beta.vercel.app'; };
       const response = await fetch(`${getBackendUrl()}/api/passengers/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

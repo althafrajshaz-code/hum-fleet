@@ -5,6 +5,14 @@ import { useGoogleLogin } from '@react-oauth/google';
 import Button from '../components/Button';
 import './Auth.css';
 
+const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
+  ? 'https://hum-fleet-backend.loca.lt'
+  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
+    ? 'http://localhost:5000'
+    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.onrender.com');
+
+const getBackendUrl = () => { return API_BASE; };
+
 const PassengerSignup = () => {
   const navigate = useNavigate();
   const [name, setName] = useState('');
@@ -18,7 +26,6 @@ const PassengerSignup = () => {
   const handleGoogleAuth = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
-        const getBackendUrl = () => { return 'https://server-ashen-beta.vercel.app'; };
         const response = await fetch(`${getBackendUrl()}/api/passengers/google-auth`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -50,8 +57,6 @@ const PassengerSignup = () => {
       return;
     }
     setValidationError('');
-
-    const getBackendUrl = () => { return 'https://server-ashen-beta.vercel.app'; };
 
     try {
       const response = await fetch(`${getBackendUrl()}/api/passengers/signup`, {
@@ -258,7 +263,6 @@ const PassengerSignup = () => {
               const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE';
               if (googleClientId === 'YOUR_GOOGLE_CLIENT_ID_HERE' || !googleClientId) {
                 // Mock flow for testing
-                const getBackendUrl = () => { return 'https://server-ashen-beta.vercel.app'; };
                 fetch(`${getBackendUrl()}/api/passengers/google-auth`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },

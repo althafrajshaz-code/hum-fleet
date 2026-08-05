@@ -1,12 +1,23 @@
 {
-  "rewrites": [
+  "version": 2,
+  "builds": [
     {
-      "source": "/api/(.*)",
-      "destination": "/index.js"
+      "src": "index.js",
+      "use": "@vercel/node"
     },
     {
-      "source": "/",
-      "destination": "/index.js"
+      "src": "apks/*",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/apks/(.*)",
+      "dest": "/apks/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "index.js"
     }
   ]
 }

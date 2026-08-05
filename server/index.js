@@ -1,11 +1,27 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
 const path = require('path');
+const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const DATA_FILE = path.join(__dirname, 'data_store.json');
+// MongoDB Schema — single document persistence pattern
+const AppStateSchema = new mongoose.Schema({
+  _id: { type: String, default: 'humFleetState' },
+  drivers: { type: mongoose.Schema.Types.Mixed, default: [] },
+  passengers: { type: mongoose.Schema.Types.Mixed, default: [] },
+  activeRides: { type: mongoose.Schema.Types.Mixed, default: [] },
+  settings: { type: mongoose.Schema.Types.Mixed, default: {} },
+  vehicleCategories: { type: mongoose.Schema.Types.Mixed, default: [] },
+  adminCredentials: { type: mongoose.Schema.Types.Mixed, default: {} },
+  driverMessages: { type: mongoose.Schema.Types.Mixed, default: {} },
+  passengerMessages: { type: mongoose.Schema.Types.Mixed, default: {} },
+  rideMessages: { type: mongoose.Schema.Types.Mixed, default: {} },
+  dynamicLocations: { type: mongoose.Schema.Types.Mixed, default: [] }
+}, { timestamps: true, minimize: false });
+
+const AppState = mongoose.model('AppState', AppStateSchema);
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -170,31 +186,37 @@ let passengerMessages = {};
 let rideMessages = {};
 let dynamicLocations = []; // Store for newly searched/added locations by passengers
 
-// Persistence Helpers
+// Persistence Helpers — MongoDB backed with debounce
+let _saveTimer = null;
 function saveData() {
-  try {
-    const data = { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations };
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-  } catch (err) {
-    console.error('Failed to save data_store:', err);
-  }
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(async () => {
+    try {
+      await AppState.findOneAndUpdate(
+        { _id: 'humFleetState' },
+        { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations },
+        { upsert: true, new: true }
+      );
+    } catch (err) {
+      console.error('Failed to save data to MongoDB:', err);
+    }
+  }, 300);
 }
 
-function loadData() {
-  if (fs.existsSync(DATA_FILE)) {
-    try {
-      const raw = fs.readFileSync(DATA_FILE, 'utf8');
-      const parsed = JSON.parse(raw);
+async function loadData() {
+  try {
+    const doc = await AppState.findById('humFleetState').lean();
+    if (doc) {
       let needsSave = false;
 
-      if (parsed.drivers) {
-        drivers = parsed.drivers;
+      if (doc.drivers) {
+        drivers = doc.drivers;
       } else {
         needsSave = true;
       }
 
-      if (parsed.passengers) {
-        passengers = parsed.passengers;
+      if (doc.passengers) {
+        passengers = doc.passengers;
         // Retroactively assign Customer ID (verificationCode) to existing passengers
         passengers.forEach(p => {
           if (!p.verificationCode) {
@@ -206,69 +228,81 @@ function loadData() {
         needsSave = true;
       }
 
-      if (parsed.activeRides) {
-        activeRides = parsed.activeRides;
+      if (doc.activeRides) {
+        activeRides = doc.activeRides;
       } else {
         needsSave = true;
       }
 
-      if (parsed.settings) {
-        settings = { ...settings, ...parsed.settings };
+      if (doc.settings) {
+        settings = { ...settings, ...doc.settings };
       } else {
         needsSave = true;
       }
 
-      if (parsed.vehicleCategories) {
-        vehicleCategories = parsed.vehicleCategories;
+      if (doc.vehicleCategories) {
+        vehicleCategories = doc.vehicleCategories;
       } else {
         needsSave = true;
       }
 
-      if (parsed.adminCredentials) {
-        adminCredentials = parsed.adminCredentials;
+      if (doc.adminCredentials) {
+        adminCredentials = doc.adminCredentials;
       } else {
         needsSave = true;
       }
 
-      if (parsed.driverMessages) {
-        driverMessages = parsed.driverMessages;
+      if (doc.driverMessages) {
+        driverMessages = doc.driverMessages;
       } else {
         needsSave = true;
       }
 
-      if (parsed.passengerMessages) {
-        passengerMessages = parsed.passengerMessages;
+      if (doc.passengerMessages) {
+        passengerMessages = doc.passengerMessages;
       } else {
         needsSave = true;
       }
 
-      if (parsed.rideMessages) {
-        rideMessages = parsed.rideMessages;
+      if (doc.rideMessages) {
+        rideMessages = doc.rideMessages;
       } else {
         needsSave = true;
       }
 
-      if (parsed.dynamicLocations) {
-        dynamicLocations = parsed.dynamicLocations;
+      if (doc.dynamicLocations) {
+        dynamicLocations = doc.dynamicLocations;
       } else {
         needsSave = true;
       }
 
-      console.log('Successfully restored HUM Fleet database state from data_store.json');
+      console.log('Successfully restored HUM Fleet database state from MongoDB');
       if (needsSave) {
         saveData();
-        console.log('Synchronized missing keys back to data_store.json');
+        console.log('Synchronized missing keys back to MongoDB');
       }
-    } catch (err) {
-      console.error('Failed to load data_store:', err);
+    } else {
+      saveData();
+      console.log('Created fresh MongoDB state with default initial data.');
     }
-  } else {
-    saveData();
-    console.log('Created fresh data_store.json with default initial state.');
+  } catch (err) {
+    console.error('Failed to load data from MongoDB:', err);
   }
 }
 
-loadData();
+// Connect to MongoDB, load state, then start server
+mongoose.connect(process.env.MONGODB_URI)
+  .then(async () => {
+    console.log('Connected to MongoDB');
+    await loadData();
+    app.listen(PORT, () => {
+      console.log(`HUM Fleet API Server running on port ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('MongoDB connection failed:', err);
+    process.exit(1);
+  });
 
 // Haversine formula to compute distance in KM
 function getDistance(lat1, lon1, lat2, lon2) {
@@ -2100,8 +2134,4 @@ app.post('/api/locations', (req, res) => {
   } else {
     res.json({ message: 'Location already exists' });
   }
-});
-
-app.listen(PORT, () => {
-  console.log(`HUM Fleet API Server running on port ${PORT}`);
 });

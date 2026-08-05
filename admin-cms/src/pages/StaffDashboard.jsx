@@ -4,7 +4,11 @@ import { LogOut, CheckCircle, Clock, UserCircle } from 'lucide-react';
 import Button from '../components/Button';
 import './AdminDashboard.css';
 
-const API_BASE = 'https://server-ashen-beta.vercel.app';
+const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
+  ? 'https://hum-fleet-backend.loca.lt'
+  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+    ? 'http://localhost:5000'
+    : 'https://server-ashen-beta.onrender.com';
 
 const StaffDashboard = () => {
   const navigate = useNavigate();
