@@ -171,22 +171,8 @@ const DriverSignup = () => {
     }
 
     if (step === 2) {
-      try {
-        const response = await fetch(`${getBackendUrl()}/api/settings`);
-        if (response.ok) {
-          const settingsData = await response.json();
-          if (parseFloat(ratePerKm) < parseFloat(settingsData.ratePerKm)) {
-            alert(`Your custom Rate/KM cannot be less than the platform minimum of ₹${settingsData.ratePerKm}!`);
-            return;
-          }
-          if (parseFloat(ratePerHour) < parseFloat(settingsData.minRatePerHour)) {
-            alert(`Your custom Rate/Hour cannot be less than the platform minimum of ₹${settingsData.minRatePerHour}!`);
-            return;
-          }
-        }
-      } catch (err) {
-        console.error("Failed to validate rate limits:", err);
-      }
+      // Step 2 validation logic if needed (e.g. check plate number)
+      // Note: Rate validation has been removed from signup as drivers inherit category defaults.
     }
 
     setStep(prev => prev + 1);
