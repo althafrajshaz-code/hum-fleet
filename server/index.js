@@ -2117,30 +2117,27 @@ app.get('/api/locations', (req, res) => {
   res.json(dynamicLocations);
 });
 
-// Proxy Google Maps API
+// Proxy OpenStreetMap Nominatim API to avoid browser CORS/User-Agent blocking
 app.get('/api/geocode', async (req, res) => {
   const query = req.query.q;
   if (!query) return res.json([]);
   
   try {
-    // We use the provided Google API Key
-    const apiKey = 'AIzaSyCpXvo_52Na7w7cZCPhstuPzwVzKFzRgdU';
-    const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query + ' in Kerala, India')}&key=${apiKey}`;
+    // Upgraded limit to 50 (maximum allowed usually) to maximize results for hospitals, hotels, etc.
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', India')}&format=json&addressdetails=1&limit=50&countrycodes=in`;
+    // We MUST send a custom User-Agent to satisfy OpenStreetMap Nominatim's strict usage policy
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Hum-Taxi-App-Backend/1.0 (Contact: admin@hum.local)',
+        'Accept': 'application/json'
+      }
+    });
     
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data.results) {
-      // Format to match what the frontend expects (Nominatim format)
-      const formattedResults = data.results.map(place => ({
-        display_name: `${place.name}, ${place.formatted_address}`,
-        lat: String(place.geometry.location.lat),
-        lon: String(place.geometry.location.lng)
-      }));
-      res.json(formattedResults);
+    if (response.ok) {
+      const data = await response.json();
+      res.json(data);
     } else {
-      console.error('Google Maps Error:', data.status, data.error_message);
-      res.json([]);
+      res.status(response.status).json({ error: 'Geocoding failed' });
     }
   } catch (error) {
     console.error('Geocoding Proxy Error:', error);
