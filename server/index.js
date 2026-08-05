@@ -2137,3 +2137,11 @@ app.post('/api/locations', (req, res) => {
     res.json({ message: 'Location already exists' });
   }
 });
+
+app.get('/api/admin/clear-all', (req, res) => {
+  drivers = [];
+  passengers = [];
+  saveData();
+  res.json({ message: 'All drivers and passengers have been cleared successfully.' });
+});
+
