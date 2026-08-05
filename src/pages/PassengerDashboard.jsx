@@ -885,14 +885,14 @@ const PassengerDashboard = () => {
       }
 
       // Save custom locations to backend mapping
-      if (pickupCoords) {
+      if (pickupCoords && pickup && pickup !== 'Current Location' && !pickup.match(/^[0-9.-]+,\s*[0-9.-]+$/)) {
         fetch(`${API_BASE}/api/locations`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: pickup, lat: pickupCoords.lat, lng: pickupCoords.lng })
         }).catch(() => {});
       }
-      if (dropoffCoords) {
+      if (dropoffCoords && dropoff && dropoff !== 'Current Location' && !dropoff.match(/^[0-9.-]+,\s*[0-9.-]+$/)) {
         fetch(`${API_BASE}/api/locations`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
