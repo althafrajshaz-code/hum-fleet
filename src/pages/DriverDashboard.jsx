@@ -3272,6 +3272,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                     <div>
                       <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Bank Name</label>
                       <input
+                        list="bank-names"
                         type="text"
                         className="input-field"
                         placeholder={driverDetails?.bankName || 'e.g. State Bank of India'}
@@ -3279,6 +3280,50 @@ You can only accept prepaid trips until your balance is cleared.`);
                         onChange={(e) => setBankName(e.target.value)}
                         style={{ padding: '10px 14px', fontSize: '13px', width: '100%' }}
                       />
+                      <datalist id="bank-names">
+                        <option value="State Bank of India (SBI)" />
+                        <option value="HDFC Bank" />
+                        <option value="ICICI Bank" />
+                        <option value="Punjab National Bank (PNB)" />
+                        <option value="Axis Bank" />
+                        <option value="Canara Bank" />
+                        <option value="Bank of Baroda" />
+                        <option value="Union Bank of India" />
+                        <option value="Bank of India" />
+                        <option value="Indian Bank" />
+                        <option value="Central Bank of India" />
+                        <option value="Indian Overseas Bank" />
+                        <option value="UCO Bank" />
+                        <option value="Bank of Maharashtra" />
+                        <option value="Punjab & Sind Bank" />
+                        <option value="Kotak Mahindra Bank" />
+                        <option value="IndusInd Bank" />
+                        <option value="Yes Bank" />
+                        <option value="IDBI Bank" />
+                        <option value="Federal Bank" />
+                        <option value="South Indian Bank" />
+                        <option value="Karur Vysya Bank" />
+                        <option value="City Union Bank" />
+                        <option value="Bandhan Bank" />
+                        <option value="IDFC FIRST Bank" />
+                        <option value="RBL Bank" />
+                        <option value="Jammu & Kashmir Bank" />
+                        <option value="Karnataka Bank" />
+                        <option value="Tamilnad Mercantile Bank" />
+                        <option value="Dhanlaxmi Bank" />
+                        <option value="CSB Bank" />
+                        <option value="Saraswat Bank" />
+                        <option value="Equitas Small Finance Bank" />
+                        <option value="Ujjivan Small Finance Bank" />
+                        <option value="AU Small Finance Bank" />
+                        <option value="Paytm Payments Bank" />
+                        <option value="Airtel Payments Bank" />
+                        <option value="India Post Payments Bank" />
+                        <option value="Jio Payments Bank" />
+                        <option value="Standard Chartered Bank" />
+                        <option value="Citi Bank" />
+                        <option value="HSBC Bank" />
+                      </datalist>
                     </div>
 
                     <div>
