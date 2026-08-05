@@ -28,6 +28,19 @@ const DriverSignup = () => {
   const [licenseNumber, setLicenseNumber] = useState('');
   const [isDriverOnly, setIsDriverOnly] = useState(false);
   const [languages, setLanguages] = useState([]);
+  const [baseLocationName, setBaseLocationName] = useState('');
+  const [baseLocationCoords, setBaseLocationCoords] = useState(null);
+
+  const handleGetBaseLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setBaseLocationCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => alert('Please allow location permissions to set your stand.')
+      );
+    } else {
+      alert('Geolocation is not supported by this browser.');
+    }
+  };
 
   // Step 2: Vehicle Details
   const [manufacturer, setManufacturer] = useState('');
@@ -243,6 +256,13 @@ const DriverSignup = () => {
         body: JSON.stringify(driverData)
       });
       if (response.ok) {
+        if (baseLocationName && baseLocationCoords) {
+          fetch(`${getBackendUrl()}/api/locations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: baseLocationName, lat: baseLocationCoords.lat, lng: baseLocationCoords.lng })
+          }).catch(() => {});
+        }
         localStorage.setItem('driverEmail', email);
         navigate('/driver');
       } else {
@@ -421,6 +441,27 @@ const DriverSignup = () => {
                   </label>
                 ))}
               </div>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '16px' }}>
+              <label>Register Your Auto Stand / Base Location (Optional)</label>
+              <div className="input-with-icon" style={{ display: 'flex', gap: '8px' }}>
+                <Navigation className="input-icon" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="e.g. Majeed's Auto Stand"
+                  value={baseLocationName}
+                  onChange={(e) => setBaseLocationName(e.target.value)}
+                  style={{ flex: 1, paddingLeft: '40px' }}
+                />
+                <Button type="button" variant="outline" onClick={handleGetBaseLocation} style={{ padding: '0 12px', whiteSpace: 'nowrap', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  {baseLocationCoords ? <Check size={16} color="green" /> : <Navigation size={16} />}
+                  {baseLocationCoords ? 'Saved' : 'Get GPS'}
+                </Button>
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
+                This location will be permanently saved so passengers can instantly search for your stand!
+              </p>
             </div>
 
             <div className="form-group" style={{ marginTop: '16px', background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
