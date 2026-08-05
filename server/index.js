@@ -995,13 +995,13 @@ app.post('/api/drivers', (req, res) => {
     return res.status(400).json({ error: 'A driver with this email, phone, or license is already registered.' });
   }
 
-  // Validate custom rates against platform limits
-  if (parseFloat(ratePerKm) < parseFloat(settings.ratePerKm)) {
-    return res.status(400).json({ error: `Rate per KM cannot be less than system limit of ₹${settings.ratePerKm}` });
-  }
-  if (parseFloat(ratePerHour) < parseFloat(settings.minRatePerHour)) {
-    return res.status(400).json({ error: `Rate per Hour cannot be less than system limit of ₹${settings.minRatePerHour}` });
-  }
+  // Auto-correct custom rates to platform minimums if they are too low
+  const finalRatePerKm = (parseFloat(ratePerKm) < parseFloat(settings.ratePerKm) || !ratePerKm) ? settings.ratePerKm : ratePerKm;
+  const finalRatePerHour = (parseFloat(ratePerHour) < parseFloat(settings.minRatePerHour) || !ratePerHour) ? settings.minRatePerHour : ratePerHour;
+  
+  // Apply corrected rates to body before saving
+  req.body.ratePerKm = finalRatePerKm;
+  req.body.ratePerHour = finalRatePerHour;
 
   const newDriver = {
     id: drivers.length + 1,
