@@ -20,7 +20,7 @@ cd ..\..
 echo [2/3] Building Passenger AAB...
 (
   echo VITE_APP_MODE=passenger
-  echo VITE_BACKEND_URL=https://server-ashen-beta.onrender.com
+  echo VITE_BACKEND_URL=https://hum-fleet-api.onrender.com
   echo VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE
 ) > .env.production
 call npm run build
@@ -34,7 +34,7 @@ cd ..
 echo [3/3] Building Driver AAB...
 (
   echo VITE_APP_MODE=driver
-  echo VITE_BACKEND_URL=https://server-ashen-beta.onrender.com
+  echo VITE_BACKEND_URL=https://hum-fleet-api.onrender.com
   echo VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE
 ) > .env.production
 call npm run build
@@ -47,7 +47,7 @@ cd ..
 
 echo Restoring .env.production for web...
 (
-  echo VITE_BACKEND_URL=https://server-ashen-beta.onrender.com
+  echo VITE_BACKEND_URL=https://hum-fleet-api.onrender.com
   echo VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE
 ) > .env.production
 

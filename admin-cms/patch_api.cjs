@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const pagesDir = path.join(__dirname, 'src', 'pages');
-const newApi = "const API_BASE = 'https://server-ashen-beta.onrender.com';";
+const newApi = "const API_BASE = 'https://hum-fleet-api.onrender.com';";
 
 fs.readdirSync(pagesDir).forEach(file => {
   if (file.endsWith('.jsx')) {

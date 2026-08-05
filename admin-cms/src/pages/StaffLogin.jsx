@@ -8,7 +8,7 @@ const API_BASE = (typeof window !== 'undefined' && window.location.hostname.incl
   ? 'https://hum-fleet-backend.loca.lt'
   : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
     ? 'http://localhost:5000'
-    : 'https://server-ashen-beta.onrender.com';
+    : 'https://hum-fleet-api.onrender.com';
 
 const StaffLogin = () => {
   const navigate = useNavigate();

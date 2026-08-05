@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const MOBILE_API_BASE = `const API_BASE = 'https://server-ashen-beta.onrender.com';`;
+const MOBILE_API_BASE = `const API_BASE = 'https://hum-fleet-api.onrender.com';`;
 
 function patchFile(filePath) {
   if (fs.existsSync(filePath)) {
