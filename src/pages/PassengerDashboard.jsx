@@ -1634,6 +1634,31 @@ const PassengerDashboard = () => {
                 )}
               </div>
 
+              {pickupCoords && (
+                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <Button 
+                    variant="outline" 
+                    className="full-width" 
+                    style={{ borderColor: '#38bdf8', color: '#38bdf8' }}
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`${API_BASE}/api/drivers/nearby?lat=${pickupCoords.lat}&lng=${pickupCoords.lng}`);
+                        const drivers = await res.json();
+                        if (drivers.length > 0) {
+                          alert(`Found ${drivers.length} online drivers nearby!\nClosest is ${drivers[0].distance} KM away (${drivers[0].vehicleType}).`);
+                        } else {
+                          alert("No online drivers found nearby at the moment.");
+                        }
+                      } catch (e) {
+                        alert("Error scanning for drivers.");
+                      }
+                    }}
+                  >
+                    <Compass size={16} style={{ marginRight: '6px' }} /> Scan for Nearest Drivers
+                  </Button>
+                </div>
+              )}
+
               <Button variant="primary" className="full-width" onClick={handleBookRide} style={{ marginTop: '14px' }}>
                 Confirm Booking offer
               </Button>

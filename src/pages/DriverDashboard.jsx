@@ -1455,6 +1455,30 @@ You can only accept prepaid trips until your balance is cleared.`);
                 <Power size={18} /> {isOnline ? 'Go Offline' : 'Go Online'}
               </Button>
             </div>
+            
+            {isOnline && (
+              <div style={{ marginTop: '10px' }}>
+                <Button 
+                  variant="outline" 
+                  style={{ width: '100%', borderColor: '#f59e0b', color: '#f59e0b', fontSize: '13px' }}
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`${API_BASE}/api/rides/nearby?email=${encodeURIComponent(email)}`);
+                      const rides = await res.json();
+                      if (rides.length > 0) {
+                        alert(`Found ${rides.length} passengers searching for a ride nearby!\nClosest passenger is ${rides[0].distance} KM away.\n(Incoming ride popup will trigger automatically for the nearest passenger)`);
+                      } else {
+                        alert("No passengers are currently searching for a ride nearby.");
+                      }
+                    } catch (e) {
+                      alert("Error scanning for nearby passengers.");
+                    }
+                  }}
+                >
+                  <Sparkles size={16} style={{ marginRight: '6px' }} /> Scan Nearest Passengers
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* DRIVER TRAVEL ROUTE / DESTINATION FILTER */}
