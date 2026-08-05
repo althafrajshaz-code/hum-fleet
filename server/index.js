@@ -1184,13 +1184,15 @@ app.get('/api/drivers/travel-route', (req, res) => {
   res.json(driver.travelRoute || null);
 });
 
-// Driver checks for searching ride requests — matches within 8 KM proximity OR along set travel route
+// Driver checks for searching ride requests — matches without distance limit, prioritizing closest passenger
 app.get('/api/rides/active', (req, res) => {
   const { email } = req.query;
   const driver = drivers.find(d => d.email === email);
-  const searching = activeRides.find(r => r.status === 'Searching' && (!r.isPreBooked || r.isActivated));
   
-  if (!searching) {
+  // Get all active searching rides
+  let searchingRides = activeRides.filter(r => r.status === 'Searching' && (!r.isPreBooked || r.isActivated));
+  
+  if (searchingRides.length === 0) {
     return res.json(null);
   }
 
@@ -1199,54 +1201,76 @@ app.get('/api/rides/active', (req, res) => {
     return res.json(null);
   }
 
-  // If no driver email is passed or driver profile not found, default return (for easy dashboard previews)
-  if (!driver) {
-    return res.json(searching);
+  // If no driver email is passed or driver profile not found, just return the first one
+  if (!driver || !driver.lat) {
+    return res.json(searchingRides[0]);
   }
 
-  // Calculate distance between driver and passenger pickup coordinates
-  if (searching.pickupCoords) {
-    const driverLat = parseFloat(driver.lat);
-    const driverLng = parseFloat(driver.lng);
-    const pickupLat = parseFloat(searching.pickupCoords.lat);
-    const pickupLng = parseFloat(searching.pickupCoords.lng);
-    
-    const distance = getDistance(driverLat, driverLng, pickupLat, pickupLng);
+  const driverLat = parseFloat(driver.lat);
+  const driverLng = parseFloat(driver.lng);
 
-    // Match 1: Direct proximity — driver is within 8 KM of pickup
-    if (distance <= 8.0) {
-      return res.json({ ...searching, distance: distance.toFixed(2), matchType: 'nearby' });
+  // Map distances and sort by closest
+  const ridesWithDistance = searchingRides.map(ride => {
+    let distance = 0;
+    if (ride.pickupCoords) {
+      distance = getDistance(driverLat, driverLng, parseFloat(ride.pickupCoords.lat), parseFloat(ride.pickupCoords.lng));
     }
-    
-    // Match 2: En-route matching — passenger pickup is along driver's travel route (10 KM corridor)
-    if (driver.travelRoute && driver.travelRoute.destinationCoords) {
-      const destLat = parseFloat(driver.travelRoute.destinationCoords.lat);
-      const destLng = parseFloat(driver.travelRoute.destinationCoords.lng);
-      
-      const isOnRoute = isPointNearRoute(pickupLat, pickupLng, driverLat, driverLng, destLat, destLng, 10.0);
-      
-      if (isOnRoute) {
-        // Also check dropoff is roughly in the same direction (not behind the driver)
-        const driverToPickup = getDistance(driverLat, driverLng, pickupLat, pickupLng);
-        const driverToDest = getDistance(driverLat, driverLng, destLat, destLng);
-        
-        // Pickup should be closer to driver than the destination (i.e. it's on the way)
-        if (driverToPickup <= driverToDest * 1.2) {
-          return res.json({ 
-            ...searching, 
-            distance: distance.toFixed(2), 
-            matchType: 'en-route',
-            driverDestination: driver.travelRoute.destination
-          });
-        }
-      }
-    }
+    return { ...ride, distance, distanceStr: distance.toFixed(2), matchType: 'nearby' };
+  }).sort((a, b) => a.distance - b.distance);
 
-    // No match — too far and not on route
-    return res.json(null);
-  } else {
-    res.json(searching); // Fallback if no coordinates stored
-  }
+  // Return the closest ride
+  const closestRide = ridesWithDistance[0];
+  
+  // Return it with the calculated distance
+  return res.json({ ...closestRide, distance: closestRide.distanceStr });
+});
+
+// Passenger checks for nearby online drivers
+app.get('/api/drivers/nearby', (req, res) => {
+  const { lat, lng } = req.query;
+  if (!lat || !lng) return res.status(400).json({ error: 'Missing coordinates' });
+
+  const passengerLat = parseFloat(lat);
+  const passengerLng = parseFloat(lng);
+
+  // Find all online, unblocked drivers who are not paused
+  const onlineDrivers = drivers.filter(d => d.status === 'Online' && !d.isBlocked && !d.isPaused && d.lat && d.lng);
+
+  const driversWithDistance = onlineDrivers.map(d => {
+    const distance = getDistance(passengerLat, passengerLng, parseFloat(d.lat), parseFloat(d.lng));
+    return {
+      name: d.name,
+      vehicleType: d.vehicleType,
+      vehicleNumber: d.plateNumber,
+      distance: distance.toFixed(2),
+      rawDistance: distance
+    };
+  }).sort((a, b) => a.rawDistance - b.rawDistance);
+
+  res.json(driversWithDistance);
+});
+
+// Driver checks for all nearby passengers
+app.get('/api/rides/nearby', (req, res) => {
+  const { email } = req.query;
+  const driver = drivers.find(d => d.email === email);
+  if (!driver || !driver.lat) return res.status(400).json({ error: 'Driver coordinates missing' });
+
+  const driverLat = parseFloat(driver.lat);
+  const driverLng = parseFloat(driver.lng);
+
+  // Get all active searching rides
+  let searchingRides = activeRides.filter(r => r.status === 'Searching' && (!r.isPreBooked || r.isActivated));
+
+  const ridesWithDistance = searchingRides.map(ride => {
+    let distance = 0;
+    if (ride.pickupCoords) {
+      distance = getDistance(driverLat, driverLng, parseFloat(ride.pickupCoords.lat), parseFloat(ride.pickupCoords.lng));
+    }
+    return { ...ride, distance: distance.toFixed(2), rawDistance: distance };
+  }).sort((a, b) => a.rawDistance - b.rawDistance);
+
+  res.json(ridesWithDistance);
 });
 
 // Get searching pre-booked rides under 20 KM from the driver
@@ -2093,30 +2117,35 @@ app.get('/api/locations', (req, res) => {
   res.json(dynamicLocations);
 });
 
-// Proxy OpenStreetMap Nominatim API to avoid browser CORS/User-Agent blocking
+// Proxy Google Maps Places API for maximum listings (businesses, hospitals, etc.)
 app.get('/api/geocode', async (req, res) => {
   const query = req.query.q;
   if (!query) return res.json([]);
   
   try {
-    // Upgraded limit to 50 (maximum allowed usually) and removed strict viewbox/Kerala bounds to maximize results for hospitals, hotels, etc.
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', India')}&format=json&addressdetails=1&limit=50&countrycodes=in`;
-    // We MUST send a custom User-Agent to satisfy OpenStreetMap Nominatim's strict usage policy
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Hum-Taxi-App-Backend/1.0 (Contact: admin@hum.local)',
-        'Accept': 'application/json'
-      }
-    });
+    const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCpXvo_52Na7w7cZCPhstuPzwVzKFzRgdU';
+    // Using Places Text Search to get businesses, hospitals, etc. in India
+    const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query + ' in India')}&key=${GOOGLE_API_KEY}`;
     
+    const response = await fetch(url);
     if (response.ok) {
       const data = await response.json();
-      res.json(data);
+      if (data.results) {
+        // Map Google Places format to the old format the frontend expects
+        const formattedResults = data.results.map(place => ({
+          display_name: `${place.name}, ${place.formatted_address}`,
+          lat: place.geometry.location.lat,
+          lon: place.geometry.location.lng
+        }));
+        return res.json(formattedResults);
+      } else {
+        return res.json([]);
+      }
     } else {
       res.status(response.status).json({ error: 'Geocoding failed' });
     }
   } catch (error) {
-    console.error('Geocoding Proxy Error:', error);
+    console.error('Google Maps API Error:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
