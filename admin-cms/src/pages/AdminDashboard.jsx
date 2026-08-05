@@ -38,7 +38,12 @@ const AdminDashboard = () => {
   const [passengers, setPassengers] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState(null);
-  
+
+  // Add/Remove Driver & Passenger State
+  const [showAddDriverModal, setShowAddDriverModal] = useState(false);
+  const [newDriverData, setNewDriverData] = useState({ name: '', email: '', phone: '', licenseNumber: '', vehicleType: 'Sedan', plateNumber: '' });
+  const [showAddPassengerModal, setShowAddPassengerModal] = useState(false);
+  const [newPassengerData, setNewPassengerData] = useState({ name: '', email: '', phone: '' });
   // Employee Management State
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [newEmployee, setNewEmployee] = useState({ name: '', username: '', password: '', role: 'staff', position: '', managerId: '' });
@@ -218,6 +223,65 @@ const AdminDashboard = () => {
       console.error("Failed to fetch passengers from backend:", err);
     }
   };
+
+  const handleAddDriver = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/drivers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newDriverData)
+      });
+      if (response.ok) {
+        fetchDrivers();
+        setShowAddDriverModal(false);
+        setNewDriverData({ name: '', email: '', phone: '', licenseNumber: '', vehicleType: 'Sedan', plateNumber: '' });
+      }
+    } catch (err) {
+      console.error("Failed to add driver:", err);
+    }
+  };
+
+  const handleDeleteDriver = async (id) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/drivers/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchDrivers();
+      }
+    } catch (err) {
+      console.error("Failed to delete driver:", err);
+    }
+  };
+
+  const handleAddPassenger = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/passengers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPassengerData)
+      });
+      if (response.ok) {
+        fetchPassengers();
+        setShowAddPassengerModal(false);
+        setNewPassengerData({ name: '', email: '', phone: '' });
+      }
+    } catch (err) {
+      console.error("Failed to add passenger:", err);
+    }
+  };
+
+  const handleDeletePassenger = async (id) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/passengers/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchPassengers();
+      }
+    } catch (err) {
+      console.error("Failed to delete passenger:", err);
+    }
+  };
+
 
   const fetchEmployees = async () => {
     try {
@@ -2419,6 +2483,12 @@ const AdminDashboard = () => {
                   <h2 style={{ margin: 0 }}>Registered Partners</h2>
                   <p className="tab-subtitle" style={{ margin: '4px 0 0 0' }}>Database of partner accounts approved and active to perform rides on the platform.</p>
                 </div>
+                <button 
+                  onClick={() => setShowAddDriverModal(true)}
+                  style={{ background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  + Add New Driver
+                </button>
               </div>
 
               {/* Dynamic Search Box for Registered Drivers */}
@@ -2558,8 +2628,20 @@ const AdminDashboard = () => {
                             }}
                             style={{ borderColor: '#ef4444', color: '#ef4444', padding: '8px 12px', fontSize: '12px' }}
                           >
-                            Suspend
+                            <AlertTriangle size={14} /> Suspend
                           </Button>
+
+                          <button
+                            title="Delete Driver permanently"
+                            onClick={() => {
+                              if (window.confirm(`WARNING: Are you sure you want to PERMANENTLY delete driver ${d.name}? This cannot be undone.`)) {
+                                handleDeleteDriver(d.id);
+                              }
+                            }}
+                            style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <X size={14} />
+                          </button>
 
                           <Button 
                             variant="outline" 
@@ -2581,8 +2663,18 @@ const AdminDashboard = () => {
           {/* TAB 2: Registered Passengers (Users) */}
           {activeTab === 'passengers' && (
             <div className="tab-pane">
-              <h2>Registered Customers (Users)</h2>
-              <p className="tab-subtitle">Database of passenger accounts registered to request and book rides on the platform.</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h2>Registered Customers (Users)</h2>
+                  <p className="tab-subtitle">Database of passenger accounts registered to request and book rides on the platform.</p>
+                </div>
+                <button 
+                  onClick={() => setShowAddPassengerModal(true)}
+                  style={{ background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  + Add New Passenger
+                </button>
+              </div>
 
               {/* Dynamic Search Box for Passengers */}
               <div style={{ position: 'relative', margin: '14px 0 14px 0', maxWidth: '350px' }}>
@@ -2610,6 +2702,7 @@ const AdminDashboard = () => {
                         <th style={{ padding: '16px', fontWeight: '700' }}>Mobile Number</th>
                         <th style={{ padding: '16px', fontWeight: '700' }}>Total Spent</th>
                         <th style={{ padding: '16px', fontWeight: '700' }}>GST Paid</th>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2628,6 +2721,19 @@ const AdminDashboard = () => {
                           <td style={{ padding: '16px', color: 'var(--text-main)' }}>{p.phone}</td>
                           <td style={{ padding: '16px', fontWeight: '600', color: 'var(--primary)' }}>₹{parseFloat(p.wallet?.totalSpent || 0).toFixed(2)}</td>
                           <td style={{ padding: '16px', color: '#f59e0b' }}>₹{parseFloat(p.wallet?.taxPaid || 0).toFixed(2)}</td>
+                          <td style={{ padding: '16px' }}>
+                            <button
+                              title="Delete Passenger"
+                              onClick={() => {
+                                if (window.confirm(`WARNING: Are you sure you want to PERMANENTLY delete passenger ${p.name}?`)) {
+                                  handleDeletePassenger(p.id);
+                                }
+                              }}
+                              style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <X size={14} />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -4022,6 +4128,49 @@ const AdminDashboard = () => {
       )}
 
       {/* ========== ADD EMPLOYEE MODAL ========== */}
+      {showAddDriverModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-card animate-scale-in" style={{ maxWidth: '500px', width: '100%', padding: '32px' }}>
+            <h3 style={{ margin: '0 0 24px 0', fontSize: '20px', fontWeight: '800' }}>Add New Driver</h3>
+            <form onSubmit={handleAddDriver} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input type="text" placeholder="Full Name" className="input-field" value={newDriverData.name} onChange={(e) => setNewDriverData({...newDriverData, name: e.target.value})} required />
+              <input type="email" placeholder="Email Address" className="input-field" value={newDriverData.email} onChange={(e) => setNewDriverData({...newDriverData, email: e.target.value})} required />
+              <input type="tel" placeholder="Phone Number" className="input-field" value={newDriverData.phone} onChange={(e) => setNewDriverData({...newDriverData, phone: e.target.value})} required />
+              <input type="text" placeholder="License Number" className="input-field" value={newDriverData.licenseNumber} onChange={(e) => setNewDriverData({...newDriverData, licenseNumber: e.target.value})} required />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <select className="input-field" value={newDriverData.vehicleType} onChange={(e) => setNewDriverData({...newDriverData, vehicleType: e.target.value})} required>
+                  <option value="Sedan">Sedan</option>
+                  <option value="Hatchback">Hatchback</option>
+                  <option value="SUV">SUV</option>
+                </select>
+                <input type="text" placeholder="Plate Number" className="input-field" value={newDriverData.plateNumber} onChange={(e) => setNewDriverData({...newDriverData, plateNumber: e.target.value})} required />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+                <Button type="button" variant="outline" onClick={() => setShowAddDriverModal(false)}>Cancel</Button>
+                <Button type="submit" variant="primary">Add Driver</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showAddPassengerModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-card animate-scale-in" style={{ maxWidth: '400px', width: '100%', padding: '32px' }}>
+            <h3 style={{ margin: '0 0 24px 0', fontSize: '20px', fontWeight: '800' }}>Add New Passenger</h3>
+            <form onSubmit={handleAddPassenger} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input type="text" placeholder="Full Name" className="input-field" value={newPassengerData.name} onChange={(e) => setNewPassengerData({...newPassengerData, name: e.target.value})} required />
+              <input type="email" placeholder="Email Address" className="input-field" value={newPassengerData.email} onChange={(e) => setNewPassengerData({...newPassengerData, email: e.target.value})} required />
+              <input type="tel" placeholder="Phone Number" className="input-field" value={newPassengerData.phone} onChange={(e) => setNewPassengerData({...newPassengerData, phone: e.target.value})} required />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+                <Button type="button" variant="outline" onClick={() => setShowAddPassengerModal(false)}>Cancel</Button>
+                <Button type="submit" variant="primary">Add Passenger</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showAddEmployeeModal && (
         <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '24px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>

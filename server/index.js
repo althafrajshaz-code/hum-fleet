@@ -2138,7 +2138,77 @@ app.post('/api/locations', (req, res) => {
   }
 });
 
+// Admin Add Driver
+app.post('/api/admin/drivers', (req, res) => {
+  const { name, email, phone, licenseNumber, vehicleType, plateNumber } = req.body;
+  const newDriver = {
+    id: drivers.length > 0 ? Math.max(...drivers.map(d => d.id)) + 1 : 1,
+    name: name || 'New Driver',
+    email: email || '',
+    phone: phone || '',
+    licenseNumber: licenseNumber || '',
+    vehicleType: vehicleType || 'Sedan',
+    plateNumber: plateNumber || '',
+    status: 'Approved',
+    wallet: { cashCollected: 0, toBePaid: 0 },
+    vehicles: [{ make: vehicleType, model: vehicleType, year: new Date().getFullYear(), plateNumber, isActive: true }],
+    rating: 5,
+    ratings: [],
+    createdAt: new Date().toISOString()
+  };
+  drivers.push(newDriver);
+  saveData();
+  res.status(201).json(newDriver);
+});
+
+// Admin Delete Driver
+app.delete('/api/admin/drivers/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const initialLength = drivers.length;
+  drivers = drivers.filter(d => d.id !== id);
+  if (drivers.length < initialLength) {
+    saveData();
+    res.json({ message: 'Driver deleted successfully.' });
+  } else {
+    res.status(404).json({ error: 'Driver not found.' });
+  }
+});
+
+// Admin Add Passenger
+app.post('/api/admin/passengers', (req, res) => {
+  const { name, email, phone } = req.body;
+  const newPassenger = {
+    id: passengers.length > 0 ? Math.max(...passengers.map(p => p.id)) + 1 : 1,
+    name: name || 'New Passenger',
+    email: email || '',
+    phone: phone || '',
+    password: 'password123',
+    wallet: { totalSpent: 0, taxPaid: 0 },
+    rating: 5,
+    ratings: [],
+    verificationCode: Math.floor(100000 + Math.random() * 900000).toString(),
+    createdAt: new Date().toISOString()
+  };
+  passengers.push(newPassenger);
+  saveData();
+  res.status(201).json(newPassenger);
+});
+
+// Admin Delete Passenger
+app.delete('/api/admin/passengers/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const initialLength = passengers.length;
+  passengers = passengers.filter(p => p.id !== id);
+  if (passengers.length < initialLength) {
+    saveData();
+    res.json({ message: 'Passenger deleted successfully.' });
+  } else {
+    res.status(404).json({ error: 'Passenger not found.' });
+  }
+});
+
 app.get('/api/admin/clear-all', (req, res) => {
+
   drivers = [];
   passengers = [];
   saveData();
