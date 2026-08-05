@@ -145,7 +145,18 @@ const DriverSignup = () => {
   const handleDocChange = async (docType, file) => {
     if (file) {
       try {
-        const base64 = await compressImage(file);
+        let base64 = '';
+        if (file.type === 'application/pdf') {
+          // Read PDF directly to Base64 without image compression
+          base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+          });
+        } else {
+          base64 = await compressImage(file);
+        }
         setDocs(prev => ({
           ...prev,
           [docType]: base64
@@ -659,8 +670,6 @@ const DriverSignup = () => {
               {[
                 { id: 'licenseFront', label: 'Licence (Front Side)' },
                 { id: 'licenseBack', label: 'Licence (Back Side)' },
-                { id: 'aadharFront', label: 'Aadhar (Front Side)' },
-                { id: 'aadharBack', label: 'Aadhar (Back Side)' },
                 ...(!isDriverOnly ? [
                   { id: 'rc', label: 'Registration (RC)' },
                   { id: 'pollution', label: 'Pollution (PUC)' },
