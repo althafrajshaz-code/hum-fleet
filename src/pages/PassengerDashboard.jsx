@@ -161,6 +161,8 @@ const KERALA_LOCATIONS = [
   { name: "Malappuram KSRTC Bus Stand & Civil Station", lat: 11.0734, lng: 76.0740 },
   { name: "Manjeri Bus Stand & IG Road", lat: 11.1215, lng: 76.1217 },
   { name: "Perinthalmanna Bus Stand & Jubilee Junction", lat: 10.9780, lng: 76.2260 },
+  { name: "Moulana Hospital, Perinthalmanna", lat: 10.9764, lng: 76.2255 },
+  { name: "Pattikkad, Perinthalmanna", lat: 11.0211, lng: 76.2325 },
   { name: "Tirur Railway Station & Bus Stand", lat: 10.9152, lng: 75.9238 },
   { name: "Ponnani Bus Stand & Harbor", lat: 10.7710, lng: 75.9240 },
   { name: "Kottakkal Arya Vaidya Sala & Changuvetty", lat: 11.0010, lng: 75.9960 },
