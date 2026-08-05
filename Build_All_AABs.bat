@@ -18,38 +18,25 @@ copy app\build\outputs\bundle\release\app-release*.aab d:\Althaf\HUM_AABs\HUM_Ad
 cd ..\..
 
 echo [2/3] Building Passenger AAB...
-(
-  echo VITE_APP_MODE=passenger
-  echo VITE_BACKEND_URL=https://hum-fleet-api.onrender.com
-  echo VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE
-) > .env.production
-call npm run build
+node set-capacitor-url.cjs "https://hum-8p7vgcaqv-althafrajshaz-codes-projects.vercel.app/passenger"
 call npx cap sync
 cd android
 call gradlew clean bundleRelease
 if %errorlevel% neq 0 ( echo Error building Passenger AAB && exit /b %errorlevel% )
-copy app\build\outputs\bundle\release\app-release*.aab d:\Althaf\HUM_AABs\HUM_Passenger.aab
+copy app\build\outputs\bundle\release\app-release.aab d:\Althaf\HUM_AABs\HUM_Passenger.aab
 cd ..
 
 echo [3/3] Building Driver AAB...
-(
-  echo VITE_APP_MODE=driver
-  echo VITE_BACKEND_URL=https://hum-fleet-api.onrender.com
-  echo VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE
-) > .env.production
-call npm run build
+node set-capacitor-url.cjs "https://hum-8p7vgcaqv-althafrajshaz-codes-projects.vercel.app/driver"
 call npx cap sync
 cd android
 call gradlew clean bundleRelease
 if %errorlevel% neq 0 ( echo Error building Driver AAB && exit /b %errorlevel% )
-copy app\build\outputs\bundle\release\app-release*.aab d:\Althaf\HUM_AABs\HUM_Driver.aab
+copy app\build\outputs\bundle\release\app-release.aab d:\Althaf\HUM_AABs\HUM_Driver.aab
 cd ..
 
-echo Restoring .env.production for web...
-(
-  echo VITE_BACKEND_URL=https://hum-fleet-api.onrender.com
-  echo VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE
-) > .env.production
+echo Restoring capacitor config...
+node set-capacitor-url.cjs
 
 echo ==========================================
 echo        ALL 3 AABS BUILT SUCCESSFULLY!     
