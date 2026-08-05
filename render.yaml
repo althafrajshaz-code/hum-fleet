@@ -1,21 +1,15 @@
-# Render.com Blueprint — HUM Fleet Backend
-# Deploy with: https://render.com/deploy?repo=YOUR_REPO_URL
-
 services:
   - type: web
     name: hum-fleet-api
     runtime: node
-    region: singapore  # Closest to Kerala, India
+    region: singapore
     plan: free
     rootDir: server
     buildCommand: npm install
     startCommand: node index.js
+    healthCheckPath: /
     envVars:
       - key: MONGODB_URI
-        sync: false  # Set manually in Render dashboard
+        value: placeholder
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
-    healthCheckPath: /
-    autoDeploy: true
