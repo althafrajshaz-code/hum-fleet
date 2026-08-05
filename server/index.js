@@ -485,6 +485,12 @@ app.post('/api/drivers/login', (req, res) => {
 });
 
 // Get vehicle categories
+const vehicleCatalog = require('./vehicleCatalog.json');
+
+app.get('/api/vehicles/catalog', (req, res) => {
+  res.json(vehicleCatalog);
+});
+
 app.get('/api/vehicle-categories', (req, res) => {
   res.json(vehicleCategories);
 });

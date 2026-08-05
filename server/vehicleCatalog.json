@@ -1,0 +1,65 @@
+{
+  "Maruti Suzuki": [
+    "Alto", "Alto 800", "Alto K10", "S-Presso", "Celerio", "Wagon R", "Ignis", "Swift", "Baleno", "Dzire", "Ciaz", "Ertiga", "XL6", "Brezza", "Fronx", "Jimny", "Grand Vitara", "Invicto", "Eeco", "Omni", "Ritz", "A-Star", "Zen", "Esteem", "Gypsy"
+  ],
+  "Hyundai": [
+    "Grand i10 Nios", "i20", "i20 N Line", "Aura", "Verna", "Venue", "Venue N Line", "Creta", "Alcazar", "Tucson", "Ioniq 5", "Kona Electric", "Santro", "Eon", "Xcent", "Elantra", "Sonata"
+  ],
+  "Tata Motors": [
+    "Tiago", "Tiago EV", "Tigor", "Tigor EV", "Altroz", "Punch", "Punch EV", "Nexon", "Nexon EV", "Harrier", "Safari", "Hexa", "Indica", "Indigo", "Zest", "Bolt", "Aria", "Sumo", "Nano"
+  ],
+  "Mahindra": [
+    "XUV300", "XUV400 EV", "XUV700", "Scorpio", "Scorpio-N", "Thar", "Bolero", "Bolero Neo", "Marazzo", "TUV300", "KUV100", "Xylo", "Verito", "Logan", "Quanto"
+  ],
+  "Toyota": [
+    "Glanza", "Urban Cruiser Taisor", "Urban Cruiser Hyryder", "Innova Crysta", "Innova Hycross", "Fortuner", "Legender", "Camry", "Vellfire", "Hilux", "Etios", "Etios Liva", "Corolla Altis", "Yaris", "Qualis"
+  ],
+  "Kia": [
+    "Sonet", "Seltos", "Carens", "Carnival", "EV6"
+  ],
+  "Honda": [
+    "Amaze", "City", "City e:HEV", "Elevate", "WR-V", "Jazz", "Brio", "BR-V", "CR-V", "Civic", "Mobilio", "Accord"
+  ],
+  "MG Motor": [
+    "Comet EV", "Astor", "Hector", "Hector Plus", "ZS EV", "Gloster"
+  ],
+  "Volkswagen": [
+    "Virtus", "Taigun", "Tiguan", "Polo", "Vento", "Ameo", "Jetta", "Passat", "CrossPolo"
+  ],
+  "Skoda": [
+    "Slavia", "Kushaq", "Kodiaq", "Superb", "Octavia", "Rapid", "Fabia", "Yeti", "Laura"
+  ],
+  "Renault": [
+    "Kwid", "Triber", "Kiger", "Duster", "Captur", "Lodgy", "Pulse", "Scala"
+  ],
+  "Nissan": [
+    "Magnite", "Kicks", "Micra", "Sunny", "Terrano", "Evalia"
+  ],
+  "Jeep": [
+    "Compass", "Meridian", "Wrangler", "Grand Cherokee"
+  ],
+  "Citroen": [
+    "C3", "eC3", "C3 Aircross", "C5 Aircross"
+  ],
+  "Ford": [
+    "EcoSport", "Endeavour", "Figo", "Aspire", "Freestyle", "Fiesta", "Ikon"
+  ],
+  "Chevrolet": [
+    "Beat", "Spark", "Cruze", "Tavera", "Sail", "Enjoy", "Captiva", "Optra"
+  ],
+  "Fiat": [
+    "Punto", "Linea", "Palio"
+  ],
+  "Datsun": [
+    "redi-GO", "GO", "GO+"
+  ],
+  "Bajaj": [
+    "Qute (RE60)", "RE Auto Rickshaw", "Maxima", "Compact RE"
+  ],
+  "Piaggio": [
+    "Ape Auto", "Ape City", "Ape Xtra"
+  ],
+  "TVS": [
+    "King Auto Rickshaw"
+  ]
+}
