@@ -246,7 +246,7 @@ async function loadData() {
         needsSave = true;
       }
 
-      if (doc.adminCredentials) {
+      if (doc.adminCredentials && doc.adminCredentials.username) {
         adminCredentials = doc.adminCredentials;
       } else {
         needsSave = true;
