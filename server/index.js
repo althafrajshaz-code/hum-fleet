@@ -2117,35 +2117,30 @@ app.get('/api/locations', (req, res) => {
   res.json(dynamicLocations);
 });
 
-// Proxy Google Maps Places API for maximum listings (businesses, hospitals, etc.)
+// Proxy OpenStreetMap Nominatim API to avoid browser CORS/User-Agent blocking
 app.get('/api/geocode', async (req, res) => {
   const query = req.query.q;
   if (!query) return res.json([]);
   
   try {
-    const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCpXvo_52Na7w7cZCPhstuPzwVzKFzRgdU';
-    // Using Places Text Search to get businesses, hospitals, etc. in India
-    const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query + ' in India')}&key=${GOOGLE_API_KEY}`;
+    // Upgraded limit to 50 (maximum allowed usually) to maximize results for hospitals, hotels, etc.
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', India')}&format=json&addressdetails=1&limit=50&countrycodes=in`;
+    // We MUST send a custom User-Agent to satisfy OpenStreetMap Nominatim's strict usage policy
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Hum-Taxi-App-Backend/1.0 (Contact: admin@hum.local)',
+        'Accept': 'application/json'
+      }
+    });
     
-    const response = await fetch(url);
     if (response.ok) {
       const data = await response.json();
-      if (data.results) {
-        // Map Google Places format to the old format the frontend expects
-        const formattedResults = data.results.map(place => ({
-          display_name: `${place.name}, ${place.formatted_address}`,
-          lat: place.geometry.location.lat,
-          lon: place.geometry.location.lng
-        }));
-        return res.json(formattedResults);
-      } else {
-        return res.json([]);
-      }
+      res.json(data);
     } else {
       res.status(response.status).json({ error: 'Geocoding failed' });
     }
   } catch (error) {
-    console.error('Google Maps API Error:', error);
+    console.error('Geocoding Proxy Error:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
