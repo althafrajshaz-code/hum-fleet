@@ -2099,7 +2099,8 @@ app.get('/api/geocode', async (req, res) => {
   if (!query) return res.json([]);
   
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Kerala, India')}&format=json&addressdetails=1&limit=8&countrycodes=in&viewbox=74.5,8.0,77.5,12.8&bounded=1`;
+    // Upgraded limit to 50 (maximum allowed usually) and removed strict viewbox/Kerala bounds to maximize results for hospitals, hotels, etc.
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', India')}&format=json&addressdetails=1&limit=50&countrycodes=in`;
     // We MUST send a custom User-Agent to satisfy OpenStreetMap Nominatim's strict usage policy
     const response = await fetch(url, {
       headers: {
