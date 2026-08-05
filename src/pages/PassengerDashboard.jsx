@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Navigation, Car, AlertCircle, Phone, CheckCircle, DollarSign, Wallet, Map, Share2, Camera, User, MessageSquare, Send, X, Navigation2 } from 'lucide-react';
+import { MapPin, Navigation, Car, AlertCircle, Phone, CheckCircle, DollarSign, Wallet, Map, Share2, Camera, User, MessageSquare, Send, X, Navigation2, LogOut } from 'lucide-react';
 import Button from '../components/Button';
 import './Dashboard.css';
 
@@ -1016,6 +1016,15 @@ const PassengerDashboard = () => {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('passengerAuthenticated');
+    localStorage.removeItem('passengerEmail');
+    localStorage.removeItem('passengerName');
+    localStorage.removeItem('passengerProfilePic');
+    localStorage.removeItem('passengerVerificationCode');
+    navigate('/passenger/login');
+  };
+
   return (
     <div className="dashboard-page">
       <div className="dashboard-container container">
@@ -1062,6 +1071,13 @@ const PassengerDashboard = () => {
                 )}
               </div>
             </div>
+            <button 
+              onClick={handleLogout}
+              style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', flexShrink: 0 }}
+              title="Logout"
+            >
+              <LogOut size={16} /> <span className="hide-on-mobile">Logout</span>
+            </button>
           </div>
 
           {/* Passenger Wallet Overview Widget */}
