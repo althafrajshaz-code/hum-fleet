@@ -522,9 +522,9 @@ const DriverSignup = () => {
                 <input 
                   type="text" 
                   className="input-field" 
-                  placeholder="e.g. DL 3C AY 4567" 
+                  placeholder="e.g. DL3CAY4567" 
                   value={plate}
-                  onChange={(e) => setPlate(e.target.value)}
+                  onChange={(e) => setPlate(e.target.value.toUpperCase().replace(/\s/g, ''))}
                   required
                 />
               </div>
