@@ -339,7 +339,13 @@ const AdminDashboard = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/settings`);
+      const response = await fetch(`${API_BASE}/api/settings?t=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         setBaseFare(data.baseFare);
