@@ -69,6 +69,7 @@ const DriverSignup = () => {
   const [ratePerKm, setRatePerKm] = useState('15.00');
   const [ratePerHour, setRatePerHour] = useState('120.00');
   const [isPinkVehicle, setIsPinkVehicle] = useState(false);
+  const [allowsPets, setAllowsPets] = useState(false);
 
   // Step 3: Photos (Base64 data)
   const [photos, setPhotos] = useState({
@@ -240,6 +241,7 @@ const DriverSignup = () => {
       ratePerKm,
       ratePerHour,
       isPinkVehicle,
+      allowsPets,
       isDriverOnly,
       languages,
       licenseNumber,
@@ -625,6 +627,21 @@ const DriverSignup = () => {
               </label>
               <p style={{ margin: '6px 0 0 28px', fontSize: '11px', color: 'var(--text-muted)' }}>
                 This allows female passengers to specifically request you for a safer and more comfortable ride experience.
+              </p>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '16px', background: 'var(--bg-card)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', color: 'var(--text-main)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={allowsPets} 
+                  onChange={(e) => setAllowsPets(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                />
+                <span>🐶 Allow Pets in Vehicle</span>
+              </label>
+              <p style={{ margin: '6px 0 0 28px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                Opting in allows passengers traveling with pets to request your vehicle.
               </p>
             </div>
 

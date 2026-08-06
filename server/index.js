@@ -1104,7 +1104,7 @@ app.post('/api/settings', (req, res) => {
 
 // Passenger requests a ride
 app.post('/api/rides', (req, res) => {
-  const { pickup, dropoff, fare, passengerName, passengerEmail, pickupCoords, dropoffCoords, paymentType, isPreBooked, preBookDate, preBookTime } = req.body;
+  const { pickup, dropoff, fare, passengerName, passengerEmail, pickupCoords, dropoffCoords, paymentType, isPreBooked, preBookDate, preBookTime, withPet } = req.body;
   
   // Calculate total ride distance in kilometers
   const totalKm = pickupCoords && dropoffCoords
@@ -1139,6 +1139,7 @@ app.post('/api/rides', (req, res) => {
     isPreBooked: isPreBooked || false,
     preBookDate: preBookDate || null,
     preBookTime: preBookTime || null,
+    withPet: withPet || false,
     isActivated: false,
     createdAt: new Date().toISOString()
   };
@@ -1205,8 +1206,12 @@ app.get('/api/rides/active', (req, res) => {
   const { email } = req.query;
   const driver = drivers.find(d => d.email === email);
   
-  // Get all active searching rides
-  let searchingRides = activeRides.filter(r => r.status === 'Searching' && (!r.isPreBooked || r.isActivated));
+  // Get all active searching rides, enforcing pet-friendly constraints
+  let searchingRides = activeRides.filter(r => {
+    if (r.status !== 'Searching' || (r.isPreBooked && !r.isActivated)) return false;
+    if (r.withPet && (!driver || !driver.allowsPets)) return false;
+    return true;
+  });
   
   if (searchingRides.length === 0) {
     return res.json(null);

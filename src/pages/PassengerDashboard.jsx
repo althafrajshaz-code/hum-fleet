@@ -322,6 +322,7 @@ const PassengerDashboard = () => {
   const [activeRide, setActiveRide] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [rideAccepted, setRideAccepted] = useState(false);
+  const [withPet, setWithPet] = useState(false);
 
   // Pre-booking states
   const [isPreBookToggle, setIsPreBookToggle] = useState(false);
@@ -915,7 +916,8 @@ const PassengerDashboard = () => {
           dropoffCoords,
           isPreBooked: isPreBookToggle,
           preBookDate: isPreBookToggle ? preBookDate : null,
-          preBookTime: isPreBookToggle ? preBookTime : null
+          preBookTime: isPreBookToggle ? preBookTime : null,
+          withPet
         })
       });
 
@@ -1661,6 +1663,18 @@ const PassengerDashboard = () => {
                   </Button>
                 </div>
               )}
+
+              <div style={{ marginTop: '14px', background: 'var(--bg-card)', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <input 
+                  type="checkbox" 
+                  checked={withPet} 
+                  onChange={(e) => setWithPet(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                />
+                <label style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', color: 'var(--text-main)', margin: 0 }} onClick={() => setWithPet(!withPet)}>
+                  🐾 I am traveling with a pet
+                </label>
+              </div>
 
               <Button variant="primary" className="full-width" onClick={handleBookRide} style={{ marginTop: '14px' }}>
                 Confirm Booking offer
