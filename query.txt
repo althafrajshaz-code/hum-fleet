@@ -1,0 +1,9 @@
+[out:json][timeout:90];
+(
+  node["amenity"](9.7,76.1,10.2,76.8);
+  node["shop"](9.7,76.1,10.2,76.8);
+  node["office"](9.7,76.1,10.2,76.8);
+  node["tourism"](9.7,76.1,10.2,76.8);
+  node["public_transport"](9.7,76.1,10.2,76.8);
+);
+out center;

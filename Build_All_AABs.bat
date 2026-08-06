@@ -14,29 +14,29 @@ call npx cap sync
 cd android
 call gradlew clean bundleRelease
 if %errorlevel% neq 0 ( echo Error building Admin AAB && exit /b %errorlevel% )
-copy app\build\outputs\bundle\release\app-release*.aab d:\Althaf\HUM_AABs\HUM_Admin.aab
+copy /y /b app\build\outputs\bundle\release\app-release.aab d:\Althaf\HUM_AABs\HUM_Admin.aab
 cd ..\..
 
 echo [2/3] Building Passenger AAB...
-node set-capacitor-url.cjs "https://hum-cyan.vercel.app/passenger"
+node set-capacitor-url.cjs "https://hum-cyan.vercel.app/passenger" "com.humfleet.passenger" "Hum Fleet Passenger"
 call npx cap sync
 cd android
 call gradlew clean bundleRelease
 if %errorlevel% neq 0 ( echo Error building Passenger AAB && exit /b %errorlevel% )
-copy app\build\outputs\bundle\release\app-release.aab d:\Althaf\HUM_AABs\HUM_Passenger.aab
+copy /y /b app\build\outputs\bundle\release\app-release.aab d:\Althaf\HUM_AABs\HUM_Passenger.aab
 cd ..
 
 echo [3/3] Building Driver AAB...
-node set-capacitor-url.cjs "https://hum-cyan.vercel.app/driver"
+node set-capacitor-url.cjs "https://hum-cyan.vercel.app/driver" "com.humfleet.driver" "Hum Fleet Driver"
 call npx cap sync
 cd android
 call gradlew clean bundleRelease
 if %errorlevel% neq 0 ( echo Error building Driver AAB && exit /b %errorlevel% )
-copy app\build\outputs\bundle\release\app-release.aab d:\Althaf\HUM_AABs\HUM_Driver.aab
+copy /y /b app\build\outputs\bundle\release\app-release.aab d:\Althaf\HUM_AABs\HUM_Driver.aab
 cd ..
 
 echo Restoring capacitor config...
-node set-capacitor-url.cjs
+node set-capacitor-url.cjs "" "com.humfleet.main" "Hum Fleet"
 
 echo ==========================================
 echo        ALL 3 AABS BUILT SUCCESSFULLY!     

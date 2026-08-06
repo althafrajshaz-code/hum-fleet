@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, FileText, LogOut, Key, UserCheck, TrendingUp, Search, MapPin, Navigation, Activity, Map, Radio, Compass, MessageSquare, Send, CreditCard, Upload, Tag, Phone } from 'lucide-react';
+import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, FileText, LogOut, Key, UserCheck, TrendingUp, Search, MapPin, Navigation, Activity, Map, Radio, Compass, MessageSquare, Send, CreditCard, Upload, Tag, Phone, AlertTriangle } from 'lucide-react';
 import Button from '../components/Button';
 import './AdminDashboard.css';
 
@@ -327,7 +327,13 @@ const AdminDashboard = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/vehicle-categories`);
+      const response = await fetch(`${API_BASE}/api/vehicle-categories?t=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         setCategories(data);
@@ -545,23 +551,23 @@ const AdminDashboard = () => {
   const filteredPendingDrivers = drivers
     .filter(d => d.status === 'Pending')
     .filter(d => 
-      d.name.toLowerCase().includes(driverSearch.toLowerCase()) ||
-      d.phone.includes(driverSearch) ||
-      d.email.toLowerCase().includes(driverSearch.toLowerCase()) ||
-      (d.plate && d.plate.toLowerCase().replace(/\s+/g, '').includes(driverSearch.toLowerCase().replace(/\s+/g, ''))) ||
-      (d.manufacturer && d.manufacturer.toLowerCase().includes(driverSearch.toLowerCase())) ||
-      (d.model && d.model.toLowerCase().includes(driverSearch.toLowerCase()))
+      String(d.name || '').toLowerCase().includes(driverSearch.toLowerCase()) ||
+      String(d.phone || '').includes(driverSearch) ||
+      String(d.email || '').toLowerCase().includes(driverSearch.toLowerCase()) ||
+      (d.plate && String(d.plate).toLowerCase().replace(/\s+/g, '').includes(driverSearch.toLowerCase().replace(/\s+/g, ''))) ||
+      (d.manufacturer && String(d.manufacturer).toLowerCase().includes(driverSearch.toLowerCase())) ||
+      (d.model && String(d.model).toLowerCase().includes(driverSearch.toLowerCase()))
     );
 
   const filteredApprovedDrivers = drivers
     .filter(d => d.status !== 'Rejected')
     .filter(d => 
-      d.name.toLowerCase().includes(registeredDriverSearch.toLowerCase()) ||
-      d.phone.includes(registeredDriverSearch) ||
-      d.email.toLowerCase().includes(registeredDriverSearch.toLowerCase()) ||
-      (d.plate && d.plate.toLowerCase().replace(/\s+/g, '').includes(registeredDriverSearch.toLowerCase().replace(/\s+/g, ''))) ||
-      (d.manufacturer && d.manufacturer.toLowerCase().includes(registeredDriverSearch.toLowerCase())) ||
-      (d.model && d.model.toLowerCase().includes(registeredDriverSearch.toLowerCase()))
+      String(d.name || '').toLowerCase().includes(registeredDriverSearch.toLowerCase()) ||
+      String(d.phone || '').includes(registeredDriverSearch) ||
+      String(d.email || '').toLowerCase().includes(registeredDriverSearch.toLowerCase()) ||
+      (d.plate && String(d.plate).toLowerCase().replace(/\s+/g, '').includes(registeredDriverSearch.toLowerCase().replace(/\s+/g, ''))) ||
+      (d.manufacturer && String(d.manufacturer).toLowerCase().includes(registeredDriverSearch.toLowerCase())) ||
+      (d.model && String(d.model).toLowerCase().includes(registeredDriverSearch.toLowerCase()))
     )
     .filter(d => {
       if (!globalStartDate && !globalEndDate) return true;
@@ -573,9 +579,9 @@ const AdminDashboard = () => {
     });
 
   const filteredPassengers = passengers.filter(p => 
-    p.name.toLowerCase().includes(passengerSearch.toLowerCase()) ||
-    p.phone.includes(passengerSearch) ||
-    p.email.toLowerCase().includes(passengerSearch.toLowerCase())
+      String(p.name || '').toLowerCase().includes(passengerSearch.toLowerCase()) ||
+      String(p.phone || '').includes(passengerSearch) ||
+      String(p.email || '').toLowerCase().includes(passengerSearch.toLowerCase())
   ).filter(p => {
     if (!globalStartDate && !globalEndDate) return true;
     if (!p.createdAt) return false;
@@ -676,6 +682,24 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleUpdateDriverCategory = async (id, newCategory) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/drivers/${id}/category`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vehicleCategory: newCategory })
+      });
+      if (response.ok) {
+        alert('Driver category updated successfully!');
+        fetchDrivers();
+      } else {
+        alert('Failed to update driver category.');
+      }
+    } catch (err) {
+      console.error('Error updating driver category:', err);
+    }
+  };
+
   const handleUnblockDriver = async (id, name) => {
     if (!window.confirm(`Restore trip access for ${name}?`)) return;
     setDrivers(prev => prev.map(d => (String(d.id) === String(id) || d.email === id) ? { ...d, isBlocked: false } : d));
@@ -760,6 +784,7 @@ const AdminDashboard = () => {
       }
 
       if (response.ok) {
+        alert(editingCategory ? 'Category updated successfully!' : 'Category added successfully!');
         setCatName('');
         setCatPassengers('4');
         setCatBaseFare('50.00');
@@ -792,11 +817,13 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteCategory = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this vehicle category?')) return;
     try {
       const response = await fetch(`${API_BASE}/api/vehicle-categories/${id}`, {
         method: 'DELETE'
       });
       if (response.ok) {
+        alert('Category deleted successfully!');
         fetchCategories();
       }
     } catch (err) {
@@ -2066,6 +2093,20 @@ const AdminDashboard = () => {
                           {selectedDriver.licenseNumber && (
                              <div style={{ gridColumn: '1 / -1' }}><strong>Licence Number:</strong> <span style={{ fontFamily: 'monospace', fontWeight: '800', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>{selectedDriver.licenseNumber}</span></div>
                           )}
+                          <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <strong>Vehicle Category:</strong> 
+                            <select 
+                              value={selectedDriver.vehicleCategory || ''}
+                              onChange={(e) => handleUpdateDriverCategory(selectedDriver.id, e.target.value)}
+                              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: '14px', fontWeight: 'bold' }}
+                            >
+                              <option value="">Select Category</option>
+                              {(Array.isArray(categories) ? categories : []).map(cat => (
+                                <option key={cat.id} value={cat.name}>{cat.name}</option>
+                              ))}
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
                           <div><strong>Vehicle Make:</strong> {selectedDriver.manufacturer}</div>
                           <div><strong>Vehicle Model:</strong> {selectedDriver.model}</div>
                           <div><strong>Mfg. Year:</strong> {selectedDriver.year}</div>
@@ -2546,10 +2587,10 @@ const AdminDashboard = () => {
                         {/* Column 1: Partner Avatar, Name, Rating */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <div style={{ width: '46px', height: '46px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--primary)', background: '#121624', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '18px', color: 'var(--primary)' }}>
-                            {d.profilePic ? <img src={d.profilePic} alt={d.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : d.name.charAt(0)}
+                            {d.profilePic ? <img src={d.profilePic} alt={d.name || 'Driver'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (String(d.name || '').charAt(0) || 'D')}
                           </div>
                           <div>
-                            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: 'var(--text-main)' }}>{d.name}</h4>
+                            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: 'var(--text-main)' }}>{String(d.name || 'Unknown Driver')}</h4>
                             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px' }}>
                               <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800' }}>★ {d.rating || '5.0'}</span>
                               <span style={{ 
@@ -2564,14 +2605,14 @@ const AdminDashboard = () => {
 
                         {/* Column 2: Contact Details */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.email}</span>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>📞 {d.phone}</span>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(d.email || '')}</span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>📞 {String(d.phone || '')}</span>
                         </div>
 
                         {/* Column 3: Vehicle Model & Plate Number */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-main)' }}>{d.manufacturer} {d.model}</span>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'monospace', fontWeight: '700' }}>{d.plate}</span>
+                          <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-main)' }}>{String(d.manufacturer || '')} {String(d.model || '')}</span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'monospace', fontWeight: '700' }}>{String(d.plate || '')}</span>
                         </div>
 
                         {/* Column 4: Verification & Trip Access Badges */}
@@ -2717,9 +2758,9 @@ const AdminDashboard = () => {
                           <td style={{ padding: '16px', fontWeight: '600' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '13px', color: '#3b82f6' }}>
-                                {p.profilePic ? <img src={p.profilePic} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : p.name.charAt(0)}
+                                {p.profilePic ? <img src={p.profilePic} alt={p.name || 'User'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (p.name?.charAt(0) || 'U')}
                               </div>
-                              <span>{p.name}</span>
+                              <span>{p.name || 'Unknown User'}</span>
                             </div>
                           </td>
                           <td style={{ padding: '16px', color: '#f59e0b', fontWeight: '700' }}>★ {p.rating || '5.0'}</td>

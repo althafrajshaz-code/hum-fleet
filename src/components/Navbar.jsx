@@ -21,18 +21,6 @@ const Navbar = () => {
               <Link to="/driver/login" className="nav-link">Drive</Link>
             </>
           )}
-          {isPassengerFlow && (
-            <>
-              <Link to="/" className="nav-link">Home</Link>
-              <Link to="/passenger/login" className="nav-link">Passenger Portal</Link>
-            </>
-          )}
-          {isDriverFlow && (
-            <>
-              <Link to="/" className="nav-link">Home</Link>
-              <Link to="/driver/login" className="nav-link">Driver Portal</Link>
-            </>
-          )}
         </div>
       </div>
     </nav>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import Button from '../components/Button';
 import './Auth.css';
 
@@ -259,7 +261,32 @@ const PassengerSignup = () => {
             }}
             onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; }}
             onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-            onClick={() => {
+            onClick={async () => {
+              if (Capacitor.isNativePlatform()) {
+                try {
+                  const user = await GoogleAuth.signIn();
+                  const token = user.authentication.idToken;
+                  const res = await fetch(`${getBackendUrl()}/api/passengers/google-auth`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token })
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    localStorage.setItem('passengerEmail', data.email);
+                    localStorage.setItem('passengerName', data.name);
+                    if (data.verificationCode) localStorage.setItem('passengerVerificationCode', data.verificationCode);
+                    navigate('/passenger');
+                  } else {
+                    const errData = await res.json();
+                    setValidationError(errData.error || 'Native Google Auth failed');
+                  }
+                } catch (err) {
+                  setValidationError('Native Google Login Error: ' + err.message);
+                }
+                return;
+              }
+
               const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE';
               if (googleClientId === 'YOUR_GOOGLE_CLIENT_ID_HERE' || !googleClientId) {
                 // Mock flow for testing

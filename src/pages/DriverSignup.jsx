@@ -50,14 +50,21 @@ const DriverSignup = () => {
   const [year, setYear] = useState('');
   const [plate, setPlate] = useState('');
   const [vehicleCategory, setVehicleCategory] = useState('');
+  const [customVehicleCategory, setCustomVehicleCategory] = useState('');
   const [modelsList, setModelsList] = useState([]);
   const [vehicleCatalog, setVehicleCatalog] = useState({});
+  const [dbCategories, setDbCategories] = useState([]);
 
   useEffect(() => {
     fetch(`${getBackendUrl()}/api/vehicles/catalog`)
       .then(res => res.json())
       .then(data => setVehicleCatalog(data))
       .catch(err => console.error("Error fetching vehicle catalog:", err));
+      
+    fetch(`${getBackendUrl()}/api/vehicle-categories`)
+      .then(res => res.json())
+      .then(data => setDbCategories(data))
+      .catch(err => console.error("Error fetching vehicle categories:", err));
   }, []);
   const [ratePerKm, setRatePerKm] = useState('15.00');
   const [ratePerHour, setRatePerHour] = useState('120.00');
@@ -91,6 +98,7 @@ const DriverSignup = () => {
 
   // Step 6: Indian Bank Details
   const [bankName, setBankName] = useState('');
+  const [customBankName, setCustomBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
   const [holderName, setHolderName] = useState('');
@@ -228,7 +236,7 @@ const DriverSignup = () => {
       model: customModel || model,
       year,
       plate,
-      vehicleCategory,
+      vehicleCategory: vehicleCategory === 'Other' ? customVehicleCategory : vehicleCategory,
       ratePerKm,
       ratePerHour,
       isPinkVehicle,
@@ -240,7 +248,7 @@ const DriverSignup = () => {
       facePhoto,
       profilePic: facePhoto,
       bank: {
-        bankName,
+        bankName: bankName === 'Other' ? customBankName : bankName,
         accountNumber,
         ifscCode,
         holderName
@@ -495,13 +503,22 @@ const DriverSignup = () => {
                 required
               >
                 <option value="">Select Category</option>
-                <option value="🛺 Auto Rickshaw">🛺 Auto Rickshaw</option>
-                <option value="🚙 Mini / Hatchback">🚙 Mini / Hatchback</option>
-                <option value="🚘 Sedan (AC)">🚘 Sedan (AC)</option>
-                <option value="🚐 SUV / XL (6 Seater)">🚐 SUV / XL (6 Seater)</option>
-                <option value="⚡ EV Green Cab (Eco)">⚡ EV Green Cab (Eco)</option>
-                <option value="💎 Premium / Luxury">💎 Premium / Luxury</option>
+                {dbCategories.map(cat => (
+                  <option key={cat.id} value={cat.name}>{cat.name}</option>
+                ))}
+                <option value="Other">Other</option>
               </select>
+              {vehicleCategory === 'Other' && (
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Enter Custom Category"
+                  value={customVehicleCategory}
+                  onChange={(e) => setCustomVehicleCategory(e.target.value)}
+                  style={{ marginTop: '8px' }}
+                  required
+                />
+              )}
             </div>
             
             <div className="form-row">
@@ -866,14 +883,42 @@ const DriverSignup = () => {
             
             <div className="input-group">
               <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Bank Name</span>
-              <input 
-                type="text" 
+              <select 
                 className="input-field" 
-                placeholder="e.g. State Bank of India" 
                 value={bankName}
                 onChange={(e) => setBankName(e.target.value)}
                 required
-              />
+              >
+                <option value="">Select Bank</option>
+                <option value="State Bank of India (SBI)">State Bank of India (SBI)</option>
+                <option value="HDFC Bank">HDFC Bank</option>
+                <option value="ICICI Bank">ICICI Bank</option>
+                <option value="Punjab National Bank (PNB)">Punjab National Bank (PNB)</option>
+                <option value="Axis Bank">Axis Bank</option>
+                <option value="Kotak Mahindra Bank">Kotak Mahindra Bank</option>
+                <option value="Bank of Baroda">Bank of Baroda</option>
+                <option value="Canara Bank">Canara Bank</option>
+                <option value="Union Bank of India">Union Bank of India</option>
+                <option value="IndusInd Bank">IndusInd Bank</option>
+                <option value="Bank of India">Bank of India</option>
+                <option value="Indian Bank">Indian Bank</option>
+                <option value="Central Bank of India">Central Bank of India</option>
+                <option value="Yes Bank">Yes Bank</option>
+                <option value="IDFC FIRST Bank">IDFC FIRST Bank</option>
+                <option value="Federal Bank">Federal Bank</option>
+                <option value="Other">Other</option>
+              </select>
+              {bankName === 'Other' && (
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Enter Bank Name"
+                  value={customBankName}
+                  onChange={(e) => setCustomBankName(e.target.value)}
+                  style={{ marginTop: '8px' }}
+                  required
+                />
+              )}
             </div>
 
             <div className="input-group">

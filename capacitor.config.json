@@ -1,6 +1,6 @@
 {
   "appId": "com.humfleet.main",
-  "appName": " HUM Fleet",
+  "appName": "Hum Fleet",
   "webDir": "dist",
   "server": {
     "cleartext": true
@@ -15,6 +15,11 @@
     "Keyboard": {
       "resize": "none",
       "resizeOnFullScreen": false
+    },
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "271720743741-tpaarbgmi2u1fjc326gh42kkh0aijb7u.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
     }
   }
 }

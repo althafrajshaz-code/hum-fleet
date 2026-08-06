@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { auth, googleProvider } from '../firebase';
-import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import Button from '../components/Button';
 import './Auth.css';
 
@@ -23,7 +25,14 @@ const PassengerLogin = () => {
 
   const handleGoogleAuth = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      let result;
+      if (Capacitor.isNativePlatform()) {
+        const user = await GoogleAuth.signIn();
+        const credential = GoogleAuthProvider.credential(user.authentication.idToken);
+        result = await signInWithCredential(auth, credential);
+      } else {
+        result = await signInWithPopup(auth, googleProvider);
+      }
       const user = result.user;
       
       localStorage.setItem('passengerEmail', user.email);

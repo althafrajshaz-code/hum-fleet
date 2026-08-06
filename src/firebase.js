@@ -6,6 +6,7 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 const firebaseConfig = {
   apiKey: "AIzaSyDTE4OPpmtdZJ-qLLvviSR5_kBGYfGUMm0",
   authDomain: "hum-4bb7f.firebaseapp.com",
+  databaseURL: "https://hum-4bb7f-default-rtdb.firebaseio.com",
   projectId: "hum-4bb7f",
   storageBucket: "hum-4bb7f.firebasestorage.app",
   messagingSenderId: "271720743741",

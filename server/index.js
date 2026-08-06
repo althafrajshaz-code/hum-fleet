@@ -173,10 +173,12 @@ let settings = {
 // Default Vehicle Categories List with Separate Base Fares and Rates/KM
 let vehicleCategories = [
   { id: 'auto', name: '🛺 Auto Rickshaw', maxPassengers: 3, baseFare: 30.00, ratePerKm: 12.00, icon: '🛺' },
-  { id: 'hatchback', name: 'Mini / Hatchback', maxPassengers: 4, baseFare: 50.00, ratePerKm: 15.00, icon: '🚗' },
-  { id: 'sedan', name: 'Sedan (AC)', maxPassengers: 4, baseFare: 70.00, ratePerKm: 18.00, icon: '🚘' },
-  { id: 'suv', name: 'SUV / XL (6 Seater)', maxPassengers: 6, baseFare: 120.00, ratePerKm: 25.00, icon: '🚐' },
-  { id: 'ev', name: '⚡ EV Green Cab (Eco)', maxPassengers: 4, baseFare: 60.00, ratePerKm: 16.00, icon: '⚡' }
+  { id: 'mini', name: '🚙 Mini', maxPassengers: 4, baseFare: 40.00, ratePerKm: 14.00, icon: '🚙' },
+  { id: 'hatchback', name: '🚗 Hatchback', maxPassengers: 4, baseFare: 50.00, ratePerKm: 15.00, icon: '🚗' },
+  { id: 'sedan', name: '🚘 Sedan (AC)', maxPassengers: 4, baseFare: 70.00, ratePerKm: 18.00, icon: '🚘' },
+  { id: 'suv', name: '🚐 SUV / XL (6 Seater)', maxPassengers: 6, baseFare: 120.00, ratePerKm: 25.00, icon: '🚐' },
+  { id: 'ev', name: '⚡ EV Green Cab (Eco)', maxPassengers: 4, baseFare: 60.00, ratePerKm: 16.00, icon: '⚡' },
+  { id: 'premium', name: '💎 Premium / Luxury', maxPassengers: 4, baseFare: 150.00, ratePerKm: 30.00, icon: '💎' }
 ];
 
 // Global ride matching system database, driver direct messaging store & in-trip ride chat store
@@ -522,9 +524,9 @@ app.post('/api/vehicle-categories', (req, res) => {
 
 // Edit existing vehicle category
 app.put('/api/vehicle-categories/:id', (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = req.params.id;
   const { name, maxPassengers, baseFare, ratePerKm } = req.body;
-  const category = vehicleCategories.find(c => c.id === id);
+  const category = vehicleCategories.find(c => String(c.id) === id);
   if (category) {
     if (name) category.name = name;
     if (maxPassengers !== undefined) category.maxPassengers = parseInt(maxPassengers);
@@ -539,8 +541,8 @@ app.put('/api/vehicle-categories/:id', (req, res) => {
 
 // Delete vehicle category
 app.delete('/api/vehicle-categories/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  vehicleCategories = vehicleCategories.filter(c => c.id !== id);
+  const id = req.params.id;
+  vehicleCategories = vehicleCategories.filter(c => String(c.id) !== id);
   saveData();
   res.json({ success: true });
 });
@@ -1052,6 +1054,20 @@ app.post('/api/drivers/:id/block', (req, res) => {
   const driver = drivers.find(d => String(d.id) === String(targetId) || d.email === targetId);
   if (driver) {
     driver.isBlocked = true;
+    saveData();
+    res.json({ success: true, driver });
+  } else {
+    res.status(404).json({ error: 'Driver not found' });
+  }
+});
+
+// Update driver vehicle category (Admin only)
+app.put('/api/admin/drivers/:id/category', (req, res) => {
+  const targetId = req.params.id;
+  const { vehicleCategory } = req.body;
+  const driver = drivers.find(d => String(d.id) === String(targetId) || d.email === targetId);
+  if (driver) {
+    driver.vehicleCategory = vehicleCategory;
     saveData();
     res.json({ success: true, driver });
   } else {
