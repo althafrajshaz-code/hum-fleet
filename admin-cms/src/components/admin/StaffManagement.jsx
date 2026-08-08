@@ -2,7 +2,14 @@ import React from 'react';
 import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
 import Button from '../Button';
 
-const StaffManagement = ({ activeTab }) => {
+const StaffManagement = ({ 
+  activeTab,
+  employees,
+  setShowAddEmployeeModal,
+  setSelectedEmployeeForDetails,
+  API_BASE,
+  fetchEmployees
+}) => {
   return (
     <>
 {/* TAB: Staff & Management */}

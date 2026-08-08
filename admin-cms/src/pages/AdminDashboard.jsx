@@ -50,6 +50,11 @@ const AdminDashboard = () => {
     }
   }, [navigate]);
 
+  const handleAdminLogout = () => {
+    localStorage.removeItem('adminAuthenticated');
+    navigate('/');
+  };
+
 
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('adminActiveTab') || 'approvals');
   
@@ -66,17 +71,25 @@ const AdminDashboard = () => {
   useSocketFleetLive();
 
   useEffect(() => {
-    if (driversData?.data) setDrivers(driversData.data);
+    if (Array.isArray(driversData)) {
+      setDrivers(driversData);
+    } else if (driversData?.data) {
+      setDrivers(driversData.data);
+    }
   }, [driversData]);
 
   useEffect(() => {
-    if (passengersData?.data) setPassengers(passengersData.data);
+    if (Array.isArray(passengersData)) {
+      setPassengers(passengersData);
+    } else if (passengersData?.data) {
+      setPassengers(passengersData.data);
+    }
   }, [passengersData]);
   
   const totalDriverPages = driversData?.totalPages || 1;
-  const totalDrivers = driversData?.total || 0;
+  const totalDrivers = Array.isArray(driversData) ? driversData.length : (driversData?.total || 0);
   const totalPassengerPages = passengersData?.totalPages || 1;
-  const totalPassengers = passengersData?.total || 0;
+  const totalPassengers = Array.isArray(passengersData) ? passengersData.length : (passengersData?.total || 0);
   // ---------------------------------------------
   const [activeSOSAlert, setActiveSOSAlert] = useState(null);
   const [drivers, setDrivers] = useState([]);
@@ -91,7 +104,7 @@ const AdminDashboard = () => {
   const [newPassengerData, setNewPassengerData] = useState({ name: '', email: '', phone: '' });
   // Employee Management State
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
-  const [newEmployee, setNewEmployee] = useState({ name: '', username: '', password: '', role: 'staff', position: '', managerId: '' });
+  const [newEmployee, setNewEmployee] = useState({ name: '', username: '', password: '', role: 'staff', position: '', managerId: '', salary: '', incentive: '', salaryDate: '' });
   const [selectedEmployeeForDetails, setSelectedEmployeeForDetails] = useState(null);
 
   // Pending Payments State
@@ -323,10 +336,15 @@ const AdminDashboard = () => {
       if (response.ok) {
         fetchEmployees();
         setShowAddEmployeeModal(false);
-        setNewEmployee({ name: '', username: '', password: '', role: 'staff', position: '', managerId: '' });
+        setNewEmployee({ name: '', username: '', password: '', role: 'staff', position: '', managerId: '', salary: '', incentive: '', salaryDate: '' });
+        alert('Employee added successfully!');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(`Failed to add employee: ${errorData.error || 'Server error'}`);
       }
     } catch (err) {
       console.error('Error adding employee:', err);
+      alert('Network error while adding employee.');
     }
   };
 
@@ -1937,6 +1955,7 @@ const AdminDashboard = () => {
                 setPage={setDriverPage}
                 totalPages={totalDriverPages}
                 totalItems={totalDrivers}
+                setShowAddDriverModal={setShowAddDriverModal}
               />
             )}
             
@@ -1984,19 +2003,39 @@ const AdminDashboard = () => {
               />
             )}
             
-            {activeTab === 'payments' && <PendingPayments activeTab={activeTab} />}
-            
-            {activeTab === 'analytics' && (
-              <Analytics 
+            {activeTab === 'payments' && (
+              <PendingPayments 
                 activeTab={activeTab}
-                platformStats={platformStats}
-                recentTrips={recentTrips}
-                analyticsFilter={analyticsFilter}
-                setAnalyticsFilter={setAnalyticsFilter}
+                pendingSearch={pendingSearch}
+                setPendingSearch={setPendingSearch}
+                pendingFilter={pendingFilter}
+                setPendingFilter={setPendingFilter}
+                downloadPendingPaymentsCSV={downloadPendingPaymentsCSV}
+                pendingPaymentsData={pendingPaymentsData}
+                filteredPendingPayments={filteredPendingPayments}
+                setSelectedLedgerDriver={setSelectedLedgerDriver}
+                setCollectAmount={setCollectAmount}
+                setShowCollectCashModal={setShowCollectCashModal}
+                drivers={drivers}
+                setMessageModalDriver={setMessageModalDriver}
+                fetchChatMessages={fetchChatMessages}
               />
             )}
             
-            {activeTab === 'staff' && <StaffManagement activeTab={activeTab} />}
+            {activeTab === 'analytics' && (
+              <Analytics activeTab={activeTab} />
+            )}
+            
+            {activeTab === 'staff' && (
+              <StaffManagement 
+                activeTab={activeTab}
+                employees={employees}
+                setShowAddEmployeeModal={setShowAddEmployeeModal}
+                setSelectedEmployeeForDetails={setSelectedEmployeeForDetails}
+                API_BASE={API_BASE}
+                fetchEmployees={fetchEmployees}
+              />
+            )}
             
             {activeTab === 'promotions' && <Promotions activeTab={activeTab} />}
             
@@ -2050,6 +2089,476 @@ const AdminDashboard = () => {
         </main>
       </div>
 
+      {/* ========== ADD PARTNER MODAL ========== */}
+      {showAddDriverModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-card animate-scale-in" style={{ maxWidth: '500px', width: '100%', padding: '32px' }}>
+            <h3 style={{ margin: '0 0 24px 0', fontSize: '20px', fontWeight: '800' }}>Add New Driver Partner</h3>
+            <form onSubmit={handleAddDriver} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input type="text" placeholder="Full Name" className="input-field" value={newDriverData.name} onChange={(e) => setNewDriverData({...newDriverData, name: e.target.value})} required />
+              <input type="email" placeholder="Email Address" className="input-field" value={newDriverData.email} onChange={(e) => setNewDriverData({...newDriverData, email: e.target.value})} required />
+              <input type="tel" placeholder="Phone Number" className="input-field" value={newDriverData.phone} onChange={(e) => setNewDriverData({...newDriverData, phone: e.target.value})} required />
+              <input type="text" placeholder="License Number" className="input-field" value={newDriverData.licenseNumber} onChange={(e) => setNewDriverData({...newDriverData, licenseNumber: e.target.value})} required />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <select className="input-field" value={newDriverData.vehicleType} onChange={(e) => setNewDriverData({...newDriverData, vehicleType: e.target.value})} required>
+                  <option value="Sedan">Sedan</option>
+                  <option value="Hatchback">Hatchback</option>
+                  <option value="SUV">SUV</option>
+                  <option value="Auto">Auto Rickshaw</option>
+                </select>
+                <input type="text" placeholder="Plate Number" className="input-field" value={newDriverData.plateNumber} onChange={(e) => setNewDriverData({...newDriverData, plateNumber: e.target.value})} required />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+                <Button type="button" variant="outline" onClick={() => setShowAddDriverModal(false)}>Cancel</Button>
+                <Button type="submit" variant="primary">Add Driver</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========== ADD PASSENGER MODAL ========== */}
+      {showAddPassengerModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-card animate-scale-in" style={{ maxWidth: '400px', width: '100%', padding: '32px' }}>
+            <h3 style={{ margin: '0 0 24px 0', fontSize: '20px', fontWeight: '800' }}>Add New Passenger</h3>
+            <form onSubmit={handleAddPassenger} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input type="text" placeholder="Full Name" className="input-field" value={newPassengerData.name} onChange={(e) => setNewPassengerData({...newPassengerData, name: e.target.value})} required />
+              <input type="email" placeholder="Email Address" className="input-field" value={newPassengerData.email} onChange={(e) => setNewPassengerData({...newPassengerData, email: e.target.value})} required />
+              <input type="tel" placeholder="Phone Number" className="input-field" value={newPassengerData.phone} onChange={(e) => setNewPassengerData({...newPassengerData, phone: e.target.value})} required />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+                <Button type="button" variant="outline" onClick={() => setShowAddPassengerModal(false)}>Cancel</Button>
+                <Button type="submit" variant="primary">Add Passenger</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========== PARTNER DETAILS MODAL ========== */}
+      {selectedDriver && activeTab === 'partners' && (
+        <div className="modal-overlay" onClick={() => setSelectedDriver(null)}>
+          <div className="modal-content glass-card animate-scale-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '750px', width: '100%', padding: '32px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '22px', fontWeight: '800' }}>Partner Profile: {selectedDriver.name}</h3>
+              <button onClick={() => setSelectedDriver(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Profile grid */}
+              <div className="profile-grid">
+                <div><strong>Phone:</strong> {selectedDriver.phone}</div>
+                <div><strong>Email:</strong> {selectedDriver.email}</div>
+                {selectedDriver.licenseNumber && (
+                   <div style={{ gridColumn: '1 / -1' }}><strong>Licence Number:</strong> <span style={{ fontFamily: 'monospace', fontWeight: '800', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>{selectedDriver.licenseNumber}</span></div>
+                )}
+                <div><strong>Vehicle Category:</strong> {selectedDriver.vehicleCategory || 'Not Assigned'}</div>
+                <div><strong>Vehicle Make:</strong> {selectedDriver.manufacturer}</div>
+                <div><strong>Vehicle Model:</strong> {selectedDriver.model}</div>
+                <div><strong>Mfg. Year:</strong> {selectedDriver.year}</div>
+                <div><strong>Plate No:</strong> {selectedDriver.plate}</div>
+                <div><strong>Minimum Rate/KM:</strong> ₹{selectedDriver.ratePerKm || '15.00'}</div>
+                <div><strong>Minimum Rate/Hour:</strong> ₹{selectedDriver.ratePerHour || '120.00'}</div>
+              </div>
+
+              {/* Bank account */}
+              <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', background: 'rgba(255,255,255,0.01)' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '800' }}>
+                  <DollarSign size={16} color="var(--primary)"/> Bank Account Details
+                </h4>
+                {selectedDriver.bank ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
+                    <div><strong>Holder Name:</strong> {selectedDriver.bank.holderName || 'N/A'}</div>
+                    <div><strong>Bank Name:</strong> {selectedDriver.bank.bankName || 'N/A'}</div>
+                    <div><strong>Account No:</strong> {selectedDriver.bank.accountNumber || 'N/A'}</div>
+                    <div><strong>IFSC Code:</strong> {selectedDriver.bank.ifscCode || 'N/A'}</div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No bank details provided.</div>
+                )}
+              </div>
+
+              {/* Ledger */}
+              <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', background: 'rgba(255,255,255,0.01)' }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '800' }}><DollarSign size={16} color="var(--primary)"/> Partner Ledger (Cash Runs)</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
+                  <div><strong>Collected Cash:</strong> ₹{parseFloat(selectedDriver.wallet?.cashCollected || 0).toFixed(2)}</div>
+                  <div style={{ color: '#ef4444' }}><strong>Platform Debt Due:</strong> ₹{parseFloat(selectedDriver.wallet?.toBePaid || 0).toFixed(2)}</div>
+                </div>
+              </div>
+
+              {/* Face selfie */}
+              <div className="doc-section">
+                <h4 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px' }}>Registration Live Face Selfie</h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <div 
+                    className="clickable-thumb" 
+                    onClick={() => handleOpenPreview(selectedDriver.profilePic || selectedDriver.facePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600', `${selectedDriver.name} Live Face Selfie`)}
+                    style={{ width: '70px', height: '70px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--primary)', flexShrink: 0 }}
+                  >
+                    <img 
+                      src={selectedDriver.profilePic || selectedDriver.facePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600'} 
+                      alt="Face Verification" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-main)' }}>Live Face Verification Captured</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Camera selfie captured during driver registration flow.</div>
+                    <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '700', marginTop: '2px' }}>✓ Facial Geometry Validated</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Vehicle Photos */}
+              <div className="doc-section">
+                <h4 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px' }}>Uploaded Vehicle Photos</h4>
+                <div className="admin-docs-grid">
+                  {Object.entries(selectedDriver.photos || {}).map(([side, data]) => {
+                    const src = getPhotoSrc(side, data);
+                    return (
+                      <div key={side} className="admin-doc-thumbnail clickable-thumb" onClick={() => handleOpenPreview(src, `${side.charAt(0).toUpperCase() + side.slice(1)} View`)}>
+                        <img src={src} alt={side} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />
+                        <span className="thumb-label" style={{ marginTop: '4px' }}>{side.charAt(0).toUpperCase() + side.slice(1)} view</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Compliance documents */}
+              <div className="doc-section">
+                <h4 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px' }}>Compliance Documents</h4>
+                <div className="admin-docs-grid">
+                  {[
+                    { id: 'rc', label: 'Registration (RC)' },
+                    { id: 'pollution', label: 'Pollution (PUC)' },
+                    { id: 'insurance', label: 'Insurance' },
+                    { id: 'fitness', label: 'Fitness Cert.' },
+                    { id: 'license', label: 'Driving Licence (DL)' },
+                    { id: 'licenseFront', label: 'DL (Front)' },
+                    { id: 'licenseBack', label: 'DL (Back)' }
+                  ].filter(doc => selectedDriver.docs?.[doc.id]).map((doc) => {
+                    const data = selectedDriver.docs?.[doc.id];
+                    const src = getDocSrc(data);
+                    return (
+                      <div key={doc.id} className="admin-doc-thumbnail doc-pdf clickable-thumb" onClick={() => handleOpenPreview(src, doc.label)}>
+                        {data && data.startsWith('data:image') ? (
+                          <img src={data} alt={doc.label} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '12px 0' }}>
+                            <FileText size={28} color="var(--secondary)" />
+                          </div>
+                        )}
+                        <span className="thumb-label">{doc.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
+              <Button variant="outline" onClick={() => setSelectedDriver(null)}>Close Profile</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== COLLECT CASH MODAL ========== */}
+      {showCollectCashModal && selectedLedgerDriver && (
+        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifycontent: 'center', padding: '16px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '640px', padding: '24px', borderRadius: '24px', background: 'var(--bg-card)', border: '1px solid var(--border)', display: 'flex', gap: '20px', flexDirection: 'column' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <DollarSign size={20} color="var(--primary)" />
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800' }}>Payment Received from Driver</h3>
+              </div>
+              <button onClick={() => setShowCollectCashModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              {/* Left Side: Statement Preview & Share */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)', alignSelf: 'flex-start' }}>
+                  📄 Statement Receipt Preview
+                </div>
+                {statementImageSrc ? (
+                  <img 
+                    src={statementImageSrc} 
+                    alt="Dues Statement" 
+                    style={{ 
+                      width: '100%', 
+                      maxWidth: '260px', 
+                      borderRadius: '12px', 
+                      border: '1px solid var(--border)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)' 
+                    }} 
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border)', borderRadius: '12px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                    Generating statement image...
+                  </div>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={handleShareWhatsApp}
+                  style={{
+                    width: '100%',
+                    background: '#25D366',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '10px',
+                    padding: '10px',
+                    fontSize: '12.5px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  💬 Copy Image & Open WhatsApp
+                </button>
+              </div>
+
+              {/* Right Side: Cash Collection Form */}
+              <form onSubmit={handleCollectCash} style={{ display: 'flex', flexDirection: 'column', gap: '14px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Driver Partner</span>
+                  <strong style={{ fontSize: '15px', color: 'var(--text-main)' }}>{selectedLedgerDriver.name}</strong>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Phone Number</span>
+                  <span style={{ fontSize: '13px', color: 'var(--text-main)', fontWeight: '600' }}>{selectedLedgerDriver.phone}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Total Pending Balance</span>
+                  <strong style={{ fontSize: '18px', color: '#ef4444' }}>-₹{parseFloat(selectedLedgerDriver.wallet?.toBePaid || 0).toFixed(2)}</strong>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Amount Received (INR)</label>
+                  <input 
+                    type="number" 
+                    className="input-field" 
+                    step="0.01"
+                    min="0.01"
+                    max={parseFloat(selectedLedgerDriver.wallet?.toBePaid || 0)}
+                    value={collectAmount}
+                    onChange={(e) => setCollectAmount(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <Button 
+                  variant="primary" 
+                  type="submit" 
+                  disabled={isSubmittingCollection}
+                  style={{ marginTop: '8px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', fontWeight: '800' }}
+                >
+                  {isSubmittingCollection ? 'Processing...' : '✅ Record Payment Received & Generate PDF Bill'}
+                </Button>
+              </form>
+            </div>
+            
+          </div>
+        </div>
+      )}
+
+      {/* ========== ADD EMPLOYEE MODAL ========== */}
+      {showAddEmployeeModal && (
+        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '24px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0 }}>Add New Employee</h3>
+              <button onClick={() => setShowAddEmployeeModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            <form onSubmit={handleAddEmployee} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Name</label>
+                <input required type="text" className="input-field" value={newEmployee.name} onChange={e => setNewEmployee({...newEmployee, name: e.target.value})} style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Username</label>
+                <input required type="text" className="input-field" value={newEmployee.username} onChange={e => setNewEmployee({...newEmployee, username: e.target.value})} style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Password</label>
+                <input required type="password" className="input-field" value={newEmployee.password} onChange={e => setNewEmployee({...newEmployee, password: e.target.value})} style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Position</label>
+                <input required type="text" className="input-field" value={newEmployee.position} onChange={e => setNewEmployee({...newEmployee, position: e.target.value})} style={{ width: '100%' }} placeholder="e.g. Area Manager, Support Staff" />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Role</label>
+                <select className="input-field" value={newEmployee.role} onChange={e => setNewEmployee({...newEmployee, role: e.target.value})} style={{ width: '100%' }}>
+                  <option value="staff">Staff</option>
+                  <option value="manager">Manager</option>
+                </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Salary (₹)</label>
+                  <input type="number" className="input-field" value={newEmployee.salary} onChange={e => setNewEmployee({...newEmployee, salary: e.target.value})} style={{ width: '100%' }} placeholder="Monthly Salary" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Salary Date (Day)</label>
+                  <input type="number" className="input-field" value={newEmployee.salaryDate} onChange={e => setNewEmployee({...newEmployee, salaryDate: e.target.value})} style={{ width: '100%' }} placeholder="e.g. 1" min="1" max="31" />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Incentive Details</label>
+                <textarea className="input-field" value={newEmployee.incentive} onChange={e => setNewEmployee({...newEmployee, incentive: e.target.value})} style={{ width: '100%', minHeight: '60px' }} placeholder="E.g. 5% commission on closed sales..."></textarea>
+              </div>
+              <Button type="submit" variant="primary" style={{ marginTop: '8px' }}>Create Account</Button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========== EMPLOYEE DETAILS MODAL ========== */}
+      {selectedEmployeeForDetails && (
+        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '20px' }}>{selectedEmployeeForDetails.name}</h3>
+                <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '14px' }}>
+                  {selectedEmployeeForDetails.role} | {selectedEmployeeForDetails.position} | @{selectedEmployeeForDetails.username}
+                </p>
+              </div>
+              <button onClick={() => setSelectedEmployeeForDetails(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              {/* Payroll Details */}
+              <div style={{ gridColumn: '1 / -1', background: 'var(--card-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <h4 style={{ margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <TrendingUp size={18} color="var(--primary)" /> Payroll & Reminders
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Monthly Salary</div>
+                    <div style={{ fontWeight: '600', color: '#10b981', fontSize: '16px' }}>{selectedEmployeeForDetails.salary ? `₹${selectedEmployeeForDetails.salary}` : 'Not specified'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Salary Date</div>
+                    <div style={{ fontWeight: '500' }}>{selectedEmployeeForDetails.salaryDate ? `Day ${selectedEmployeeForDetails.salaryDate} of month` : 'Not set'}</div>
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Incentive / Bonus Details</div>
+                    <div style={{ fontWeight: '500', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', border: '1px dashed var(--border)', marginTop: '4px' }}>
+                      {selectedEmployeeForDetails.incentive || 'No incentives defined.'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Details */}
+              <div style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <h4 style={{ margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <DollarSign size={18} color="var(--primary)" /> Bank Account Details
+                </h4>
+                {selectedEmployeeForDetails.bankDetails ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Bank Name</div>
+                      <div style={{ fontWeight: '500' }}>{selectedEmployeeForDetails.bankDetails.bankName || '-'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Account Number</div>
+                      <div style={{ fontWeight: '500' }}>{selectedEmployeeForDetails.bankDetails.accountNo || '-'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>IFSC Code</div>
+                      <div style={{ fontWeight: '500' }}>{selectedEmployeeForDetails.bankDetails.ifscCode || '-'}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>No bank details provided.</div>
+                )}
+              </div>
+
+              {/* KYC Documents */}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <h4 style={{ margin: '0 0 12px 0', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>KYC Documents</h4>
+                {selectedEmployeeForDetails.documents ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>Aadhaar Card (Front)</div>
+                      {selectedEmployeeForDetails.documents.aadhaarFront ? (
+                         <img src={selectedEmployeeForDetails.documents.aadhaarFront} alt="Aadhaar Front" style={{ width: '100%', height: '150px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
+                      ) : <div style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', borderRadius: '4px' }}>Not Uploaded</div>}
+                    </div>
+
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>Aadhaar Card (Back)</div>
+                      {selectedEmployeeForDetails.documents.aadhaarBack ? (
+                         <img src={selectedEmployeeForDetails.documents.aadhaarBack} alt="Aadhaar Back" style={{ width: '100%', height: '150px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
+                      ) : <div style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', borderRadius: '4px' }}>Not Uploaded</div>}
+                    </div>
+
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>PAN Card (Front)</div>
+                      {selectedEmployeeForDetails.documents.panFront ? (
+                         <img src={selectedEmployeeForDetails.documents.panFront} alt="PAN Front" style={{ width: '100%', height: '150px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
+                      ) : <div style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', borderRadius: '4px' }}>Not Uploaded</div>}
+                    </div>
+
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>PAN Card (Back)</div>
+                      {selectedEmployeeForDetails.documents.panBack ? (
+                         <img src={selectedEmployeeForDetails.documents.panBack} alt="PAN Back" style={{ width: '100%', height: '150px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
+                      ) : <div style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', borderRadius: '4px' }}>Not Uploaded</div>}
+                    </div>
+
+                    <div style={{ gridColumn: '1 / -1', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>Bank Proof (Cancelled Check / Passbook)</div>
+                      {selectedEmployeeForDetails.documents.bankProof ? (
+                         <img src={selectedEmployeeForDetails.documents.bankProof} alt="Bank Proof" style={{ width: '100%', height: '200px', objectFit: 'contain', background: '#000', borderRadius: '4px' }} />
+                      ) : <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', borderRadius: '4px' }}>Not Uploaded</div>}
+                    </div>
+
+                  </div>
+                ) : (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>No documents provided.</div>
+                )}
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <Button variant="danger" onClick={async () => {
+                  const message = window.prompt('Enter warning message:');
+                  if(message) {
+                    await fetch(`${API_BASE}/api/admin/employees/${selectedEmployeeForDetails.id}/warn`, { 
+                      method: 'POST', 
+                      headers: {'Content-Type': 'application/json'},
+                      body: JSON.stringify({ message }) 
+                    });
+                    alert('Warning Letter recorded and sent to employee.');
+                    fetchEmployees();
+                  }
+                }} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                  <AlertCircle size={16} style={{ marginRight: '8px' }} /> Issue Warning Letter
+                </Button>
+                <Button variant="outline" onClick={() => {
+                  alert(`Generated Terms & Conditions Document for ${selectedEmployeeForDetails.name}.\n\n(A PDF would typically download here)`);
+                }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileText size={16} /> Generate Terms & Conditions
+                </Button>
+              </div>
+              <Button variant="outline" onClick={() => setSelectedEmployeeForDetails(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

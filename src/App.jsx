@@ -14,7 +14,7 @@ import './index.css';
 
 const AdminRedirect = () => {
   useEffect(() => {
-    window.location.href = 'https://admin-78dq27d5i-althafrajshaz-codes-projects.vercel.app/';
+    window.location.href = 'https://admin-cms-liard.vercel.app/';
   }, []);
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh', color: 'var(--text-muted)', fontSize: '16px' }}>

@@ -21,7 +21,8 @@ const AppStateSchema = new mongoose.Schema({
   driverMessages: { type: mongoose.Schema.Types.Mixed, default: {} },
   passengerMessages: { type: mongoose.Schema.Types.Mixed, default: {} },
   rideMessages: { type: mongoose.Schema.Types.Mixed, default: {} },
-  dynamicLocations: { type: mongoose.Schema.Types.Mixed, default: [] }
+  dynamicLocations: { type: mongoose.Schema.Types.Mixed, default: [] },
+  employees: { type: mongoose.Schema.Types.Mixed, default: [] }
 }, { timestamps: true, minimize: false });
 
 const AppState = mongoose.model('AppState', AppStateSchema);
@@ -191,6 +192,7 @@ let passengerMessages = {};
 let rideMessages = {};
 let dynamicLocations = []; // Store for newly searched/added locations by passengers
 let promotions = [];
+let employees = [];
 
 // Persistence Helpers — MongoDB backed with debounce
 let _saveTimer = null;
@@ -200,7 +202,7 @@ function saveData() {
     try {
       await AppState.findOneAndUpdate(
         { _id: 'humFleetState' },
-        { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions },
+        { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
         { upsert: true, new: true }
       );
     } catch (err) {
@@ -278,6 +280,12 @@ async function loadData() {
 
       if (doc.dynamicLocations) {
         dynamicLocations = doc.dynamicLocations;
+      } else {
+        needsSave = true;
+      }
+
+      if (doc.employees) {
+        employees = doc.employees;
       } else {
         needsSave = true;
       }
@@ -2287,6 +2295,100 @@ app.post('/api/admin/passengers', (req, res) => {
   passengers.push(newPassenger);
   saveData();
   res.status(201).json(newPassenger);
+});
+
+// ========== EMPLOYEES API ==========
+app.get('/api/admin/employees', (req, res) => {
+  res.json(employees);
+});
+
+app.post('/api/admin/employees', (req, res) => {
+  const { name, username, password, role, position, managerId, salary, incentive, salaryDate } = req.body;
+  
+  if (employees.find(e => e.username === username)) {
+    return res.status(400).json({ error: 'Username already exists' });
+  }
+
+  const newEmp = {
+    id: Date.now(),
+    name,
+    username,
+    password, 
+    role,
+    position,
+    managerId,
+    salary,
+    incentive,
+    salaryDate,
+    status: 'approved',
+    isBlocked: false,
+    createdAt: new Date().toISOString(),
+    attendance: [],
+    documents: null,
+    bankDetails: null,
+    warnings: []
+  };
+
+  employees.push(newEmp);
+  saveData();
+  res.json(newEmp);
+});
+
+app.post('/api/admin/employees/:id/approve', (req, res) => {
+  const id = parseInt(req.params.id);
+  const emp = employees.find(e => e.id === id);
+  if (emp) {
+    emp.status = 'approved';
+    saveData();
+    res.json(emp);
+  } else {
+    res.status(404).json({ error: 'Employee not found' });
+  }
+});
+
+app.post('/api/admin/employees/:id/block', (req, res) => {
+  const id = parseInt(req.params.id);
+  const emp = employees.find(e => e.id === id);
+  if (emp) {
+    emp.isBlocked = true;
+    saveData();
+    res.json(emp);
+  } else {
+    res.status(404).json({ error: 'Employee not found' });
+  }
+});
+
+app.post('/api/admin/employees/:id/unblock', (req, res) => {
+  const id = parseInt(req.params.id);
+  const emp = employees.find(e => e.id === id);
+  if (emp) {
+    emp.isBlocked = false;
+    saveData();
+    res.json(emp);
+  } else {
+    res.status(404).json({ error: 'Employee not found' });
+  }
+});
+
+app.post('/api/admin/employees/:id/warn', (req, res) => {
+  const id = parseInt(req.params.id);
+  const { message } = req.body;
+  const emp = employees.find(e => e.id === id);
+  if (emp) {
+    if (!emp.warnings) emp.warnings = [];
+    emp.warnings.push({ date: new Date().toISOString(), message });
+    saveData();
+    res.json(emp);
+  } else {
+    res.status(404).json({ error: 'Employee not found' });
+  }
+});
+
+app.delete('/api/admin/employees/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  employees = employees.filter(e => e.id !== id);
+  saveData();
+  res.json({ message: 'Employee deleted' });
 });
 
 // Admin Delete Passenger

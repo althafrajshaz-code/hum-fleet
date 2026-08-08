@@ -17,7 +17,8 @@ const RegisteredPartners = ({
   page = 1,
   setPage = () => {},
   totalPages = 1,
-  totalItems = 0
+  totalItems = 0,
+  setShowAddDriverModal
 }) => {
   return (
     <div className="tab-pane animate-fade-in">
@@ -27,6 +28,12 @@ const RegisteredPartners = ({
           <p className="tab-subtitle" style={{ margin: 0 }}>Manage approved drivers, vehicle info, and access.</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button 
+            onClick={() => setShowAddDriverModal(true)}
+            style={{ background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            + Add New Partner
+          </button>
           <div className="search-box" style={{ width: '320px', position: 'relative' }}>
             <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             <input 
@@ -46,18 +53,19 @@ const RegisteredPartners = ({
       {filteredApprovedDrivers.length === 0 ? (
         <p className="empty-state">No matching registered partners found.</p>
       ) : (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          maxHeight: 'calc(100vh - 240px)',
-          overflowY: 'auto',
-          paddingRight: '8px',
-          paddingBottom: '24px'
-        }}>
-          {filteredApprovedDrivers.map((d) => {
-            const isVerifiedToday = d.lastVerifiedAt && new Date(d.lastVerifiedAt).toDateString() === new Date().toDateString();
-            return (
+        <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '16px' }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            maxHeight: 'calc(100vh - 260px)',
+            overflowY: 'auto',
+            paddingRight: '8px',
+            minWidth: '1150px'
+          }}>
+            {filteredApprovedDrivers.map((d) => {
+              const isVerifiedToday = d.lastVerifiedAt && new Date(d.lastVerifiedAt).toDateString() === new Date().toDateString();
+              return (
               <div 
                 key={d.id} 
                 style={{
@@ -216,6 +224,7 @@ const RegisteredPartners = ({
               </Button>
             </div>
           </div>
+        </div>
         </div>
       )}
     </div>

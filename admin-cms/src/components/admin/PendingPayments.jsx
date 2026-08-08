@@ -2,16 +2,31 @@ import React from 'react';
 import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
 import Button from '../Button';
 
-const PendingPayments = ({ activeTab }) => {
+const PendingPayments = ({ 
+  activeTab,
+  pendingSearch,
+  setPendingSearch,
+  pendingFilter,
+  setPendingFilter,
+  downloadPendingPaymentsCSV,
+  pendingPaymentsData,
+  filteredPendingPayments,
+  setSelectedLedgerDriver,
+  setCollectAmount,
+  setShowCollectCashModal,
+  drivers,
+  setMessageModalDriver,
+  fetchChatMessages
+}) => {
   return (
     <>
 {/* TAB: Dedicated Pending Payments Section */}
-          {activeTab === 'pending-payments' && (
-            <div className="tab-pane">
+          {activeTab === 'payments' && (
+            <div className="tab-pane animate-fade-in">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
                   <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <CreditCard color="#ef4444" size={28} /> Pending Payments & Dues Control
+                    <DollarSign color="#ef4444" size={28} /> Pending Payments & Dues Control
                   </h2>
                   <p className="tab-subtitle">
                     Dedicated view for outstanding partner balances. Dues uncollected on the same day automatically roll over daily with aging indicators until cleared.
