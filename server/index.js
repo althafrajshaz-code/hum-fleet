@@ -510,8 +510,8 @@ app.get('/api/vehicle-categories', (req, res) => {
 });
 
 // Add new vehicle category
-app.post('/api/vehicle-categories', (req, res) => {
-  const { name, maxPassengers, baseFare, ratePerKm } = req.body;
+app.post('/api/vehicle-categories', async (req, res) => {
+  const { name, maxPassengers, baseFare, ratePerKm, icon } = req.body;
   
   if (!name || !maxPassengers || baseFare === undefined || ratePerKm === undefined) {
     return res.status(400).json({ error: 'All fields (name, maxPassengers, baseFare, ratePerKm) are required.' });
@@ -523,19 +523,26 @@ app.post('/api/vehicle-categories', (req, res) => {
   }
 
   const newCategory = {
-    id: vehicleCategories.length + 1,
+    id: name.toLowerCase().replace(/\s+/g, '-'),
     name,
     maxPassengers: parseInt(maxPassengers),
     baseFare: parseFloat(baseFare),
-    ratePerKm: parseFloat(ratePerKm)
+    ratePerKm: parseFloat(ratePerKm),
+    icon: icon || '🚗'
   };
   vehicleCategories.push(newCategory);
-  saveData();
+  
+  await AppState.findOneAndUpdate(
+    { _id: 'humFleetState' },
+    { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
+    { upsert: true, new: true }
+  );
+  
   res.status(201).json(newCategory);
 });
 
 // Edit existing vehicle category
-app.put('/api/vehicle-categories/:id', (req, res) => {
+app.put('/api/vehicle-categories/:id', async (req, res) => {
   const id = req.params.id;
   const { name, maxPassengers, baseFare, ratePerKm } = req.body;
   const category = vehicleCategories.find(c => String(c.id) === id || String(c._id) === id);
@@ -544,7 +551,14 @@ app.put('/api/vehicle-categories/:id', (req, res) => {
     if (maxPassengers !== undefined) category.maxPassengers = parseInt(maxPassengers);
     if (baseFare !== undefined) category.baseFare = parseFloat(baseFare);
     if (ratePerKm !== undefined) category.ratePerKm = parseFloat(ratePerKm);
-    saveData();
+    
+    // Immediately persist to DB in serverless env
+    await AppState.findOneAndUpdate(
+      { _id: 'humFleetState' },
+      { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
+      { upsert: true, new: true }
+    );
+    
     res.json(category);
   } else {
     res.status(404).json({ error: 'Category not found' });
@@ -552,10 +566,16 @@ app.put('/api/vehicle-categories/:id', (req, res) => {
 });
 
 // Delete vehicle category
-app.delete('/api/vehicle-categories/:id', (req, res) => {
+app.delete('/api/vehicle-categories/:id', async (req, res) => {
   const id = req.params.id;
   vehicleCategories = vehicleCategories.filter(c => String(c.id) !== id && String(c._id) !== id);
-  saveData();
+  
+  await AppState.findOneAndUpdate(
+    { _id: 'humFleetState' },
+    { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
+    { upsert: true, new: true }
+  );
+  
   res.json({ message: 'Category deleted successfully' });
 });
 
