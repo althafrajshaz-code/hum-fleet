@@ -2424,6 +2424,73 @@ app.delete('/api/admin/passengers/:id', (req, res) => {
   }
 });
 
+// --- Promotions API ---
+app.get('/api/promotions', (req, res) => {
+  res.json(promotions);
+});
+
+app.post('/api/promotions', async (req, res) => {
+  const { code, discountType, discountValue, maxUsage, validUntil } = req.body;
+  
+  if (!code || !discountValue) {
+    return res.status(400).json({ error: 'Code and discount value are required' });
+  }
+
+  const newPromo = {
+    id: Date.now(),
+    code: code.toUpperCase(),
+    discountType: discountType || 'percentage',
+    discountValue: parseFloat(discountValue),
+    maxUsage: maxUsage ? parseInt(maxUsage) : null,
+    usedCount: 0,
+    validUntil: validUntil || null,
+    status: 'Active',
+    createdAt: new Date().toISOString()
+  };
+  
+  promotions.push(newPromo);
+  
+  await AppState.findOneAndUpdate(
+    { _id: 'humFleetState' },
+    { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
+    { upsert: true, new: true }
+  );
+  
+  res.status(201).json(newPromo);
+});
+
+app.put('/api/promotions/:id', async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { status } = req.body;
+  const promo = promotions.find(p => p.id === id || String(p._id) === String(id));
+  if (promo) {
+    if (status) promo.status = status;
+    
+    await AppState.findOneAndUpdate(
+      { _id: 'humFleetState' },
+      { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
+      { upsert: true, new: true }
+    );
+    
+    res.json(promo);
+  } else {
+    res.status(404).json({ error: 'Promotion not found' });
+  }
+});
+
+app.delete('/api/promotions/:id', async (req, res) => {
+  const idStr = req.params.id;
+  promotions = promotions.filter(p => String(p.id) !== idStr && String(p._id) !== idStr);
+  
+  await AppState.findOneAndUpdate(
+    { _id: 'humFleetState' },
+    { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
+    { upsert: true, new: true }
+  );
+  
+  res.json({ message: 'Promotion deleted' });
+});
+
 app.get('/api/admin/clear-all', (req, res) => {
 
   drivers = [];
