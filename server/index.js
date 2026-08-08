@@ -513,6 +513,10 @@ app.get('/api/debug/categories', (req, res) => {
   res.json(vehicleCategories);
 });
 
+app.get('/api/debug/db', (req, res) => {
+  res.json({ readyState: mongoose.connection.readyState });
+});
+
 // Add new vehicle category
 app.post('/api/vehicle-categories', async (req, res) => {
   const { name, maxPassengers, baseFare, ratePerKm, icon } = req.body;
