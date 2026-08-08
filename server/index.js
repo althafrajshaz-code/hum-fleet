@@ -509,6 +509,10 @@ app.get('/api/vehicle-categories', (req, res) => {
   res.json(vehicleCategories);
 });
 
+app.get('/api/debug/categories', (req, res) => {
+  res.json(vehicleCategories);
+});
+
 // Add new vehicle category
 app.post('/api/vehicle-categories', async (req, res) => {
   const { name, maxPassengers, baseFare, ratePerKm, icon } = req.body;
@@ -561,7 +565,7 @@ app.put('/api/vehicle-categories/:id', async (req, res) => {
     
     res.json(category);
   } else {
-    res.status(404).json({ error: 'Category not found' });
+    res.status(404).json({ error: 'Category not found', requestedId: id, availableIds: vehicleCategories.map(c => ({ id: c.id, _id: c._id })) });
   }
 });
 
