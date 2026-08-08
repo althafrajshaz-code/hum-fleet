@@ -1,0 +1,1541 @@
+
+> admin-cms@0.0.0 lint
+> oxlint
+
+
+  ! eslint(no-unused-vars): Identifier 'Search' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:10]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :          ^^^|^^
+   :             `-- 'Search' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'X' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:18]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                  |
+   :                  `-- 'X' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Users' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:21]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                     ^^|^^
+   :                       `-- 'Users' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MapPin' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:28]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                            ^^^|^^
+   :                               `-- 'MapPin' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Navigation' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:36]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                    ^^^^^|^^^^
+   :                                         `-- 'Navigation' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Car' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:48]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                ^|^
+   :                                                 `-- 'Car' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Radio' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:53]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                     ^^|^^
+   :                                                       `-- 'Radio' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Compass' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:60]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                            ^^^|^^^
+   :                                                               `-- 'Compass' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MessageSquare' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:69]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                     ^^^^^^|^^^^^^
+   :                                                                           `-- 'MessageSquare' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Edit2' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:84]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                    ^^|^^
+   :                                                                                      `-- 'Edit2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Shield' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:91]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                           ^^^|^^
+   :                                                                                              `-- 'Shield' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Trash2' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:99]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                   ^^^|^^
+   :                                                                                                      `-- 'Trash2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Phone' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:107]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                           ^^|^^
+   :                                                                                                             `-- 'Phone' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'FileText' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:114]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                  ^^^^|^^^
+   :                                                                                                                      `-- 'FileText' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Check' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:124]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                            ^^|^^
+   :                                                                                                                              `-- 'Check' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'DollarSign' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:131]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                   ^^^^^|^^^^
+   :                                                                                                                                        `-- 'DollarSign' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Download' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:143]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                               ^^^^|^^^
+   :                                                                                                                                                   `-- 'Download' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'TrendingUp' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:153]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                         ^^^^^|^^^^
+   :                                                                                                                                                              `-- 'TrendingUp' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Calendar' is imported but never used.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:2:178]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                                                  ^^^^|^^^
+   :                                                                                                                                                                                      `-- 'Calendar' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Parameter 'broadcastMessage' is declared but never used. Unused parameters should start with a '_'.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:5:40]
+ 4 | 
+ 5 | const GlobalBroadcasts = ({ activeTab, broadcastMessage, setBroadcastMessage, broadcastTarget, setBroadcastTarget, handleSendBroadcast }) => {
+   :                                        ^^^^^^^^|^^^^^^^
+   :                                                `-- 'broadcastMessage' is declared here
+ 6 |   return (
+   `----
+  help: Consider removing this parameter.
+
+  ! eslint(no-unused-vars): Parameter 'setBroadcastMessage' is declared but never used. Unused parameters should start with a '_'.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:5:58]
+ 4 | 
+ 5 | const GlobalBroadcasts = ({ activeTab, broadcastMessage, setBroadcastMessage, broadcastTarget, setBroadcastTarget, handleSendBroadcast }) => {
+   :                                                          ^^^^^^^^^|^^^^^^^^^
+   :                                                                   `-- 'setBroadcastMessage' is declared here
+ 6 |   return (
+   `----
+  help: Consider removing this parameter.
+
+  ! eslint(no-unused-vars): Parameter 'broadcastTarget' is declared but never used. Unused parameters should start with a '_'.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:5:79]
+ 4 | 
+ 5 | const GlobalBroadcasts = ({ activeTab, broadcastMessage, setBroadcastMessage, broadcastTarget, setBroadcastTarget, handleSendBroadcast }) => {
+   :                                                                               ^^^^^^^|^^^^^^^
+   :                                                                                      `-- 'broadcastTarget' is declared here
+ 6 |   return (
+   `----
+  help: Consider removing this parameter.
+
+  ! eslint(no-unused-vars): Parameter 'setBroadcastTarget' is declared but never used. Unused parameters should start with a '_'.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:5:96]
+ 4 | 
+ 5 | const GlobalBroadcasts = ({ activeTab, broadcastMessage, setBroadcastMessage, broadcastTarget, setBroadcastTarget, handleSendBroadcast }) => {
+   :                                                                                                ^^^^^^^^^|^^^^^^^^
+   :                                                                                                         `-- 'setBroadcastTarget' is declared here
+ 6 |   return (
+   `----
+  help: Consider removing this parameter.
+
+  ! eslint(no-unused-vars): Parameter 'handleSendBroadcast' is declared but never used. Unused parameters should start with a '_'.
+   ,-[src/components/admin/GlobalBroadcasts.jsx:5:116]
+ 4 | 
+ 5 | const GlobalBroadcasts = ({ activeTab, broadcastMessage, setBroadcastMessage, broadcastTarget, setBroadcastTarget, handleSendBroadcast }) => {
+   :                                                                                                                    ^^^^^^^^^|^^^^^^^^^
+   :                                                                                                                             `-- 'handleSendBroadcast' is declared here
+ 6 |   return (
+   `----
+  help: Consider removing this parameter.
+
+  ! react(jsx-no-undef): 'Send' is not defined.
+    ,-[src/components/admin/GlobalBroadcasts.jsx:12:18]
+ 11 |               <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', fontWeight: '800' }}>
+ 12 |                 <Send size={22} color="var(--primary)" /> Global Broadcasts
+    :                  ^^^^
+ 13 |               </h2>
+    `----
+
+  ! react(jsx-no-undef): 'Send' is not defined.
+    ,-[src/components/admin/GlobalBroadcasts.jsx:21:20]
+ 20 |                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+ 21 |                   <Send size={18} color="var(--primary)" />
+    :                    ^^^^
+ 22 |                   <input 
+    `----
+
+  ! eslint(no-unused-vars): Identifier 'Search' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:10]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :          ^^^|^^
+   :             `-- 'Search' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'X' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:18]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                  |
+   :                  `-- 'X' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Users' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:21]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                     ^^|^^
+   :                       `-- 'Users' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MapPin' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:28]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                            ^^^|^^
+   :                               `-- 'MapPin' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Navigation' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:36]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                    ^^^^^|^^^^
+   :                                         `-- 'Navigation' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Car' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:48]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                ^|^
+   :                                                 `-- 'Car' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Radio' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:53]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                     ^^|^^
+   :                                                       `-- 'Radio' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Compass' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:60]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                            ^^^|^^^
+   :                                                               `-- 'Compass' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MessageSquare' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:69]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                     ^^^^^^|^^^^^^
+   :                                                                           `-- 'MessageSquare' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Edit2' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:84]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                    ^^|^^
+   :                                                                                      `-- 'Edit2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Shield' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:91]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                           ^^^|^^
+   :                                                                                              `-- 'Shield' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Trash2' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:99]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                   ^^^|^^
+   :                                                                                                      `-- 'Trash2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Phone' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:107]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                           ^^|^^
+   :                                                                                                             `-- 'Phone' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'FileText' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:114]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                  ^^^^|^^^
+   :                                                                                                                      `-- 'FileText' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Check' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:124]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                            ^^|^^
+   :                                                                                                                              `-- 'Check' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'DollarSign' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:131]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                   ^^^^^|^^^^
+   :                                                                                                                                        `-- 'DollarSign' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Download' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:143]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                               ^^^^|^^^
+   :                                                                                                                                                   `-- 'Download' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'AlertCircle' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:165]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                                     ^^^^^|^^^^^
+   :                                                                                                                                                                          `-- 'AlertCircle' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Calendar' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:2:178]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                                                  ^^^^|^^^
+   :                                                                                                                                                                                      `-- 'Calendar' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Button' is imported but never used.
+   ,-[src/components/admin/Analytics.jsx:3:8]
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+ 3 | import Button from '../Button';
+   :        ^^^|^^
+   :           `-- 'Button' is imported here
+ 4 | 
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Parameter 'platformStats' is declared but never used. Unused parameters should start with a '_'.
+   ,-[src/components/admin/Analytics.jsx:5:33]
+ 4 | 
+ 5 | const Analytics = ({ activeTab, platformStats, recentTrips, analyticsFilter, setAnalyticsFilter }) => {
+   :                                 ^^^^^^|^^^^^^
+   :                                       `-- 'platformStats' is declared here
+ 6 |   return (
+   `----
+  help: Consider removing this parameter.
+
+  ! eslint(no-unused-vars): Parameter 'recentTrips' is declared but never used. Unused parameters should start with a '_'.
+   ,-[src/components/admin/Analytics.jsx:5:48]
+ 4 | 
+ 5 | const Analytics = ({ activeTab, platformStats, recentTrips, analyticsFilter, setAnalyticsFilter }) => {
+   :                                                ^^^^^|^^^^^
+   :                                                     `-- 'recentTrips' is declared here
+ 6 |   return (
+   `----
+  help: Consider removing this parameter.
+
+  ! eslint(no-unused-vars): Parameter 'analyticsFilter' is declared but never used. Unused parameters should start with a '_'.
+   ,-[src/components/admin/Analytics.jsx:5:61]
+ 4 | 
+ 5 | const Analytics = ({ activeTab, platformStats, recentTrips, analyticsFilter, setAnalyticsFilter }) => {
+   :                                                             ^^^^^^^|^^^^^^^
+   :                                                                    `-- 'analyticsFilter' is declared here
+ 6 |   return (
+   `----
+  help: Consider removing this parameter.
+
+  ! eslint(no-unused-vars): Parameter 'setAnalyticsFilter' is declared but never used. Unused parameters should start with a '_'.
+   ,-[src/components/admin/Analytics.jsx:5:78]
+ 4 | 
+ 5 | const Analytics = ({ activeTab, platformStats, recentTrips, analyticsFilter, setAnalyticsFilter }) => {
+   :                                                                              ^^^^^^^^^|^^^^^^^^
+   :                                                                                       `-- 'setAnalyticsFilter' is declared here
+ 6 |   return (
+   `----
+  help: Consider removing this parameter.
+
+  ! eslint(no-unused-vars): Identifier 'Search' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:10]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :          ^^^|^^
+   :             `-- 'Search' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'X' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:18]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                  |
+   :                  `-- 'X' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Users' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:21]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                     ^^|^^
+   :                       `-- 'Users' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Navigation' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:36]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                    ^^^^^|^^^^
+   :                                         `-- 'Navigation' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Car' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:48]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                ^|^
+   :                                                 `-- 'Car' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Radio' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:53]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                     ^^|^^
+   :                                                       `-- 'Radio' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Compass' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:60]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                            ^^^|^^^
+   :                                                               `-- 'Compass' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MessageSquare' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:69]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                     ^^^^^^|^^^^^^
+   :                                                                           `-- 'MessageSquare' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Edit2' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:84]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                    ^^|^^
+   :                                                                                      `-- 'Edit2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Shield' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:91]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                           ^^^|^^
+   :                                                                                              `-- 'Shield' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Trash2' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:99]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                   ^^^|^^
+   :                                                                                                      `-- 'Trash2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Phone' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:107]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                           ^^|^^
+   :                                                                                                             `-- 'Phone' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'FileText' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:114]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                  ^^^^|^^^
+   :                                                                                                                      `-- 'FileText' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Check' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:124]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                            ^^|^^
+   :                                                                                                                              `-- 'Check' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'DollarSign' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:131]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                   ^^^^^|^^^^
+   :                                                                                                                                        `-- 'DollarSign' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Download' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:143]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                               ^^^^|^^^
+   :                                                                                                                                                   `-- 'Download' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'TrendingUp' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:153]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                         ^^^^^|^^^^
+   :                                                                                                                                                              `-- 'TrendingUp' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'AlertCircle' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:165]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                                     ^^^^^|^^^^^
+   :                                                                                                                                                                          `-- 'AlertCircle' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Calendar' is imported but never used.
+   ,-[src/components/admin/SecurityCredentials.jsx:2:178]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                                                  ^^^^|^^^
+   :                                                                                                                                                                                      `-- 'Calendar' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Parameter 'handleAdminLogout' is declared but never used. Unused parameters should start with a '_'.
+   ,-[src/components/admin/SecurityCredentials.jsx:5:43]
+ 4 | 
+ 5 | const SecurityCredentials = ({ activeTab, handleAdminLogout }) => {
+   :                                           ^^^^^^^^|^^^^^^^^
+   :                                                   `-- 'handleAdminLogout' is declared here
+ 6 |   return (
+   `----
+  help: Consider removing this parameter.
+
+  ! eslint(no-unused-vars): Variable 'isCompleted' is declared but never used. Unused variables should start with a '_'.
+    ,-[src/pages/StaffDashboard.jsx:86:9]
+ 85 |   const isSignedIn = !!todayAttendance && !todayAttendance.signOut;
+ 86 |   const isCompleted = !!todayAttendance && !!todayAttendance.signOut;
+    :         ^^^^^|^^^^^
+    :              `-- 'isCompleted' is declared here
+ 87 | 
+    `----
+  help: Consider removing this declaration.
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has missing dependencies: 'navigate', and 'fetchEmployee'
+    ,-[src/pages/StaffDashboard.jsx:24:6]
+ 19 |     if (!employeeId) {
+ 20 |       navigate('/staff/login');
+    :       ^^^^^^^^
+ 21 |       return;
+ 22 |     }
+ 23 |     fetchEmployee(employeeId);
+    :     ^^^^^^^^^^^^^
+ 24 |   }, []);
+    :      ^^
+ 25 | 
+    `----
+  help: Either include it or remove the dependency array.
+
+  ! eslint(no-unused-vars): Identifier 'Shield' is imported but never used.
+   ,-[src/pages/StaffRegister.jsx:3:10]
+ 2 | import { useNavigate } from 'react-router-dom';
+ 3 | import { Shield, Eye, EyeOff, UserPlus, CheckCircle, Upload } from 'lucide-react';
+   :          ^^^|^^
+   :             `-- 'Shield' is imported here
+ 4 | import Button from '../components/Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Search' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:10]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :          ^^^|^^
+   :             `-- 'Search' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'X' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:18]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                  |
+   :                  `-- 'X' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Users' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:21]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                     ^^|^^
+   :                       `-- 'Users' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MapPin' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:28]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                            ^^^|^^
+   :                               `-- 'MapPin' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Navigation' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:36]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                    ^^^^^|^^^^
+   :                                         `-- 'Navigation' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Car' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:48]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                ^|^
+   :                                                 `-- 'Car' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Radio' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:53]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                     ^^|^^
+   :                                                       `-- 'Radio' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Compass' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:60]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                            ^^^|^^^
+   :                                                               `-- 'Compass' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MessageSquare' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:69]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                     ^^^^^^|^^^^^^
+   :                                                                           `-- 'MessageSquare' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Edit2' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:84]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                    ^^|^^
+   :                                                                                      `-- 'Edit2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Shield' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:91]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                           ^^^|^^
+   :                                                                                              `-- 'Shield' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Trash2' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:99]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                   ^^^|^^
+   :                                                                                                      `-- 'Trash2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Phone' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:107]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                           ^^|^^
+   :                                                                                                             `-- 'Phone' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'FileText' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:114]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                  ^^^^|^^^
+   :                                                                                                                      `-- 'FileText' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Check' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:124]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                            ^^|^^
+   :                                                                                                                              `-- 'Check' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'DollarSign' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:131]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                   ^^^^^|^^^^
+   :                                                                                                                                        `-- 'DollarSign' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Download' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:143]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                               ^^^^|^^^
+   :                                                                                                                                                   `-- 'Download' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'TrendingUp' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:153]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                         ^^^^^|^^^^
+   :                                                                                                                                                              `-- 'TrendingUp' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'AlertCircle' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:165]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                                     ^^^^^|^^^^^
+   :                                                                                                                                                                          `-- 'AlertCircle' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Calendar' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:2:178]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                                                  ^^^^|^^^
+   :                                                                                                                                                                                      `-- 'Calendar' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Button' is imported but never used.
+   ,-[src/components/admin/Promotions.jsx:3:8]
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+ 3 | import Button from '../Button';
+   :        ^^^|^^
+   :           `-- 'Button' is imported here
+ 4 | 
+   `----
+  help: Consider removing this import.
+
+  ! react(jsx-no-undef): 'Tag' is not defined.
+    ,-[src/components/admin/Promotions.jsx:13:20]
+ 12 |                 <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+ 13 |                   <Tag size={24} color="var(--primary)" /> Promotions & Offer Codes
+    :                    ^^^
+ 14 |                 </h2>
+    `----
+
+  ! eslint(no-unused-vars): Identifier 'Shield' is imported but never used.
+   ,-[src/pages/StaffLogin.jsx:3:10]
+ 2 | import { useNavigate } from 'react-router-dom';
+ 3 | import { Shield, Lock, Eye, EyeOff, UserCircle } from 'lucide-react';
+   :          ^^^|^^
+   :             `-- 'Shield' is imported here
+ 4 | import Button from '../components/Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Users' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:21]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                     ^^|^^
+   :                       `-- 'Users' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MapPin' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:28]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                            ^^^|^^
+   :                               `-- 'MapPin' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Navigation' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:36]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                    ^^^^^|^^^^
+   :                                         `-- 'Navigation' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Car' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:48]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                ^|^
+   :                                                 `-- 'Car' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Radio' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:53]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                     ^^|^^
+   :                                                       `-- 'Radio' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Compass' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:60]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                            ^^^|^^^
+   :                                                               `-- 'Compass' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MessageSquare' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:69]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                     ^^^^^^|^^^^^^
+   :                                                                           `-- 'MessageSquare' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Edit2' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:84]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                    ^^|^^
+   :                                                                                      `-- 'Edit2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Shield' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:91]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                           ^^^|^^
+   :                                                                                              `-- 'Shield' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Trash2' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:99]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                   ^^^|^^
+   :                                                                                                      `-- 'Trash2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Phone' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:107]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                           ^^|^^
+   :                                                                                                             `-- 'Phone' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'FileText' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:114]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                  ^^^^|^^^
+   :                                                                                                                      `-- 'FileText' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Check' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:124]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                            ^^|^^
+   :                                                                                                                              `-- 'Check' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'DollarSign' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:131]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                   ^^^^^|^^^^
+   :                                                                                                                                        `-- 'DollarSign' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Download' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:143]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                               ^^^^|^^^
+   :                                                                                                                                                   `-- 'Download' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'TrendingUp' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:153]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                         ^^^^^|^^^^
+   :                                                                                                                                                              `-- 'TrendingUp' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'AlertCircle' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:165]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                                     ^^^^^|^^^^^
+   :                                                                                                                                                                          `-- 'AlertCircle' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Calendar' is imported but never used.
+   ,-[src/components/admin/RegisteredPassengers.jsx:2:178]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                                                  ^^^^|^^^
+   :                                                                                                                                                                                      `-- 'Calendar' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'useState' is imported but never used.
+   ,-[src/components/admin/RegisteredPartners.jsx:1:17]
+ 1 | import React, { useState } from 'react';
+   :                 ^^^^|^^^
+   :                     `-- 'useState' is imported here
+ 2 | import { Search, Car, Check, X, AlertTriangle, Eye, MessageSquare, Tag, Users } from 'lucide-react';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Car' is imported but never used.
+   ,-[src/components/admin/RegisteredPartners.jsx:2:18]
+ 1 | import React, { useState } from 'react';
+ 2 | import { Search, Car, Check, X, AlertTriangle, Eye, MessageSquare, Tag, Users } from 'lucide-react';
+   :                  ^|^
+   :                   `-- 'Car' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Check' is imported but never used.
+   ,-[src/components/admin/RegisteredPartners.jsx:2:23]
+ 1 | import React, { useState } from 'react';
+ 2 | import { Search, Car, Check, X, AlertTriangle, Eye, MessageSquare, Tag, Users } from 'lucide-react';
+   :                       ^^|^^
+   :                         `-- 'Check' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Tag' is imported but never used.
+   ,-[src/components/admin/RegisteredPartners.jsx:2:68]
+ 1 | import React, { useState } from 'react';
+ 2 | import { Search, Car, Check, X, AlertTriangle, Eye, MessageSquare, Tag, Users } from 'lucide-react';
+   :                                                                    ^|^
+   :                                                                     `-- 'Tag' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Users' is imported but never used.
+   ,-[src/components/admin/RegisteredPartners.jsx:2:73]
+ 1 | import React, { useState } from 'react';
+ 2 | import { Search, Car, Check, X, AlertTriangle, Eye, MessageSquare, Tag, Users } from 'lucide-react';
+   :                                                                         ^^|^^
+   :                                                                           `-- 'Users' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'X' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:18]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                  |
+   :                  `-- 'X' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MapPin' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:28]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                            ^^^|^^
+   :                               `-- 'MapPin' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Navigation' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:36]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                    ^^^^^|^^^^
+   :                                         `-- 'Navigation' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Car' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:48]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                ^|^
+   :                                                 `-- 'Car' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Radio' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:53]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                     ^^|^^
+   :                                                       `-- 'Radio' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Compass' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:60]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                            ^^^|^^^
+   :                                                               `-- 'Compass' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Edit2' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:84]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                    ^^|^^
+   :                                                                                      `-- 'Edit2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Shield' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:91]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                           ^^^|^^
+   :                                                                                              `-- 'Shield' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Trash2' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:99]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                   ^^^|^^
+   :                                                                                                      `-- 'Trash2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Phone' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:107]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                           ^^|^^
+   :                                                                                                             `-- 'Phone' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'DollarSign' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:131]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                   ^^^^^|^^^^
+   :                                                                                                                                        `-- 'DollarSign' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Download' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:143]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                               ^^^^|^^^
+   :                                                                                                                                                   `-- 'Download' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Calendar' is imported but never used.
+   ,-[src/components/admin/PendingPayments.jsx:2:178]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                                                  ^^^^|^^^
+   :                                                                                                                                                                                      `-- 'Calendar' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! react(jsx-no-undef): 'CreditCard' is not defined.
+    ,-[src/components/admin/PendingPayments.jsx:14:22]
+ 13 |                   <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+ 14 |                     <CreditCard color="#ef4444" size={28} /> Pending Payments & Dues Control
+    :                      ^^^^^^^^^^
+ 15 |                   </h2>
+    `----
+
+  ! eslint(no-unused-vars): Identifier 'Search' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:10]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :          ^^^|^^
+   :             `-- 'Search' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'X' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:18]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                  |
+   :                  `-- 'X' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Users' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:21]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                     ^^|^^
+   :                       `-- 'Users' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MapPin' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:28]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                            ^^^|^^
+   :                               `-- 'MapPin' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Navigation' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:36]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                    ^^^^^|^^^^
+   :                                         `-- 'Navigation' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Car' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:48]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                ^|^
+   :                                                 `-- 'Car' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Radio' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:53]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                     ^^|^^
+   :                                                       `-- 'Radio' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Compass' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:60]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                            ^^^|^^^
+   :                                                               `-- 'Compass' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'MessageSquare' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:69]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                     ^^^^^^|^^^^^^
+   :                                                                           `-- 'MessageSquare' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Edit2' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:84]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                    ^^|^^
+   :                                                                                      `-- 'Edit2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Shield' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:91]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                           ^^^|^^
+   :                                                                                              `-- 'Shield' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Trash2' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:99]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                   ^^^|^^
+   :                                                                                                      `-- 'Trash2' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Phone' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:107]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                           ^^|^^
+   :                                                                                                             `-- 'Phone' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'FileText' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:114]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                  ^^^^|^^^
+   :                                                                                                                      `-- 'FileText' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Check' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:124]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                            ^^|^^
+   :                                                                                                                              `-- 'Check' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'DollarSign' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:131]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                   ^^^^^|^^^^
+   :                                                                                                                                        `-- 'DollarSign' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Download' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:143]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                               ^^^^|^^^
+   :                                                                                                                                                   `-- 'Download' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'TrendingUp' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:153]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                         ^^^^^|^^^^
+   :                                                                                                                                                              `-- 'TrendingUp' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'AlertCircle' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:165]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                                     ^^^^^|^^^^^
+   :                                                                                                                                                                          `-- 'AlertCircle' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'Calendar' is imported but never used.
+   ,-[src/components/admin/StaffManagement.jsx:2:178]
+ 1 | import React from 'react';
+ 2 | import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
+   :                                                                                                                                                                                  ^^^^|^^^
+   :                                                                                                                                                                                      `-- 'Calendar' is imported here
+ 3 | import Button from '../Button';
+   `----
+  help: Consider removing this import.
+
+  x Unexpected token
+      ,-[src/pages/AdminDashboard.jsx:4820:1]
+ 4819 |   );
+ 4820 | };
+      : ^
+ 4821 | export default AdminDashboard;
+      `----
+
+Found 153 warnings and 1 error.
+Finished in 27ms on 25 files with 91 rules using 8 threads.
