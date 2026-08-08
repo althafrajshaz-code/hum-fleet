@@ -326,6 +326,8 @@ app.listen(PORT, () => {
   console.log(`HUM Fleet API Server running on port ${PORT}`);
 });
 
+let dbConnectionError = null;
+
 // Connect to MongoDB in background
 mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
@@ -334,7 +336,9 @@ mongoose.connect(process.env.MONGODB_URI)
   })
   .catch(err => {
     console.error('MongoDB connection failed:', err);
+    dbConnectionError = err.toString();
     console.error('PLEASE ENSURE MONGODB ATLAS NETWORK ACCESS IS SET TO ALLOW ALL IP ADDRESSES (0.0.0.0/0)');
+    loadData(); // Fallback to memory if offline
   });
 
 // Haversine formula to compute distance in KM
@@ -531,7 +535,12 @@ app.get('/api/debug/categories', (req, res) => {
 });
 
 app.get('/api/debug/db', (req, res) => {
-  res.json({ readyState: mongoose.connection.readyState });
+  res.json({ 
+    readyState: mongoose.connection.readyState,
+    error: dbConnectionError,
+    uriLength: process.env.MONGODB_URI ? process.env.MONGODB_URI.length : 0,
+    uriStart: process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 10) : 'none'
+  });
 });
 
 // Add new vehicle category
