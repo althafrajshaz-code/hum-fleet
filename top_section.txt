@@ -1,0 +1,548 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, FileText, LogOut, Key, UserCheck, TrendingUp, Search, MapPin, Navigation, Activity, Map, Radio, Compass, MessageSquare, Send, CreditCard, Upload, Tag, Phone, AlertTriangle } from 'lucide-react';
+import Button from '../components/Button';
+import './AdminDashboard.css';
+
+const MOCK_PHOTOS = {
+  front: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=600',
+  rear: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=600',
+  left: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600',
+  right: 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=600',
+  inside: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=600',
+  document: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600'
+};
+
+const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
+  ? 'https://hum-fleet-backend.loca.lt'
+  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+    ? 'http://localhost:5000'
+    : 'https://hum-fleet-api.onrender.com';
+
+const AdminDashboard = () => {
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem('adminAuthenticated') !== 'true') {
+      navigate('/');
+    } else {
+      setIsAuthenticated(true);
+    }
+  }, [navigate]);
+
+
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('adminActiveTab') || 'approvals');
+  const [activeSOSAlert, setActiveSOSAlert] = useState(null);
+  const [drivers, setDrivers] = useState([]);
+  const [passengers, setPassengers] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [selectedDriver, setSelectedDriver] = useState(null);
+
+  // Add/Remove Driver & Passenger State
+  const [showAddDriverModal, setShowAddDriverModal] = useState(false);
+  const [newDriverData, setNewDriverData] = useState({ name: '', email: '', phone: '', licenseNumber: '', vehicleType: 'Sedan', plateNumber: '' });
+  const [showAddPassengerModal, setShowAddPassengerModal] = useState(false);
+  const [newPassengerData, setNewPassengerData] = useState({ name: '', email: '', phone: '' });
+  // Employee Management State
+  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [newEmployee, setNewEmployee] = useState({ name: '', username: '', password: '', role: 'staff', position: '', managerId: '' });
+  const [selectedEmployeeForDetails, setSelectedEmployeeForDetails] = useState(null);
+
+  // Pending Payments State
+  const [pendingPaymentsData, setPendingPaymentsData] = useState({
+    pendingPayments: [],
+    summary: { totalOutstanding: '0.00', totalSameDay: '0.00', totalRolledOver: '0.00', pendingPartnersCount: 0 }
+  });
+  const [pendingSearch, setPendingSearch] = useState('');
+  const [pendingFilter, setPendingFilter] = useState('all'); // 'all' | 'same-day' | 'rolled-over' | 'critical-overdue'
+
+  // Direct Messaging States
+  const [messageModalDriver, setMessageModalDriver] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [newMessageText, setNewMessageText] = useState('');
+
+  // Live Fleet Monitor States
+  const [fleetData, setFleetData] = useState({ drivers: [], passengers: [], activeRides: [], onlineDriversCount: 0, ridingDriversCount: 0, offlineDriversCount: 0 });
+  const [fleetSearch, setFleetSearch] = useState('');
+  const [fleetFilter, setFleetFilter] = useState('all'); // 'all' | 'online' | 'riding' | 'offline'
+  const [fleetEntity, setFleetEntity] = useState('drivers');
+  
+  // Pagination State
+  const [driverPage, setDriverPage] = useState(1);
+  const [passengerPage, setPassengerPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+ // 'drivers' | 'passengers'
+  const [selectedMapDriver, setSelectedMapDriver] = useState(null);
+
+  const [watermarkLogo, setWatermarkLogo] = useState(null);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/hum_fleet_official_logo.jpg';
+    img.onload = () => setWatermarkLogo(img);
+  }, []);
+
+  // Save activeTab to localStorage on change
+  useEffect(() => {
+    localStorage.setItem('adminActiveTab', activeTab);
+  }, [activeTab]);
+
+  // Search State Queries
+  const [driverSearch, setDriverSearch] = useState('');
+  const [registeredDriverSearch, setRegisteredDriverSearch] = useState('');
+  const [passengerSearch, setPassengerSearch] = useState('');
+  const [businessListings, setBusinessListings] = useState([]);
+  const [newLocName, setNewLocName] = useState('');
+  const [newLocLat, setNewLocLat] = useState('');
+  const [newLocLng, setNewLocLng] = useState('');
+  
+  const fetchLocations = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/locations`);
+      if (response.ok) {
+        const data = await response.json();
+        setBusinessListings(data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch locations:", err);
+    }
+  };
+  const [ledgerSearch, setLedgerSearch] = useState('');
+
+  // Ledger filter query: 'all', 'pending', 'no-pending'
+  const [ledgerFilter, setLedgerFilter] = useState(() => localStorage.getItem('adminLedgerFilter') || 'all');
+
+  useEffect(() => {
+    localStorage.setItem('adminLedgerFilter', ledgerFilter);
+  }, [ledgerFilter]);
+
+  // Financial Stats States
+  const [financials, setFinancials] = useState({
+    totalCommission: '0.00',
+    totalGST: '0.00',
+    toBeCollected: '0.00'
+  });
+  
+  // Preview Modal State
+  const [previewFile, setPreviewFile] = useState(null);
+  const [previewTitle, setPreviewTitle] = useState('');
+
+  // Global Date Filter State
+  const [globalStartDate, setGlobalStartDate] = useState('');
+  const [globalEndDate, setGlobalEndDate] = useState('');
+
+  // Collect Cash & WhatsApp Statement modal states
+  const [showCollectCashModal, setShowCollectCashModal] = useState(false);
+  const [selectedLedgerDriver, setSelectedLedgerDriver] = useState(null);
+  const [collectAmount, setCollectAmount] = useState('');
+  const [isSubmittingCollection, setIsSubmittingCollection] = useState(false);
+  const [statementImageSrc, setStatementImageSrc] = useState(null);
+
+  // Payment Received & Watermarked PDF Bill Receipt States
+  const [showPaymentReceivedModal, setShowPaymentReceivedModal] = useState(false);
+  const [paidReceiptDetails, setPaidReceiptDetails] = useState(null);
+  const [paidReceiptImageSrc, setPaidReceiptImageSrc] = useState(null);
+
+  // System control states
+  const [baseFare, setBaseFare] = useState('50.00');
+  const [ratePerKm, setRatePerKm] = useState('15.00');
+  const [minRatePerHour, setMinRatePerHour] = useState('100.00');
+  const [surgeMultiplier, setSurgeMultiplier] = useState('1.0');
+  const [systemStatus, setSystemStatus] = useState('online');
+  const [voipMasking, setVoipMasking] = useState(true);
+
+  // Payment Gateway states
+  const [gatewayType, setGatewayType] = useState('upi'); // 'upi' | 'bank'
+  const [upiId, setUpiId] = useState('humfleet@okaxis');
+  const [bankName, setBankName] = useState('HDFC Bank');
+  const [accountNo, setAccountNo] = useState('50100481293845');
+  const [ifscCode, setIfscCode] = useState('HDFC0000123');
+  const [accountHolder, setAccountHolder] = useState('HUM FLEET PLATFORMS PVT LTD');
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+
+  // Vehicle Categories Management States
+  const [categories, setCategories] = useState([]);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [catName, setCatName] = useState('');
+  const [catPassengers, setCatPassengers] = useState('4');
+  const [catBaseFare, setCatBaseFare] = useState('50.00');
+  const [catRatePerKm, setCatRatePerKm] = useState('15.00');
+
+  // Credentials change states
+  const [adminUsername, setAdminUsername] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+
+  const fetchAdminProfile = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/profile`);
+      if (response.ok) {
+        const data = await response.json();
+        setAdminUsername(data.username);
+      }
+    } catch (err) {
+      console.error("Failed to fetch admin profile:", err);
+    }
+  };
+
+  const fetchPendingPayments = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/pending-payments`);
+      if (response.ok) {
+        const data = await response.json();
+        setPendingPaymentsData(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch pending payments from backend:", err);
+    }
+  };
+
+  const fetchDrivers = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/drivers`);
+      if (response.ok) {
+        const data = await response.json();
+        setDrivers(data);
+        if (selectedDriver) {
+          const updatedSelected = data.find(d => d.id === selectedDriver.id);
+          if (updatedSelected) {
+            setSelectedDriver(updatedSelected);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch drivers from backend:", err);
+    }
+  };
+
+  const fetchPassengers = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/passengers`);
+      if (response.ok) {
+        const data = await response.json();
+        setPassengers(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch passengers from backend:", err);
+    }
+  };
+
+  const handleAddDriver = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/drivers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newDriverData)
+      });
+      if (response.ok) {
+        fetchDrivers();
+        setShowAddDriverModal(false);
+        setNewDriverData({ name: '', email: '', phone: '', licenseNumber: '', vehicleType: 'Sedan', plateNumber: '' });
+      }
+    } catch (err) {
+      console.error("Failed to add driver:", err);
+    }
+  };
+
+  const handleDeleteDriver = async (id) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/drivers/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchDrivers();
+      }
+    } catch (err) {
+      console.error("Failed to delete driver:", err);
+    }
+  };
+
+  const handleAddPassenger = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/passengers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPassengerData)
+      });
+      if (response.ok) {
+        fetchPassengers();
+        setShowAddPassengerModal(false);
+        setNewPassengerData({ name: '', email: '', phone: '' });
+      }
+    } catch (err) {
+      console.error("Failed to add passenger:", err);
+    }
+  };
+
+  const handleDeletePassenger = async (id) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/passengers/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchPassengers();
+      }
+    } catch (err) {
+      console.error("Failed to delete passenger:", err);
+    }
+  };
+
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/employees`);
+      if (response.ok) {
+        const data = await response.json();
+        setEmployees(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch employees from backend:", err);
+    }
+  };
+
+  const handleAddEmployee = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/employees`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEmployee)
+      });
+      if (response.ok) {
+        fetchEmployees();
+        setShowAddEmployeeModal(false);
+        setNewEmployee({ name: '', username: '', password: '', role: 'staff', position: '', managerId: '' });
+      }
+    } catch (err) {
+      console.error('Error adding employee:', err);
+    }
+  };
+
+  const fetchFinancials = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/financials`);
+      if (response.ok) {
+        const data = await response.json();
+        setFinancials(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch financial analytics from backend:", err);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/vehicle-categories?t=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch vehicle categories from backend:", err);
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/settings?t=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setBaseFare(data.baseFare);
+        setRatePerKm(data.ratePerKm);
+        setMinRatePerHour(data.minRatePerHour || '100.00');
+        setSurgeMultiplier(data.surgeMultiplier);
+        setSystemStatus(data.systemStatus);
+        setGatewayType(data.gatewayType || 'upi');
+        setUpiId(data.upiId || '');
+        setBankName(data.bankName || '');
+        setAccountNo(data.accountNo || '');
+        setIfscCode(data.ifscCode || '');
+        setAccountHolder(data.accountHolder || '');
+        setQrCodeUrl(data.qrCodeUrl || '');
+      }
+    } catch (err) {
+      console.error("Failed to fetch settings from backend:", err);
+    }
+  };
+
+  const fetchFleetLive = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/fleet-live`);
+      if (response.ok) {
+        const data = await response.json();
+        setFleetData(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch live fleet monitor from backend:", err);
+    }
+  };
+
+  const fetchChatMessages = async (email) => {
+    if (!email) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/messages?driverEmail=${encodeURIComponent(email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setChatMessages(data);
+      }
+    } catch (err) {
+      console.error("Error fetching driver chat messages:", err);
+    }
+  };
+
+  const handleBroadcastToOffline = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/messages/broadcast-offline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'HUGE DEMAND RIGHT NOW! Go online to capture ride requests and earn surge fares!' })
+      });
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message);
+      } else {
+        alert('Failed to send broadcast.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error sending broadcast');
+    }
+  };
+
+  const [broadcastText, setBroadcastText] = useState('');
+
+  const handleBroadcastAll = async () => {
+    if (!broadcastText.trim()) {
+      alert('Please enter a message to broadcast.');
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/messages/broadcast-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: broadcastText })
+      });
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message);
+        setBroadcastText(''); // Clear input
+      } else {
+        alert('Failed to send global broadcast.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error sending global broadcast');
+    }
+  };
+
+  const handleSendMessage = async (textToSend) => {
+    const text = textToSend || newMessageText;
+    if (!text || !text.trim() || !messageModalDriver) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/messages/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          driverEmail: messageModalDriver.email,
+          sender: 'Admin CMS Support',
+          text: text.trim()
+        })
+      });
+      if (response.ok) {
+        setNewMessageText('');
+        fetchChatMessages(messageModalDriver.email);
+      }
+    } catch (err) {
+      console.error("Error sending message to driver:", err);
+    }
+  };
+
+  const downloadPendingPaymentsCSV = () => {
+    const headers = [
+      'Partner Name',
+      'Phone Number',
+      'Email Address',
+      'Vehicle Plate',
+      'Total Cash Collected (INR)',
+      'Pending Due Amount (INR)',
+      'First Incurred Date',
+      'Days Pending',
+      'Aging Status'
+    ];
+
+    const rows = pendingPaymentsData.pendingPayments.map(p => ({
+      name: p.name,
+      phone: p.phone,
+      email: p.email,
+      plate: p.plate,
+      cashCollected: p.cashCollected,
+      toBePaid: p.toBePaid,
+      date: p.pendingDateFormatted,
+      days: p.daysPending,
+      status: p.statusLabel
+    }));
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => [
+        `"${r.name}"`,
+        `"${r.phone}"`,
+        `"${r.email}"`,
+        `"${r.plate}"`,
+        `"${r.cashCollected}"`,
+        `"${r.toBePaid}"`,
+        `"${r.date}"`,
+        `"${r.days}"`,
+        `"${r.status}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'type: text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `pending_payments_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  useEffect(() => {
+    fetchDrivers();
+    fetchPassengers();
+    fetchEmployees();
+    fetchFinancials();
+    fetchCategories();
+    fetchSettings();
+    fetchFleetLive();
+    fetchPendingPayments();
+    fetchLocations();
+    fetchAdminProfile();
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDrivers();
+      fetchPassengers();
+      fetchEmployees();
+      fetchFinancials();
+      fetchCategories();
+      fetchSettings();
+      fetchFleetLive();
+      fetchPendingPayments();
+      fetchLocations();
+    }, 10000);
+    

@@ -1,0 +1,125 @@
+  return (
+    <div className="admin-container container" style={{ paddingTop: '0' }}>
+      {/* Sidebar */}
+      <aside className="admin-sidebar glass-card">
+        <div className="sidebar-header">
+          <div className="logo-icon-container">
+            <Shield size={28} className="text-primary" />
+          </div>
+          <h2 className="text-gradient">HUM CMS</h2>
+        </div>
+        
+        <nav className="sidebar-nav">
+          <div className="nav-section">
+            <h3 className="nav-section-title">OPERATIONS</h3>
+            <button className={`nav-btn ${activeTab === 'approvals' ? 'active' : ''}`} onClick={() => setActiveTab('approvals')}>
+              <UserCheck size={18} /> Approvals Queue
+            </button>
+            <button className={`nav-btn ${activeTab === 'partners' ? 'active' : ''}`} onClick={() => setActiveTab('partners')}>
+              <Car size={18} /> Partners (Drivers)
+            </button>
+            <button className={`nav-btn ${activeTab === 'passengers' ? 'active' : ''}`} onClick={() => setActiveTab('passengers')}>
+              <Users size={18} /> Passengers (Users)
+            </button>
+            <button className={`nav-btn ${activeTab === 'fleet' ? 'active' : ''}`} onClick={() => setActiveTab('fleet')}>
+              <Radio size={18} /> Live Fleet Monitor
+            </button>
+          </div>
+
+          <div className="nav-section">
+            <h3 className="nav-section-title">FINANCE & BUSINESS</h3>
+            <button className={`nav-btn ${activeTab === 'ledger' ? 'active' : ''}`} onClick={() => setActiveTab('ledger')}>
+              <FileText size={18} /> Partner Ledgers
+            </button>
+            <button className={`nav-btn ${activeTab === 'payments' ? 'active' : ''}`} onClick={() => setActiveTab('payments')}>
+              <DollarSign size={18} /> Pending Payments
+            </button>
+            <button className={`nav-btn ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>
+              <TrendingUp size={18} /> Revenue Analytics
+            </button>
+          </div>
+
+          <div className="nav-section">
+            <h3 className="nav-section-title">SYSTEM ADMIN</h3>
+            <button className={`nav-btn ${activeTab === 'staff' ? 'active' : ''}`} onClick={() => setActiveTab('staff')}>
+              <Shield size={18} /> Staff Management
+            </button>
+            <button className={`nav-btn ${activeTab === 'promotions' ? 'active' : ''}`} onClick={() => setActiveTab('promotions')}>
+              <Tag size={18} /> Promotions & Codes
+            </button>
+            <button className={`nav-btn ${activeTab === 'broadcasts' ? 'active' : ''}`} onClick={() => setActiveTab('broadcasts')}>
+              <Send size={18} /> Global Broadcasts
+            </button>
+            <button className={`nav-btn ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+              <Settings size={18} /> System Settings
+            </button>
+            <button className={`nav-btn ${activeTab === 'security' ? 'active' : ''}`} onClick={() => setActiveTab('security')}>
+              <Key size={18} /> Security
+            </button>
+          </div>
+        </nav>
+      </aside>
+
+      {/* Main Content Pane */}
+      <div className="admin-main">
+        <header className="admin-header glass-card">
+          <div className="header-search">
+            <Search size={18} color="var(--text-muted)" />
+            <input type="text" placeholder="Global search..." />
+          </div>
+          <div className="header-actions">
+            <button className="icon-btn position-relative">
+              <Bell size={20} />
+            </button>
+            <div className="admin-profile">
+              <div className="admin-avatar">A</div>
+              <div className="admin-info">
+                <span className="admin-name">Master Admin</span>
+                <span className="admin-role">Super User</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="admin-content glass-card">
+          <ErrorBoundary>
+            {activeTab === 'approvals' && <ApprovalsQueue drivers={drivers} />}
+            {activeTab === 'partners' && (
+              <RegisteredPartners 
+                filteredActiveDrivers={drivers}
+                driverSearch={driverSearch}
+                setDriverSearch={setDriverSearch}
+                page={driverPage}
+                setPage={setDriverPage}
+                totalPages={totalDriverPages}
+                totalItems={totalDrivers}
+              />
+            )}
+            {activeTab === 'passengers' && (
+              <RegisteredPassengers 
+                passengerSearch={passengerSearch}
+                setPassengerSearch={setPassengerSearch}
+                filteredPassengers={passengers}
+                page={passengerPage}
+                setPage={setPassengerPage}
+                totalPages={totalPassengerPages}
+                totalItems={totalPassengers}
+              />
+            )}
+            {activeTab === 'fleet' && <FleetMonitor />}
+            {activeTab === 'ledger' && <Ledger />}
+            {activeTab === 'payments' && <PendingPayments />}
+            {activeTab === 'analytics' && <Analytics />}
+            {activeTab === 'staff' && <StaffManagement employees={employees} />}
+            {activeTab === 'promotions' && <Promotions />}
+            {activeTab === 'broadcasts' && <GlobalBroadcasts />}
+            {activeTab === 'settings' && <SystemSettings categories={categories} settings={settings} />}
+            {activeTab === 'security' && <SecurityCredentials />}
+          </ErrorBoundary>
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;
