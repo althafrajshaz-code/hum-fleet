@@ -765,7 +765,7 @@ const AdminDashboard = () => {
       let response;
       if (editingCategory) {
         // Edit existing category
-        response = await fetch(`${API_BASE}/api/vehicle-categories/${editingCategory.id}`, {
+        response = await fetch(`${API_BASE}/api/vehicle-categories/${editingCategory.id || editingCategory._id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -819,7 +819,8 @@ const AdminDashboard = () => {
   const handleDeleteCategory = async (id) => {
     if (!window.confirm('Are you sure you want to delete this vehicle category?')) return;
     try {
-      const response = await fetch(`${API_BASE}/api/vehicle-categories/${id}`, {
+      const categoryId = id;
+      const response = await fetch(`${API_BASE}/api/vehicle-categories/${categoryId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -3719,7 +3720,7 @@ const AdminDashboard = () => {
                                 Edit
                               </button>
                               <button 
-                                onClick={() => handleDeleteCategory(cat.id)}
+                                onClick={() => handleDeleteCategory(cat.id || cat._id)}
                                 style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}
                                 disabled={(Array.isArray(categories) ? categories : []).length <= 1} // Retain at least 1 category!
                               >

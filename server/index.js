@@ -526,7 +526,7 @@ app.post('/api/vehicle-categories', (req, res) => {
 app.put('/api/vehicle-categories/:id', (req, res) => {
   const id = req.params.id;
   const { name, maxPassengers, baseFare, ratePerKm } = req.body;
-  const category = vehicleCategories.find(c => String(c.id) === id);
+  const category = vehicleCategories.find(c => String(c.id) === id || String(c._id) === id);
   if (category) {
     if (name) category.name = name;
     if (maxPassengers !== undefined) category.maxPassengers = parseInt(maxPassengers);
@@ -542,9 +542,9 @@ app.put('/api/vehicle-categories/:id', (req, res) => {
 // Delete vehicle category
 app.delete('/api/vehicle-categories/:id', (req, res) => {
   const id = req.params.id;
-  vehicleCategories = vehicleCategories.filter(c => String(c.id) !== id);
+  vehicleCategories = vehicleCategories.filter(c => String(c.id) !== id && String(c._id) !== id);
   saveData();
-  res.json({ success: true });
+  res.json({ message: 'Category deleted successfully' });
 });
 
 // Get passenger status by email
