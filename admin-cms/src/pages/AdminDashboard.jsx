@@ -344,19 +344,13 @@ const AdminDashboard = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/vehicle-categories?t=${Date.now()}`, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
+      const res = await fetch(`${API_BASE}/api/vehicle-categories?t=${Date.now()}`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
         setCategories(data);
       }
     } catch (err) {
-      console.error("Failed to fetch vehicle categories from backend:", err);
+      console.error(err);
     }
   };
 
@@ -819,10 +813,10 @@ const AdminDashboard = () => {
 
   const handleStartEdit = (cat) => {
     setEditingCategory(cat);
-    setCatName(cat.name);
-    setCatPassengers(cat.maxPassengers.toString());
-    setCatBaseFare(cat.baseFare.toString());
-    setCatRatePerKm(cat.ratePerKm.toString());
+    setCatName(cat.name || '');
+    setCatPassengers(cat.maxPassengers != null ? cat.maxPassengers.toString() : '4');
+    setCatBaseFare(cat.baseFare != null ? cat.baseFare.toString() : '50.00');
+    setCatRatePerKm(cat.ratePerKm != null ? cat.ratePerKm.toString() : '15.00');
   };
 
   const handleCancelEdit = () => {
