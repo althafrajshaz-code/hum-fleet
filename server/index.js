@@ -16,6 +16,7 @@ const AppStateSchema = new mongoose.Schema({
   activeRides: { type: mongoose.Schema.Types.Mixed, default: [] },
   settings: { type: mongoose.Schema.Types.Mixed, default: {} },
   vehicleCategories: { type: mongoose.Schema.Types.Mixed, default: [] },
+  promotions: { type: mongoose.Schema.Types.Mixed, default: [] },
   adminCredentials: { type: mongoose.Schema.Types.Mixed, default: {} },
   driverMessages: { type: mongoose.Schema.Types.Mixed, default: {} },
   passengerMessages: { type: mongoose.Schema.Types.Mixed, default: {} },
@@ -189,6 +190,7 @@ let driverMessages = {};
 let passengerMessages = {};
 let rideMessages = {};
 let dynamicLocations = []; // Store for newly searched/added locations by passengers
+let promotions = [];
 
 // Persistence Helpers — MongoDB backed with debounce
 let _saveTimer = null;
@@ -198,7 +200,7 @@ function saveData() {
     try {
       await AppState.findOneAndUpdate(
         { _id: 'humFleetState' },
-        { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations },
+        { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions },
         { upsert: true, new: true }
       );
     } catch (err) {
