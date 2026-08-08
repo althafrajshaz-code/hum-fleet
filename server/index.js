@@ -879,7 +879,7 @@ app.post('/api/drivers/location', (req, res) => {
       broadcastDriverUpdate(driver.id, driver.lat, driver.lng, driver.isOnline, driver.currentRide);
     }
     
-    saveData();
+    // NOTE: saveData() was removed here to save IO and data costs. Locations are held in memory.
     res.json({ 
       success: true, 
       lat: driver.lat, 
