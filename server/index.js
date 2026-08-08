@@ -194,6 +194,23 @@ let dynamicLocations = []; // Store for newly searched/added locations by passen
 let promotions = [];
 let employees = [];
 
+// Helper to safely save to DB without hanging if disconnected
+async function saveToMongoDB() {
+  if (mongoose.connection.readyState !== 1) {
+    console.warn("MongoDB not connected. Skipping DB save (data is in memory).");
+    return;
+  }
+  try {
+    await AppState.findOneAndUpdate(
+      { _id: 'humFleetState' },
+      { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
+      { upsert: true, new: true, maxTimeMS: 5000 }
+    );
+  } catch (err) {
+    console.error("Failed to save to MongoDB:", err);
+  }
+}
+
 // Persistence Helpers — MongoDB backed with debounce
 let _saveTimer = null;
 function saveData() {
@@ -540,11 +557,7 @@ app.post('/api/vehicle-categories', async (req, res) => {
   };
   vehicleCategories.push(newCategory);
   
-  await AppState.findOneAndUpdate(
-    { _id: 'humFleetState' },
-    { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
-    { upsert: true, new: true }
-  );
+  await saveToMongoDB();
   
   res.status(201).json(newCategory);
 });
@@ -561,11 +574,7 @@ app.put('/api/vehicle-categories/:id', async (req, res) => {
     if (ratePerKm !== undefined) category.ratePerKm = parseFloat(ratePerKm);
     
     // Immediately persist to DB in serverless env
-    await AppState.findOneAndUpdate(
-      { _id: 'humFleetState' },
-      { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
-      { upsert: true, new: true }
-    );
+    await saveToMongoDB();
     
     res.json(category);
   } else {
@@ -578,11 +587,7 @@ app.delete('/api/vehicle-categories/:id', async (req, res) => {
   const id = req.params.id;
   vehicleCategories = vehicleCategories.filter(c => String(c.id) !== id && String(c._id) !== id);
   
-  await AppState.findOneAndUpdate(
-    { _id: 'humFleetState' },
-    { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
-    { upsert: true, new: true }
-  );
+  await saveToMongoDB();
   
   res.json({ message: 'Category deleted successfully' });
 });
@@ -2458,11 +2463,7 @@ app.post('/api/promotions', async (req, res) => {
   
   promotions.push(newPromo);
   
-  await AppState.findOneAndUpdate(
-    { _id: 'humFleetState' },
-    { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
-    { upsert: true, new: true }
-  );
+  await saveToMongoDB();
   
   res.status(201).json(newPromo);
 });
@@ -2474,11 +2475,7 @@ app.put('/api/promotions/:id', async (req, res) => {
   if (promo) {
     if (status) promo.status = status;
     
-    await AppState.findOneAndUpdate(
-      { _id: 'humFleetState' },
-      { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
-      { upsert: true, new: true }
-    );
+    await saveToMongoDB();
     
     res.json(promo);
   } else {
@@ -2490,11 +2487,7 @@ app.delete('/api/promotions/:id', async (req, res) => {
   const idStr = req.params.id;
   promotions = promotions.filter(p => String(p.id) !== idStr && String(p._id) !== idStr);
   
-  await AppState.findOneAndUpdate(
-    { _id: 'humFleetState' },
-    { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
-    { upsert: true, new: true }
-  );
+  await saveToMongoDB();
   
   res.json({ message: 'Promotion deleted' });
 });
