@@ -817,6 +817,10 @@ const AdminDashboard = () => {
     setCatPassengers(cat.maxPassengers != null ? cat.maxPassengers.toString() : '4');
     setCatBaseFare(cat.baseFare != null ? cat.baseFare.toString() : '50.00');
     setCatRatePerKm(cat.ratePerKm != null ? cat.ratePerKm.toString() : '15.00');
+    // Scroll to the edit form
+    setTimeout(() => {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }, 100);
   };
 
   const handleCancelEdit = () => {

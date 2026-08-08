@@ -308,13 +308,14 @@ const SystemSettings = ({
                       <button 
                         onClick={() => handleStartEdit(cat)}
                         style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '12px', fontWeight: '700', marginRight: '10px' }}
+                        type="button"
                       >
                         Edit
                       </button>
                       <button 
                         onClick={() => handleDeleteCategory(cat.id || cat._id)}
                         style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}
-                        disabled={(Array.isArray(categories) ? categories : []).length <= 1} // Retain at least 1 category!
+                        type="button"
                       >
                         Delete
                       </button>
