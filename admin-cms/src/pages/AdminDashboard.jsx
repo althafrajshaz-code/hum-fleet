@@ -66,7 +66,13 @@ const AdminDashboard = () => {
   const [fleetData, setFleetData] = useState({ drivers: [], passengers: [], activeRides: [], onlineDriversCount: 0, ridingDriversCount: 0, offlineDriversCount: 0 });
   const [fleetSearch, setFleetSearch] = useState('');
   const [fleetFilter, setFleetFilter] = useState('all'); // 'all' | 'online' | 'riding' | 'offline'
-  const [fleetEntity, setFleetEntity] = useState('drivers'); // 'drivers' | 'passengers'
+  const [fleetEntity, setFleetEntity] = useState('drivers');
+  
+  // Pagination State
+  const [driverPage, setDriverPage] = useState(1);
+  const [passengerPage, setPassengerPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+ // 'drivers' | 'passengers'
   const [selectedMapDriver, setSelectedMapDriver] = useState(null);
 
   const [watermarkLogo, setWatermarkLogo] = useState(null);

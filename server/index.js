@@ -1,4 +1,6 @@
 require('dotenv').config();
+const http = require('http');
+const { Server } = require('socket.io');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -871,6 +873,12 @@ app.post('/api/drivers/location', (req, res) => {
     if (isOnline !== undefined) driver.isOnline = Boolean(isOnline);
     if (isPaused !== undefined) driver.isPaused = Boolean(isPaused);
     driver.lastActiveAt = new Date().toISOString();
+    
+    // Broadcast real-time location and status update to admin
+    if (typeof broadcastDriverUpdate === 'function') {
+      broadcastDriverUpdate(driver.id, driver.lat, driver.lng, driver.isOnline, driver.currentRide);
+    }
+    
     saveData();
     res.json({ 
       success: true, 
@@ -964,7 +972,40 @@ app.post('/api/drivers/rates', (req, res) => {
 
 // Get all drivers
 app.get('/api/drivers', (req, res) => {
-  res.json(drivers);
+  let { page, limit, search, status } = req.query;
+  
+  let result = [...drivers];
+  
+  if (status) {
+    result = result.filter(d => d.status === status);
+  }
+  
+  if (search) {
+    const s = search.toLowerCase().replace(/\s+/g, '');
+    result = result.filter(d => 
+      (d.name && d.name.toLowerCase().includes(search.toLowerCase())) ||
+      (d.email && d.email.toLowerCase().includes(search.toLowerCase())) ||
+      (d.phone && d.phone.includes(search)) ||
+      (d.plate && d.plate.toLowerCase().replace(/\s+/g, '').includes(s))
+    );
+  }
+  
+  if (page && limit) {
+    page = parseInt(page);
+    limit = parseInt(limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    
+    const paginatedResult = result.slice(startIndex, endIndex);
+    res.json({
+      data: paginatedResult,
+      total: result.length,
+      page,
+      totalPages: Math.ceil(result.length / limit)
+    });
+  } else {
+    res.json(result);
+  }
 });
 
 // Add new driver application (with backend validation check)
