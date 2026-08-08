@@ -593,12 +593,12 @@ const AdminDashboard = () => {
 
   const filteredLedgerDrivers = drivers
     .filter(d => 
-      d.name.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
-      d.phone.includes(ledgerSearch) ||
-      d.email.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
-      (d.plate && d.plate.toLowerCase().replace(/\s+/g, '').includes(ledgerSearch.toLowerCase().replace(/\s+/g, ''))) ||
-      (d.manufacturer && d.manufacturer.toLowerCase().includes(ledgerSearch.toLowerCase())) ||
-      (d.model && d.model.toLowerCase().includes(ledgerSearch.toLowerCase()))
+      String(d.name || '').toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+      String(d.phone || '').includes(ledgerSearch) ||
+      String(d.email || '').toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+      (d.plate && String(d.plate).toLowerCase().replace(/\s+/g, '').includes(ledgerSearch.toLowerCase().replace(/\s+/g, ''))) ||
+      (d.manufacturer && String(d.manufacturer).toLowerCase().includes(ledgerSearch.toLowerCase())) ||
+      (d.model && String(d.model).toLowerCase().includes(ledgerSearch.toLowerCase()))
     )
     .filter(d => {
       const toBePaid = parseFloat(d.wallet?.toBePaid || 0);
@@ -616,9 +616,9 @@ const AdminDashboard = () => {
     });
 
   const filteredPendingPayments = (pendingPaymentsData.pendingPayments || []).filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(pendingSearch.toLowerCase()) ||
-                          p.phone.includes(pendingSearch) ||
-                          (p.plate && p.plate.toLowerCase().includes(pendingSearch.toLowerCase()));
+    const matchesSearch = String(p.name || '').toLowerCase().includes(pendingSearch.toLowerCase()) ||
+                          String(p.phone || '').includes(pendingSearch) ||
+                          (p.plate && String(p.plate).toLowerCase().includes(pendingSearch.toLowerCase()));
     if (!matchesSearch) return false;
 
     if (pendingFilter === 'same-day') return p.daysPending === 0;
@@ -2056,7 +2056,7 @@ const AdminDashboard = () => {
                         >
                           <div className="driver-info-header">
                             <h4>{driver.name}</h4>
-                            <span className={`status-badge badge-${driver.status.toLowerCase()}`}>
+                            <span className={`status-badge badge-${String(driver.status || '').toLowerCase()}`}>
                               {driver.status}
                             </span>
                           </div>
@@ -2382,12 +2382,12 @@ const AdminDashboard = () => {
                       return true;
                     })
                     .filter(d => 
-                      d.name.toLowerCase().includes(fleetSearch.toLowerCase()) ||
-                      d.phone.includes(fleetSearch) ||
-                      d.email.toLowerCase().includes(fleetSearch.toLowerCase()) ||
-                      (d.plate && d.plate.toLowerCase().replace(/\s+/g, '').includes(fleetSearch.toLowerCase().replace(/\s+/g, ''))) ||
-                      (d.manufacturer && d.manufacturer.toLowerCase().includes(fleetSearch.toLowerCase())) ||
-                      (d.model && d.model.toLowerCase().includes(fleetSearch.toLowerCase()))
+                      String(d.name || '').toLowerCase().includes(fleetSearch.toLowerCase()) ||
+                      String(d.phone || '').includes(fleetSearch) ||
+                      String(d.email || '').toLowerCase().includes(fleetSearch.toLowerCase()) ||
+                      (d.plate && String(d.plate).toLowerCase().replace(/\s+/g, '').includes(fleetSearch.toLowerCase().replace(/\s+/g, ''))) ||
+                      (d.manufacturer && String(d.manufacturer).toLowerCase().includes(fleetSearch.toLowerCase())) ||
+                      (d.model && String(d.model).toLowerCase().includes(fleetSearch.toLowerCase()))
                     )
                     .map(d => {
                       const isRiding = d.currentRide != null;
@@ -2489,7 +2489,7 @@ const AdminDashboard = () => {
                     </thead>
                     <tbody>
                       {fleetData.passengers
-                        .filter(p => p.name.toLowerCase().includes(fleetSearch.toLowerCase()) || p.email.toLowerCase().includes(fleetSearch.toLowerCase()) || p.phone.includes(fleetSearch))
+                        .filter(p => String(p.name || '').toLowerCase().includes(fleetSearch.toLowerCase()) || String(p.email || '').toLowerCase().includes(fleetSearch.toLowerCase()) || String(p.phone || '').includes(fleetSearch))
                         .map(p => (
                           <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '16px', fontWeight: '600' }}>
