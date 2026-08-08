@@ -52,6 +52,32 @@ const AdminDashboard = () => {
 
 
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('adminActiveTab') || 'approvals');
+  
+  // --- REACT QUERY & PAGINATION INTEGRATION ---
+  const [driverPage, setDriverPage] = useState(1);
+  const [passengerPage, setPassengerPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const [registeredDriverSearch, setRegisteredDriverSearch] = useState('');
+  const [passengerSearch, setPassengerSearch] = useState('');
+  const { data: driversData, refetch: refetchDriversQuery } = useDrivers(driverPage, itemsPerPage, registeredDriverSearch, null);
+  const { data: passengersData, refetch: refetchPassengersQuery } = usePassengers(passengerPage, itemsPerPage, passengerSearch);
+  
+  useSocketFleetLive();
+
+  useEffect(() => {
+    if (driversData?.data) setDrivers(driversData.data);
+  }, [driversData]);
+
+  useEffect(() => {
+    if (passengersData?.data) setPassengers(passengersData.data);
+  }, [passengersData]);
+  
+  const totalDriverPages = driversData?.totalPages || 1;
+  const totalDrivers = driversData?.total || 0;
+  const totalPassengerPages = passengersData?.totalPages || 1;
+  const totalPassengers = passengersData?.total || 0;
+  // ---------------------------------------------
   const [activeSOSAlert, setActiveSOSAlert] = useState(null);
   const [drivers, setDrivers] = useState([]);
   const [passengers, setPassengers] = useState([]);
@@ -103,8 +129,6 @@ const AdminDashboard = () => {
 
   // Search State Queries
   const [driverSearch, setDriverSearch] = useState('');
-  const [registeredDriverSearch, setRegisteredDriverSearch] = useState('');
-  const [passengerSearch, setPassengerSearch] = useState('');
   const [businessListings, setBusinessListings] = useState([]);
   const [newLocName, setNewLocName] = useState('');
   const [newLocLat, setNewLocLat] = useState('');
@@ -536,7 +560,7 @@ const AdminDashboard = () => {
   }, []);
 
   // Stats values
-  const totalDrivers = drivers.length; 
+  // const totalDrivers = drivers.length; 
   const pendingDrivers = drivers.filter(d => d.status === 'Pending').length;
   const approvedDriversCount = drivers.filter(d => d.status === 'Approved').length;
 
