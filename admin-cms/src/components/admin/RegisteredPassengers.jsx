@@ -41,6 +41,7 @@ const RegisteredPassengers = ({ activeTab, setShowAddPassengerModal, passengerSe
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left' }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ padding: '16px', fontWeight: '700' }}>ID</th>
                         <th style={{ padding: '16px', fontWeight: '700' }}>Name</th>
                         <th style={{ padding: '16px', fontWeight: '700' }}>Rating</th>
                         <th style={{ padding: '16px', fontWeight: '700' }}>Email Address</th>
@@ -53,6 +54,7 @@ const RegisteredPassengers = ({ activeTab, setShowAddPassengerModal, passengerSe
                     <tbody>
                       {filteredPassengers.map((p) => (
                         <tr key={p.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} className="table-row-hover">
+                          <td style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)', fontSize: '12px' }}>{p.id || p._id}</td>
                           <td style={{ padding: '16px', fontWeight: '600' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '13px', color: '#3b82f6' }}>

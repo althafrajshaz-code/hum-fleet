@@ -89,6 +89,7 @@ const RegisteredPartners = ({
                   </div>
                   <div>
                     <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: 'var(--text-main)' }}>{String(d.name || 'Unknown Driver')}</h4>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', fontWeight: '600' }}>ID: {d.id || d._id}</div>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px' }}>
                       <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '800' }}>★ {d.rating || '5.0'}</span>
                       <span style={{ 
