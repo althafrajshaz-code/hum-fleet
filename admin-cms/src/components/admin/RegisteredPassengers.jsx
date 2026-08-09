@@ -67,17 +67,28 @@ const RegisteredPassengers = ({ activeTab, setShowAddPassengerModal, passengerSe
                           <td style={{ padding: '16px', fontWeight: '600', color: 'var(--primary)' }}>₹{parseFloat(p.wallet?.totalSpent || 0).toFixed(2)}</td>
                           <td style={{ padding: '16px', color: '#f59e0b' }}>₹{parseFloat(p.wallet?.taxPaid || 0).toFixed(2)}</td>
                           <td style={{ padding: '16px' }}>
-                            <button
-                              title="Delete Passenger"
-                              onClick={() => {
-                                if (window.confirm(`WARNING: Are you sure you want to PERMANENTLY delete passenger ${p.name}?`)) {
-                                  handleDeletePassenger(p.id);
-                                }
-                              }}
-                              style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <X size={14} />
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <a
+                                href={`https://wa.me/${(p.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hello ${p.name || 'Passenger'}, this is from HUM Fleet Admin. We noticed you have a pending balance to collect. Please clear your dues at your earliest convenience.`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Message on WhatsApp"
+                                style={{ background: '#25D366', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+                              >
+                                <MessageSquare size={14} />
+                              </a>
+                              <button
+                                title="Delete Passenger"
+                                onClick={() => {
+                                  if (window.confirm(`WARNING: Are you sure you want to PERMANENTLY delete passenger ${p.name}?`)) {
+                                    handleDeletePassenger(p.id);
+                                  }
+                                }}
+                                style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
