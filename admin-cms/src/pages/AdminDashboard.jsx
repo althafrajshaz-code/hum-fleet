@@ -36,9 +36,7 @@ const API_BASE = (typeof window !== 'undefined' && (window.location.hostname ===
   ? 'http://localhost:5000'
   : (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
     ? 'https://hum-fleet-backend.loca.lt'
-    : (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app'))
-      ? 'https://server-ashen-beta.vercel.app'
-      : 'https://hum-fleet-api.onrender.com';
+    : 'https://hum-fleet-api.onrender.com';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -2039,7 +2037,7 @@ const AdminDashboard = () => {
               />
             )}
             
-            {activeTab === 'promotions' && <Promotions activeTab={activeTab} />}
+            {activeTab === 'promotions' && <Promotions activeTab={activeTab} API_BASE={API_BASE} />}
             
             {activeTab === 'broadcasts' && (
               <GlobalBroadcasts 

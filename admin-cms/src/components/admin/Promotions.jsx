@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tag } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-
-const Promotions = ({ activeTab }) => {
+const Promotions = ({ activeTab, API_BASE }) => {
   const [promotions, setPromotions] = useState([]);
   const [promoCode, setPromoCode] = useState('');
   const [discountType, setDiscountType] = useState('percentage');
