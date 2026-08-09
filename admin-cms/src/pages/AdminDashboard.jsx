@@ -274,7 +274,7 @@ const AdminDashboard = () => {
 
   const handleDeleteDriver = async (id) => {
     try {
-      const response = await fetch(`${API_BASE}/api/drivers/${id}`, { method: 'DELETE' });
+      const response = await fetch(`${API_BASE}/api/admin/drivers/${id}`, { method: 'DELETE' });
       if (response.ok) {
         fetchDrivers();
       }
@@ -303,7 +303,7 @@ const AdminDashboard = () => {
 
   const handleDeletePassenger = async (id) => {
     try {
-      const response = await fetch(`${API_BASE}/api/passengers/${id}`, { method: 'DELETE' });
+      const response = await fetch(`${API_BASE}/api/admin/passengers/${id}`, { method: 'DELETE' });
       if (response.ok) {
         fetchPassengers();
       }
