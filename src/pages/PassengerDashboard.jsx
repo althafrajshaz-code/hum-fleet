@@ -641,13 +641,16 @@ const PassengerDashboard = () => {
   const calculateCategoryFare = (cat) => {
     if (!cat) return '0.00';
     let catBase = parseFloat(cat.baseFare !== undefined ? cat.baseFare : settings.baseFare);
+    if (parseFloat(settings.baseFare) > catBase) catBase = parseFloat(settings.baseFare);
     
     // Intercity pricing: add ₹250 extra to the driver base fare if distance is > 35 KM
     if (isIntercity) {
       catBase += 250.00;
     }
 
-    const catPerKm = parseFloat(cat.ratePerKm !== undefined ? cat.ratePerKm : settings.ratePerKm);
+    let catPerKm = parseFloat(cat.ratePerKm !== undefined ? cat.ratePerKm : settings.ratePerKm);
+    if (parseFloat(settings.ratePerKm) > catPerKm) catPerKm = parseFloat(settings.ratePerKm);
+
     const rawFare = (catBase + catPerKm * tripDistance) * surge;
     return rawFare.toFixed(2);
   };

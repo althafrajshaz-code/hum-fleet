@@ -1629,11 +1629,19 @@ app.post('/api/rides/:id/update-destination', (req, res) => {
     ride.isIntercity = updatedKm > 35.0;
 
     const driver = drivers.find(d => d.email === ride.driverEmail);
-    const ratePerKm = driver ? parseFloat(driver.ratePerKm || 15) : 15;
-    const baseFare = parseFloat(settings.baseFare || 50);
+    const catObj = vehicleCategories.find(c => c.name === ride.category) || {};
+    
+    let catRatePerKm = parseFloat(catObj.ratePerKm !== undefined ? catObj.ratePerKm : settings.ratePerKm);
+    if (parseFloat(settings.ratePerKm) > catRatePerKm) catRatePerKm = parseFloat(settings.ratePerKm);
+    const driverRate = driver ? parseFloat(driver.ratePerKm || 15) : 15;
+    const finalRatePerKm = Math.max(catRatePerKm, driverRate);
+    
+    let catBase = parseFloat(catObj.baseFare !== undefined ? catObj.baseFare : settings.baseFare);
+    if (parseFloat(settings.baseFare) > catBase) catBase = parseFloat(settings.baseFare);
+    
     const surge = parseFloat(settings.surgeMultiplier || 1);
     
-    let updatedFareVal = (baseFare + ratePerKm * updatedKm) * surge;
+    let updatedFareVal = (catBase + finalRatePerKm * updatedKm) * surge;
     if (ride.isIntercity) {
       updatedFareVal += 250;
     }
