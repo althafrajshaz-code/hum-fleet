@@ -164,7 +164,7 @@ const DriverDashboard = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/drivers/status?email=${encodeURIComponent(email)}`);
+      const response = await fetch(`${API_BASE}/api/drivers/status?email=${encodeURIComponent(email)}&_t=${Date.now()}`);
       if (response.ok) {
         const data = await response.json();
         setStatus(data.status);
@@ -1255,9 +1255,6 @@ You can only accept prepaid trips until your balance is cleared.`);
           <p style={{ fontSize: '13px', color: 'var(--primary)', fontWeight: 'bold' }}>
             We will activate your dashboard once approval is processed. Please check back shortly.
           </p>
-          <Button variant="outline" style={{ marginTop: '20px', width: '100%' }} onClick={() => navigate('/')}>
-            Back to Home
-          </Button>
         </div>
       </div>
     );
@@ -1276,9 +1273,6 @@ You can only accept prepaid trips until your balance is cleared.`);
             We regret to inform you that your application does not meet our compliance requirements or document checks at this time.
           </p>
           <hr className="divider" style={{ margin: '24px 0' }} />
-          <Button variant="primary" style={{ width: '100%' }} onClick={() => navigate('/')}>
-            Back to Home
-          </Button>
         </div>
       </div>
     );
@@ -1301,9 +1295,6 @@ You can only accept prepaid trips until your balance is cleared.`);
               📞 Please contact <strong style={{ color: '#ef4444' }}>HUM Fleet support</strong> to understand the reason for the block and to request reinstatement of your account.
             </p>
           </div>
-          <Button variant="outline" style={{ width: '100%', borderColor: '#ef4444', color: '#ef4444' }} onClick={() => navigate('/')}>
-            Back to Home
-          </Button>
         </div>
       </div>
     );
