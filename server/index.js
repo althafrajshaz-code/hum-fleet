@@ -176,13 +176,13 @@ let settings = {
 
 // Default Vehicle Categories List with Separate Base Fares and Rates/KM
 let vehicleCategories = [
-  { id: 'auto', name: '🛺 Auto Rickshaw', maxPassengers: 3, baseFare: 30.00, ratePerKm: 12.00, icon: '🛺' },
-  { id: 'mini', name: '🚙 Mini', maxPassengers: 4, baseFare: 40.00, ratePerKm: 14.00, icon: '🚙' },
-  { id: 'hatchback', name: '🚗 Hatchback', maxPassengers: 4, baseFare: 50.00, ratePerKm: 15.00, icon: '🚗' },
-  { id: 'sedan', name: '🚘 Sedan (AC)', maxPassengers: 4, baseFare: 70.00, ratePerKm: 18.00, icon: '🚘' },
-  { id: 'suv', name: '🚐 SUV / XL (6 Seater)', maxPassengers: 6, baseFare: 120.00, ratePerKm: 25.00, icon: '🚐' },
-  { id: 'ev', name: '⚡ EV Green Cab (Eco)', maxPassengers: 4, baseFare: 60.00, ratePerKm: 16.00, icon: '⚡' },
-  { id: 'premium', name: '💎 Premium / Luxury', maxPassengers: 4, baseFare: 150.00, ratePerKm: 30.00, icon: '💎' }
+  { id: 'auto', name: '🛺 Auto Rickshaw', maxPassengers: 3, baseFare: 0.00, ratePerKm: 0.00, icon: '🛺' },
+  { id: 'mini', name: '🚙 Mini', maxPassengers: 4, baseFare: 0.00, ratePerKm: 0.00, icon: '🚙' },
+  { id: 'hatchback', name: '🚗 Hatchback', maxPassengers: 4, baseFare: 0.00, ratePerKm: 0.00, icon: '🚗' },
+  { id: 'sedan', name: '🚘 Sedan (AC)', maxPassengers: 4, baseFare: 0.00, ratePerKm: 0.00, icon: '🚘' },
+  { id: 'suv', name: '🚐 SUV / XL (6 Seater)', maxPassengers: 6, baseFare: 0.00, ratePerKm: 0.00, icon: '🚐' },
+  { id: 'ev', name: '⚡ EV Green Cab (Eco)', maxPassengers: 4, baseFare: 0.00, ratePerKm: 0.00, icon: '⚡' },
+  { id: 'premium', name: '💎 Premium / Luxury', maxPassengers: 4, baseFare: 0.00, ratePerKm: 0.00, icon: '💎' }
 ];
 
 // Global ride matching system database, driver direct messaging store & in-trip ride chat store
@@ -572,7 +572,7 @@ app.post('/api/vehicle-categories', async (req, res) => {
   }
 
   const newCategory = {
-    id: name.toLowerCase().replace(/\s+/g, '-'),
+    id: name.toLowerCase().replace(/[\s/]+/g, '-').replace(/[^a-z0-9-]/g, ''),
     name,
     maxPassengers: parseInt(maxPassengers),
     baseFare: parseFloat(baseFare),
@@ -2040,6 +2040,58 @@ app.post('/api/drivers/pay-dues', (req, res) => {
 // --- DIRECT MESSAGING ENDPOINTS (Admin to Driver) ---
 
 // Send direct message (Admin or Driver)
+app.post('/api/admin/messages/broadcast-all', (req, res) => {
+  const { text } = req.body;
+  if (!text) {
+    return res.status(400).json({ error: 'text is required.' });
+  }
+  
+  const msg = {
+    sender: 'Admin CMS Support',
+    text,
+    timestamp: new Date().toISOString()
+  };
+  
+  drivers.forEach(driver => {
+    if (driver.email) {
+      if (!driverMessages[driver.email]) {
+        driverMessages[driver.email] = [];
+      }
+      driverMessages[driver.email].push(msg);
+    }
+  });
+  
+  saveData();
+  res.json({ message: 'Global broadcast sent successfully to all drivers.' });
+});
+
+app.post('/api/admin/messages/broadcast-offline', (req, res) => {
+  const { text } = req.body;
+  if (!text) {
+    return res.status(400).json({ error: 'text is required.' });
+  }
+  
+  const msg = {
+    sender: 'Admin CMS Support (Alert)',
+    text,
+    timestamp: new Date().toISOString()
+  };
+  
+  let count = 0;
+  drivers.forEach(driver => {
+    if (driver.email && driver.status === 'offline') {
+      if (!driverMessages[driver.email]) {
+        driverMessages[driver.email] = [];
+      }
+      driverMessages[driver.email].push(msg);
+      count++;
+    }
+  });
+  
+  saveData();
+  res.json({ message: `Surge alert sent to ${count} offline drivers.` });
+});
+
 app.post('/api/admin/messages/send', (req, res) => {
   const { driverEmail, sender, text } = req.body;
   if (!driverEmail || !text) {
@@ -2525,6 +2577,13 @@ app.delete('/api/promotions/:id', async (req, res) => {
   await saveToMongoDB();
   
   res.json({ message: 'Promotion deleted' });
+});
+
+app.get('/api/debug-db', (req, res) => {
+  res.json({
+    readyState: mongoose.connection.readyState,
+    error: dbConnectionError ? dbConnectionError.toString() : null
+  });
 });
 
 app.get('/api/admin/clear-all', (req, res) => {

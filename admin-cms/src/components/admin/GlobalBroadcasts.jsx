@@ -2,7 +2,7 @@ import React from 'react';
 import { Send, AlertCircle } from 'lucide-react';
 import Button from '../Button';
 
-const GlobalBroadcasts = ({ activeTab, broadcastMessage, setBroadcastMessage, broadcastTarget, setBroadcastTarget, handleSendBroadcast }) => {
+const GlobalBroadcasts = ({ activeTab, broadcastMessage, setBroadcastMessage, handleBroadcastAll, handleBroadcastToOffline }) => {
   return (
     <>
 {/* TAB: Global Broadcasts */}
@@ -26,7 +26,7 @@ const GlobalBroadcasts = ({ activeTab, broadcastMessage, setBroadcastMessage, br
                     onChange={(e) => setBroadcastMessage(e.target.value)}
                     style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-main, #000)', outline: 'none', fontSize: '13px', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}
                   />
-                  <Button variant="primary" onClick={handleSendBroadcast} style={{ padding: '6px 16px', fontSize: '12px' }}>
+                  <Button variant="primary" onClick={handleBroadcastAll} style={{ padding: '6px 16px', fontSize: '12px' }}>
                     Broadcast
                   </Button>
                 </div>
@@ -37,10 +37,7 @@ const GlobalBroadcasts = ({ activeTab, broadcastMessage, setBroadcastMessage, br
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
                   Instantly push an alert to all offline drivers that there is high demand in the area.
                 </p>
-                <Button variant="primary" onClick={() => {
-                  setBroadcastTarget('offline');
-                  handleSendBroadcast();
-                }} style={{ padding: '8px 16px', fontSize: '12px', background: '#ef4444', color: '#fff', border: 'none' }}>
+                <Button variant="primary" onClick={handleBroadcastToOffline} style={{ padding: '8px 16px', fontSize: '12px', background: '#ef4444', color: '#fff', border: 'none' }}>
                   <AlertCircle size={14} style={{ marginRight: '6px' }} />
                   Alert All Offline Drivers
                 </Button>

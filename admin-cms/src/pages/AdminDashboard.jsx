@@ -2044,9 +2044,8 @@ const AdminDashboard = () => {
                 activeTab={activeTab}
                 broadcastMessage={broadcastMessage}
                 setBroadcastMessage={setBroadcastMessage}
-                broadcastTarget={broadcastTarget}
-                setBroadcastTarget={setBroadcastTarget}
-                handleSendBroadcast={handleSendBroadcast}
+                handleBroadcastAll={handleBroadcastAll}
+                handleBroadcastToOffline={handleBroadcastToOffline}
               />
             )}
             
