@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
 import Button from '../Button';
 
@@ -18,6 +18,118 @@ const PendingPayments = ({
   setMessageModalDriver,
   fetchChatMessages
 }) => {
+  const [billImage, setBillImage] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateBill = async (driver) => {
+    setIsGenerating(true);
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 600;
+      canvas.height = 800;
+      const ctx = canvas.getContext('2d');
+
+      // Background
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      grad.addColorStop(0, '#1e293b');
+      grad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Watermark
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-Math.PI / 4);
+      ctx.font = 'bold 120px sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('HUM FLEET', 0, 0);
+      ctx.restore();
+
+      // Header
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(0, 0, canvas.width, 16);
+      
+      ctx.font = 'bold 42px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText('HUM FLEET', canvas.width / 2, 80);
+
+      ctx.font = '20px sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('PENDING DUES STATEMENT', canvas.width / 2, 115);
+
+      // Separator
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(50, 150);
+      ctx.lineTo(550, 150);
+      ctx.stroke();
+
+      // Driver Info
+      ctx.textAlign = 'left';
+      
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('PARTNER DETAILS:', 50, 200);
+
+      ctx.font = 'bold 32px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(driver.name || 'Unknown Partner', 50, 240);
+
+      ctx.font = '24px sans-serif';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText(`Phone: ${driver.phone || 'N/A'}`, 50, 280);
+      ctx.fillText(`Vehicle: ${driver.plate || 'N/A'}`, 50, 320);
+      ctx.fillText(`Type: ${driver.manufacturer || ''} ${driver.model || ''}`, 50, 360);
+
+      // Payment Box
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(50, 420, 500, 200, 16);
+      } else {
+        ctx.rect(50, 420, 500, 200);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillStyle = '#ef4444';
+      ctx.textAlign = 'center';
+      ctx.fillText('PENDING BALANCE TO PAY', canvas.width / 2, 470);
+
+      ctx.font = 'bold 72px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(`₹${driver.toBePaid || '0.00'}`, canvas.width / 2, 550);
+
+      // Footer
+      ctx.font = '18px sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('Please clear your dues to continue receiving rides.', canvas.width / 2, 680);
+      
+      const date = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      ctx.font = '16px sans-serif';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(`Generated: ${date}`, canvas.width / 2, 730);
+
+      const dataUrl = canvas.toDataURL('image/png');
+      setBillImage({ dataUrl, driver });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate bill image');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <>
 {/* TAB: Dedicated Pending Payments Section */}
@@ -199,6 +311,13 @@ const PendingPayments = ({
                               >
                                 <MessageSquare size={14} /> Reminder
                               </Button>
+                              <Button 
+                                variant="outline" 
+                                style={{ padding: '6px 10px', fontSize: '12px', borderColor: '#a855f7', color: '#a855f7' }}
+                                onClick={() => generateBill(p)}
+                              >
+                                <FileText size={14} /> Send Bill
+                              </Button>
                             </div>
                           </td>
                         </tr>
@@ -207,10 +326,60 @@ const PendingPayments = ({
                   </table>
                 </div>
               )}
+              </div>
             </div>
           )}
 
-          
+      {/* Bill Image Share Modal */}
+      {billImage && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#1e293b', padding: '24px', borderRadius: '16px', maxWidth: '400px', width: '100%', border: '1px solid #334155' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, color: '#fff', fontSize: '18px' }}>Share Bill to Partner</h3>
+              <button onClick={() => setBillImage(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            
+            <img src={billImage.dataUrl} alt="Bill Preview" style={{ width: '100%', borderRadius: '8px', border: '1px solid #334155', marginBottom: '20px' }} />
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <Button 
+                variant="primary"
+                style={{ width: '100%', background: '#25D366', border: 'none', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', fontWeight: 'bold' }}
+                onClick={async () => {
+                  try {
+                    const res = await fetch(billImage.dataUrl);
+                    const blob = await res.blob();
+                    const file = new File([blob], `HUM_Bill_${billImage.driver.name.replace(/\s+/g, '_')}.png`, { type: 'image/png' });
+                    
+                    if (navigator.share) {
+                      await navigator.share({
+                        title: 'Pending Dues - HUM Fleet',
+                        text: `Hello ${billImage.driver.name}, here is your pending dues statement from HUM Fleet.`,
+                        files: [file]
+                      });
+                    } else {
+                      alert('Native sharing is not supported on this browser. Please use the Download button and manually attach the image in WhatsApp.');
+                    }
+                  } catch (err) {
+                    console.error('Share failed', err);
+                  }
+                }}
+              >
+                <MessageSquare size={18} /> Share via WhatsApp
+              </Button>
+
+              <a 
+                href={billImage.dataUrl} 
+                download={`HUM_Bill_${billImage.driver.name.replace(/\s+/g, '_')}.png`}
+                style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '12px', background: '#334155', color: '#fff', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold' }}
+              >
+                <Download size={18} /> Download Image
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
     </>
   );
 };
