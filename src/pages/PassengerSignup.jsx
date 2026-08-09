@@ -232,6 +232,10 @@ const PassengerSignup = () => {
             </div>
           </div>
 
+          <div style={{ textAlign: 'center', margin: '16px 0', fontSize: '13px', color: 'var(--text-muted)' }}>
+            By signing up, you agree to our <Link to="/passenger/terms" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms & Conditions</Link>.
+          </div>
+
           <Button variant="primary" type="submit" className="full-width" style={{ marginTop: '8px' }}>
             Sign Up
           </Button>

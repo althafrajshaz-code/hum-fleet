@@ -976,7 +976,11 @@ const DriverSignup = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+            <div style={{ textAlign: 'center', margin: '16px 0', fontSize: '13px', color: 'var(--text-muted)' }}>
+              By submitting this application, you agree to our <Link to="/driver/terms" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms & Conditions</Link>.
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
               <Button variant="outline" type="button" onClick={handlePrevStep} className="full-width">
                 Back
               </Button>

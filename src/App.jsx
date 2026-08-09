@@ -10,6 +10,8 @@ import DriverLogin from './pages/DriverLogin';
 import DriverSignup from './pages/DriverSignup';
 import DriverDashboard from './pages/DriverDashboard';
 import PublicTracking from './pages/PublicTracking';
+import TermsPassenger from './pages/TermsPassenger';
+import TermsDriver from './pages/TermsDriver';
 import './index.css';
 
 const AdminRedirect = () => {
@@ -48,6 +50,7 @@ function App() {
                 <Route path="/" element={<PassengerLogin />} />
                 <Route path="/passenger/login" element={<PassengerLogin />} />
                 <Route path="/passenger/signup" element={<PassengerSignup />} />
+                <Route path="/passenger/terms" element={<TermsPassenger />} />
                 <Route path="/passenger" element={<PassengerDashboard />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </>
@@ -59,6 +62,7 @@ function App() {
                 <Route path="/" element={<DriverLogin />} />
                 <Route path="/driver/login" element={<DriverLogin />} />
                 <Route path="/driver/signup" element={<DriverSignup />} />
+                <Route path="/driver/terms" element={<TermsDriver />} />
                 <Route path="/driver" element={<DriverDashboard />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </>
@@ -70,9 +74,11 @@ function App() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/passenger/login" element={<PassengerLogin />} />
                 <Route path="/passenger/signup" element={<PassengerSignup />} />
+                <Route path="/passenger/terms" element={<TermsPassenger />} />
                 <Route path="/passenger" element={<PassengerDashboard />} />
                 <Route path="/driver/login" element={<DriverLogin />} />
                 <Route path="/driver/signup" element={<DriverSignup />} />
+                <Route path="/driver/terms" element={<TermsDriver />} />
                 <Route path="/driver" element={<DriverDashboard />} />
               </>
             )}
