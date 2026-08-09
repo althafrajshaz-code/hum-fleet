@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, FileText, LogOut, Key, UserCheck, TrendingUp, Search, MapPin, Navigation, Activity, Map, Radio, Compass, MessageSquare, Send, CreditCard, Upload, Tag, Phone, AlertTriangle } from 'lucide-react';
+import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, FileText, LogOut, Key, UserCheck, TrendingUp, Search, MapPin, Navigation, Activity, Map, Radio, Compass, MessageSquare, Send, CreditCard, Upload, Tag, Phone, AlertTriangle, Download } from 'lucide-react';
 import Button from '../components/Button';
 import './AdminDashboard.css';
 import Analytics from '../components/admin/Analytics';
@@ -100,7 +100,7 @@ const AdminDashboard = () => {
 
   // Add/Remove Driver & Passenger State
   const [showAddDriverModal, setShowAddDriverModal] = useState(false);
-  const [newDriverData, setNewDriverData] = useState({ name: '', email: '', phone: '', licenseNumber: '', vehicleType: 'Sedan', plateNumber: '' });
+  const [newDriverData, setNewDriverData] = useState({ name: '', email: '', phone: '', licenseNumber: '', vehicleType: '', plateNumber: '', ratePerKm: '', ratePerHour: '' });
   const [showAddPassengerModal, setShowAddPassengerModal] = useState(false);
   const [newPassengerData, setNewPassengerData] = useState({ name: '', email: '', phone: '' });
   // Employee Management State
@@ -2122,6 +2122,10 @@ const AdminDashboard = () => {
                 </select>
                 <input type="text" placeholder="Plate Number" className="input-field" value={newDriverData.plateNumber} onChange={(e) => setNewDriverData({...newDriverData, plateNumber: e.target.value})} required />
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <input type="number" step="0.01" placeholder={`Rate per KM (Optional)`} className="input-field" value={newDriverData.ratePerKm} onChange={(e) => setNewDriverData({...newDriverData, ratePerKm: e.target.value})} />
+                <input type="number" step="0.01" placeholder={`Rate per Hour (Optional)`} className="input-field" value={newDriverData.ratePerHour} onChange={(e) => setNewDriverData({...newDriverData, ratePerHour: e.target.value})} />
+              </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
                 <Button type="button" variant="outline" onClick={() => setShowAddDriverModal(false)}>Cancel</Button>
                 <Button type="submit" variant="primary">Add Driver</Button>
@@ -2590,6 +2594,37 @@ const AdminDashboard = () => {
           onClose={() => setMessageModalPassenger(null)} 
           API_BASE={API_BASE} 
         />
+      )}
+
+      {/* ========== DOCUMENT PREVIEW MODAL ========== */}
+      {previewFile && (
+        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div className="modal-content animate-scale-in" style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>{previewTitle || 'Document Preview'}</h3>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <a 
+                  href={previewFile} 
+                  download={previewTitle ? `${previewTitle.replace(/\s+/g, '_')}.png` : 'document.png'}
+                  style={{ background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', textDecoration: 'none', fontSize: '14px', fontWeight: 'bold' }}
+                >
+                  <Download size={16} /> Download
+                </a>
+                <button onClick={() => { setPreviewFile(null); setPreviewTitle(''); }} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer' }}>
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            
+            <div style={{ background: '#000', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', maxHeight: '75vh' }}>
+              {previewFile.startsWith('data:image') || previewFile.startsWith('http') || previewFile.startsWith('/') ? (
+                <img src={previewFile} alt="Preview" style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain' }} />
+              ) : (
+                <iframe src={previewFile} style={{ width: '100%', height: '75vh', border: 'none' }} title="Document Preview" />
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

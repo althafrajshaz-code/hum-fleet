@@ -2362,7 +2362,11 @@ app.post('/api/locations', (req, res) => {
 
 // Admin Add Driver
 app.post('/api/admin/drivers', (req, res) => {
-  const { name, email, phone, licenseNumber, vehicleType, plateNumber } = req.body;
+  const { name, email, phone, licenseNumber, vehicleType, plateNumber, ratePerKm, ratePerHour } = req.body;
+  
+  const finalRatePerKm = (parseFloat(ratePerKm) > 0) ? ratePerKm : settings.ratePerKm;
+  const finalRatePerHour = (parseFloat(ratePerHour) > 0) ? ratePerHour : settings.minRatePerHour;
+
   const newDriver = {
     id: drivers.length > 0 ? Math.max(...drivers.map(d => d.id)) + 1 : 1,
     name: name || 'New Driver',
@@ -2374,6 +2378,8 @@ app.post('/api/admin/drivers', (req, res) => {
     status: 'Approved',
     wallet: { cashCollected: 0, toBePaid: 0 },
     vehicles: [{ make: vehicleType, model: vehicleType, year: new Date().getFullYear(), plateNumber, isActive: true }],
+    ratePerKm: finalRatePerKm,
+    ratePerHour: finalRatePerHour,
     rating: 5,
     ratings: [],
     createdAt: new Date().toISOString()
