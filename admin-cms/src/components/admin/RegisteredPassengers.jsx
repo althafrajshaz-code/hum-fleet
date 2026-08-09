@@ -70,15 +70,13 @@ const RegisteredPassengers = ({ activeTab, setShowAddPassengerModal, passengerSe
                           <td style={{ padding: '16px', color: '#f59e0b' }}>₹{parseFloat(p.wallet?.taxPaid || 0).toFixed(2)}</td>
                           <td style={{ padding: '16px' }}>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                              <a
-                                href={`https://wa.me/${(p.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hello ${p.name || 'Passenger'}, this is from HUM Fleet Admin. We noticed you have a pending balance to collect. Please clear your dues at your earliest convenience.`)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Message on WhatsApp"
-                                style={{ background: '#25D366', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+                              <button
+                                title="Message Passenger"
+                                onClick={() => setMessageModalPassenger(p)}
+                                style={{ background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                               >
                                 <MessageSquare size={14} />
-                              </a>
+                              </button>
                               <button
                                 title="Delete Passenger"
                                 onClick={() => {

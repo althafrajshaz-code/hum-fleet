@@ -4,6 +4,7 @@ import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, F
 import Button from '../components/Button';
 import './AdminDashboard.css';
 import Analytics from '../components/admin/Analytics';
+import ChatModal from '../components/admin/ChatModal';
 import ApprovalsQueue from '../components/admin/ApprovalsQueue';
 import FleetMonitor from '../components/admin/FleetMonitor';
 import GlobalBroadcasts from '../components/admin/GlobalBroadcasts';
@@ -117,6 +118,7 @@ const AdminDashboard = () => {
 
   // Direct Messaging States
   const [messageModalDriver, setMessageModalDriver] = useState(null);
+  const [messageModalPassenger, setMessageModalPassenger] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessageText, setNewMessageText] = useState('');
 
@@ -1967,6 +1969,7 @@ const AdminDashboard = () => {
                 setPassengerSearch={setPassengerSearch}
                 filteredPassengers={filteredPassengers}
                 handleDeletePassenger={handleDeletePassenger}
+                setMessageModalPassenger={setMessageModalPassenger}
                 page={passengerPage}
                 setPage={setPassengerPage}
                 totalPages={totalPassengerPages}
@@ -2042,8 +2045,8 @@ const AdminDashboard = () => {
             {activeTab === 'broadcasts' && (
               <GlobalBroadcasts 
                 activeTab={activeTab}
-                broadcastMessage={broadcastMessage}
-                setBroadcastMessage={setBroadcastMessage}
+                broadcastMessage={broadcastText}
+                setBroadcastMessage={setBroadcastText}
                 handleBroadcastAll={handleBroadcastAll}
                 handleBroadcastToOffline={handleBroadcastToOffline}
               />
@@ -2569,6 +2572,24 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {messageModalDriver && (
+        <ChatModal 
+          entityType="driver" 
+          entityData={messageModalDriver} 
+          onClose={() => setMessageModalDriver(null)} 
+          API_BASE={API_BASE} 
+        />
+      )}
+
+      {messageModalPassenger && (
+        <ChatModal 
+          entityType="passenger" 
+          entityData={messageModalPassenger} 
+          onClose={() => setMessageModalPassenger(null)} 
+          API_BASE={API_BASE} 
+        />
       )}
 
     </div>
