@@ -32,12 +32,12 @@ const MOCK_PHOTOS = {
   document: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600'
 };
 
-const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
-  ? 'https://hum-fleet-backend.loca.lt'
-  : (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app'))
-    ? 'https://server-ashen-beta.vercel.app'
-    : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
-      ? 'http://localhost:5000'
+const API_BASE = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+  ? 'http://localhost:5000'
+  : (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
+    ? 'https://hum-fleet-backend.loca.lt'
+    : (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app'))
+      ? 'https://server-ashen-beta.vercel.app'
       : 'https://hum-fleet-api.onrender.com';
 
 const AdminDashboard = () => {
@@ -2085,6 +2085,18 @@ const AdminDashboard = () => {
               <SecurityCredentials 
                 activeTab={activeTab}
                 handleAdminLogout={handleAdminLogout}
+                newLocName={newLocName} setNewLocName={setNewLocName}
+                newLocLat={newLocLat} setNewLocLat={setNewLocLat}
+                newLocLng={newLocLng} setNewLocLng={setNewLocLng}
+                fetchLocations={fetchLocations}
+                businessListings={businessListings}
+                profileError={profileError}
+                profileSuccess={profileSuccess}
+                handleSaveCredentials={handleSaveCredentials}
+                adminUsername={adminUsername} setAdminUsername={setAdminUsername}
+                currentPassword={currentPassword} setCurrentPassword={setCurrentPassword}
+                newPassword={newPassword} setNewPassword={setNewPassword}
+                API_BASE={API_BASE}
               />
             )}
           </ErrorBoundary>
@@ -2103,10 +2115,10 @@ const AdminDashboard = () => {
               <input type="text" placeholder="License Number" className="input-field" value={newDriverData.licenseNumber} onChange={(e) => setNewDriverData({...newDriverData, licenseNumber: e.target.value})} required />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <select className="input-field" value={newDriverData.vehicleType} onChange={(e) => setNewDriverData({...newDriverData, vehicleType: e.target.value})} required>
-                  <option value="Sedan">Sedan</option>
-                  <option value="Hatchback">Hatchback</option>
-                  <option value="SUV">SUV</option>
-                  <option value="Auto">Auto Rickshaw</option>
+                  <option value="">Select Category</option>
+                  {categories.map(cat => (
+                    <option key={cat.id || cat._id} value={cat.name}>{cat.name}</option>
+                  ))}
                 </select>
                 <input type="text" placeholder="Plate Number" className="input-field" value={newDriverData.plateNumber} onChange={(e) => setNewDriverData({...newDriverData, plateNumber: e.target.value})} required />
               </div>

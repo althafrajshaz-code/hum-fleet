@@ -2,7 +2,21 @@ import React from 'react';
 import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
 import Button from '../Button';
 
-const SecurityCredentials = ({ activeTab, handleAdminLogout }) => {
+const SecurityCredentials = ({ 
+  activeTab, handleAdminLogout,
+  newLocName, setNewLocName,
+  newLocLat, setNewLocLat,
+  newLocLng, setNewLocLng,
+  fetchLocations,
+  businessListings,
+  profileError,
+  profileSuccess,
+  handleSaveCredentials,
+  adminUsername, setAdminUsername,
+  currentPassword, setCurrentPassword,
+  newPassword, setNewPassword,
+  API_BASE
+}) => {
   return (
     <>
 {/* TAB 5: Security Credentials */}
@@ -98,7 +112,7 @@ const SecurityCredentials = ({ activeTab, handleAdminLogout }) => {
             </div>
           )}
 
-          {activeTab === 'profile' && (
+          {activeTab === 'security' && (
             <div className="tab-pane">
               <h2>Admin Credentials Control</h2>
               <p className="tab-subtitle">Update your operations console username and security password.</p>

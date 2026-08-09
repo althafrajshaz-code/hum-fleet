@@ -201,11 +201,40 @@ async function saveToMongoDB() {
     return;
   }
   try {
-    await AppState.findOneAndUpdate(
-      { _id: 'humFleetState' },
-      { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
-      { upsert: true, new: true, maxTimeMS: 5000 }
-    );
+    const doc = await AppState.findById('humFleetState');
+    if (doc) {
+      doc.drivers = drivers;
+      doc.passengers = passengers;
+      doc.activeRides = activeRides;
+      doc.settings = settings;
+      doc.vehicleCategories = vehicleCategories;
+      doc.adminCredentials = adminCredentials;
+      doc.driverMessages = driverMessages;
+      doc.passengerMessages = passengerMessages;
+      doc.rideMessages = rideMessages;
+      doc.dynamicLocations = dynamicLocations;
+      doc.promotions = promotions;
+      doc.employees = employees;
+      
+      doc.markModified('drivers');
+      doc.markModified('passengers');
+      doc.markModified('activeRides');
+      doc.markModified('settings');
+      doc.markModified('vehicleCategories');
+      doc.markModified('adminCredentials');
+      doc.markModified('driverMessages');
+      doc.markModified('passengerMessages');
+      doc.markModified('rideMessages');
+      doc.markModified('dynamicLocations');
+      doc.markModified('promotions');
+      doc.markModified('employees');
+      
+      await doc.save();
+    } else {
+      await AppState.create({
+        _id: 'humFleetState', drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees
+      });
+    }
   } catch (err) {
     console.error("Failed to save to MongoDB:", err);
   }
@@ -216,15 +245,7 @@ let _saveTimer = null;
 function saveData() {
   if (_saveTimer) clearTimeout(_saveTimer);
   _saveTimer = setTimeout(async () => {
-    try {
-      await AppState.findOneAndUpdate(
-        { _id: 'humFleetState' },
-        { drivers, passengers, activeRides, settings, vehicleCategories, adminCredentials, driverMessages, passengerMessages, rideMessages, dynamicLocations, promotions, employees },
-        { upsert: true, new: true }
-      );
-    } catch (err) {
-      console.error('Failed to save data to MongoDB:', err);
-    }
+    await saveToMongoDB();
   }, 300);
 }
 
