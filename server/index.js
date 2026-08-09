@@ -1626,8 +1626,7 @@ app.post('/api/rides/:id/update-destination', (req, res) => {
     
     let catRatePerKm = parseFloat(catObj.ratePerKm !== undefined ? catObj.ratePerKm : settings.ratePerKm);
     if (parseFloat(settings.ratePerKm) > catRatePerKm) catRatePerKm = parseFloat(settings.ratePerKm);
-    const driverRate = driver ? parseFloat(driver.ratePerKm || 15) : 15;
-    const finalRatePerKm = Math.max(catRatePerKm, driverRate);
+    const finalRatePerKm = catRatePerKm;
     
     let catBase = parseFloat(catObj.baseFare !== undefined ? catObj.baseFare : settings.baseFare);
     if (parseFloat(settings.baseFare) > catBase) catBase = parseFloat(settings.baseFare);
@@ -1711,9 +1710,11 @@ app.post('/api/rides/:id/complete', (req, res) => {
     ride.status = 'Completed';
     ride.completedAt = new Date().toISOString();
 
-    // Dynamically calculate fare based on actual traveled distance and ratePerKm
-    const driver = drivers.find(d => d.email === ride.driverEmail);
-    const rate = driver ? parseFloat(driver.ratePerKm || 15.00) : 15.00;
+    // Dynamically calculate fare based on actual traveled distance and Category ratePerKm
+    const catObj = vehicleCategories.find(c => c.name === ride.category) || {};
+    let catRatePerKm = parseFloat(catObj.ratePerKm !== undefined ? catObj.ratePerKm : settings.ratePerKm);
+    if (parseFloat(settings.ratePerKm) > catRatePerKm) catRatePerKm = parseFloat(settings.ratePerKm);
+    const rate = catRatePerKm;
     
     const baseTotal = parseFloat(ride.totalKm || 8.0);
     
