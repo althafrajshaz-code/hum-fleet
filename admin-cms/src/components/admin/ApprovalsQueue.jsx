@@ -62,14 +62,14 @@ const ApprovalsQueue = ({
                   <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }} onClick={(e) => e.stopPropagation()}>
                     <Button 
                       variant="primary" 
-                      onClick={() => handleApprove(driver.id)}
+                      onClick={() => handleApprove(driver.id || driver.email)}
                       style={{ flex: 1, padding: '4px 8px', fontSize: '11px' }}
                     >
                       <Check size={14} /> Approve & Activate
                     </Button>
                     <Button 
                       variant="outline" 
-                      onClick={() => handleReject(driver.id)}
+                      onClick={() => handleReject(driver.id || driver.email)}
                       style={{ flex: 1, padding: '4px 8px', fontSize: '11px', borderColor: '#ef4444', color: '#ef4444' }}
                     >
                       <X size={14} /> Reject
@@ -213,14 +213,14 @@ const ApprovalsQueue = ({
                       <>
                         <Button 
                           variant="outline" 
-                          onClick={() => handleReject(selectedDriver.id)}
+                          onClick={() => handleReject(selectedDriver.id || selectedDriver.email)}
                           style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444' }}
                         >
                           <X size={16} /> Reject Partner
                         </Button>
                         <Button 
                           variant="primary" 
-                          onClick={() => handleApprove(selectedDriver.id)}
+                          onClick={() => handleApprove(selectedDriver.id || selectedDriver.email)}
                           style={{ flex: 1 }}
                         >
                           <Check size={16} /> Approve & Activate

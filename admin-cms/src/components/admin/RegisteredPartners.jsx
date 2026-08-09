@@ -142,7 +142,7 @@ const RegisteredPartners = ({
                   {d.isBlocked ? (
                     <button
                       title="Unblock Partner"
-                      onClick={() => handleUnblockDriver(d.id, d.name)}
+                      onClick={() => handleUnblockDriver(d.id || d.email, d.name)}
                       style={{ background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     >
                       ✅ Unblock
@@ -150,7 +150,7 @@ const RegisteredPartners = ({
                   ) : (
                     <button
                       title="Block Partner"
-                      onClick={() => handleBlockDriver(d.id, d.name)}
+                      onClick={() => handleBlockDriver(d.id || d.email, d.name)}
                       style={{ background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     >
                       🚫 Block
@@ -169,7 +169,7 @@ const RegisteredPartners = ({
                     variant="outline" 
                     onClick={() => {
                       if (window.confirm(`Are you sure you want to suspend and deactivate driver ${d.name}?`)) {
-                        handleReject(d.id);
+                        handleReject(d.id || d.email);
                       }
                     }}
                     style={{ borderColor: '#ef4444', color: '#ef4444', padding: '8px 12px', fontSize: '12px' }}
@@ -181,7 +181,7 @@ const RegisteredPartners = ({
                     title="Delete Driver permanently"
                     onClick={() => {
                       if (window.confirm(`WARNING: Are you sure you want to PERMANENTLY delete driver ${d.name}? This cannot be undone.`)) {
-                        handleDeleteDriver(d.id);
+                        handleDeleteDriver(d.id || d.email);
                       }
                     }}
                     style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}

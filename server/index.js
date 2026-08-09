@@ -2333,7 +2333,7 @@ app.post('/api/admin/drivers', (req, res) => {
 app.delete('/api/admin/drivers/:id', (req, res) => {
   const id = req.params.id;
   const initialLength = drivers.length;
-  drivers = drivers.filter(d => String(d.id) !== id && String(d._id) !== id);
+  drivers = drivers.filter(d => String(d.id) !== id && String(d._id) !== id && d.email !== id);
   if (drivers.length < initialLength) {
     saveData();
     res.json({ message: 'Driver deleted successfully.' });
