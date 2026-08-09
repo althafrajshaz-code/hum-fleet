@@ -314,6 +314,12 @@ async function loadData() {
         needsSave = true;
       }
 
+      if (doc.promotions) {
+        promotions = doc.promotions;
+      } else {
+        needsSave = true;
+      }
+
       console.log('Successfully restored HUM Fleet database state from MongoDB');
       if (needsSave) {
         saveData();
