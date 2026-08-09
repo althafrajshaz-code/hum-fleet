@@ -2329,9 +2329,9 @@ app.post('/api/admin/drivers', (req, res) => {
 
 // Admin Delete Driver
 app.delete('/api/admin/drivers/:id', (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = req.params.id;
   const initialLength = drivers.length;
-  drivers = drivers.filter(d => d.id !== id);
+  drivers = drivers.filter(d => String(d.id) !== id && String(d._id) !== id);
   if (drivers.length < initialLength) {
     saveData();
     res.json({ message: 'Driver deleted successfully.' });
@@ -2448,17 +2448,18 @@ app.post('/api/admin/employees/:id/warn', (req, res) => {
 });
 
 app.delete('/api/admin/employees/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  employees = employees.filter(e => e.id !== id);
+  const id = req.params.id;
+  const initialLength = employees.length;
+  employees = employees.filter(e => String(e.id) !== id && String(e._id) !== id);
   saveData();
   res.json({ message: 'Employee deleted' });
 });
 
 // Admin Delete Passenger
 app.delete('/api/admin/passengers/:id', (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = req.params.id;
   const initialLength = passengers.length;
-  passengers = passengers.filter(p => p.id !== id);
+  passengers = passengers.filter(p => String(p.id) !== id && String(p._id) !== id);
   if (passengers.length < initialLength) {
     saveData();
     res.json({ message: 'Passenger deleted successfully.' });
