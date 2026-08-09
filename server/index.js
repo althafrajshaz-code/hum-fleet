@@ -334,24 +334,26 @@ async function loadData() {
   }
 }
 
-// Start server first so Render health checks pass
-app.listen(PORT, () => {
-  console.log(`HUM Fleet API Server running on port ${PORT}`);
-});
-
 let dbConnectionError = null;
 
-// Connect to MongoDB in background
+// Connect to MongoDB and load data before starting server
+// This prevents a race condition on Render wakeup where early API requests are overwritten by a late DB restore
 mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
     console.log('Connected to MongoDB');
     await loadData();
+    app.listen(PORT, () => {
+      console.log(`HUM Fleet API Server running on port ${PORT}`);
+    });
   })
   .catch(err => {
     console.error('MongoDB connection failed:', err);
     dbConnectionError = err.toString();
     console.error('PLEASE ENSURE MONGODB ATLAS NETWORK ACCESS IS SET TO ALLOW ALL IP ADDRESSES (0.0.0.0/0)');
     loadData(); // Fallback to memory if offline
+    app.listen(PORT, () => {
+      console.log(`HUM Fleet API Server running on port ${PORT} (DB Connection Failed)`);
+    });
   });
 
 // Haversine formula to compute distance in KM
