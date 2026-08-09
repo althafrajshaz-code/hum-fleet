@@ -1106,8 +1106,19 @@ app.post('/api/drivers', (req, res) => {
     return res.status(400).json({ error: 'A driver with this email, phone, or license is already registered.' });
   }
 
-  // Auto-correct custom rates to platform minimums if they are too low
-  const finalRatePerKm = (parseFloat(ratePerKm) < parseFloat(settings.ratePerKm) || !ratePerKm) ? settings.ratePerKm : ratePerKm;
+  // Determine vehicle type from body if present
+  let vehicleType = null;
+  if (req.body.vehicleType) {
+    vehicleType = req.body.vehicleType;
+  } else if (req.body.vehicles && req.body.vehicles.length > 0) {
+    vehicleType = req.body.vehicles[0].make || req.body.vehicles[0].model;
+  }
+
+  const selectedCategory = vehicleCategories.find(c => c.name === vehicleType || c.id === vehicleType || (c.name && vehicleType && c.name.toLowerCase().includes(vehicleType.toLowerCase())));
+  const defaultRatePerKm = selectedCategory && selectedCategory.ratePerKm > 0 ? selectedCategory.ratePerKm : settings.ratePerKm;
+
+  // Auto-correct custom rates to platform minimums (or category minimums) if they are too low
+  const finalRatePerKm = (parseFloat(ratePerKm) < parseFloat(defaultRatePerKm) || !ratePerKm) ? defaultRatePerKm : ratePerKm;
   const finalRatePerHour = (parseFloat(ratePerHour) < parseFloat(settings.minRatePerHour) || !ratePerHour) ? settings.minRatePerHour : ratePerHour;
   
   // Apply corrected rates to body before saving
@@ -1177,6 +1188,18 @@ app.put('/api/admin/drivers/:id/category', (req, res) => {
   const driver = drivers.find(d => String(d.id) === String(targetId) || d.email === targetId);
   if (driver) {
     driver.vehicleCategory = vehicleCategory;
+    driver.vehicleType = vehicleCategory;
+    if (driver.vehicles && driver.vehicles.length > 0) {
+      driver.vehicles[0].make = vehicleCategory;
+      driver.vehicles[0].model = vehicleCategory;
+    }
+    
+    // Also update their ratePerKm to match the new category
+    const selectedCategory = vehicleCategories.find(c => c.name === vehicleCategory || c.id === vehicleCategory || (c.name && vehicleCategory && c.name.toLowerCase().includes(vehicleCategory.toLowerCase())));
+    if (selectedCategory && selectedCategory.ratePerKm > 0) {
+      driver.ratePerKm = selectedCategory.ratePerKm;
+    }
+    
     saveData();
     res.json({ success: true, driver });
   } else {
@@ -2364,7 +2387,10 @@ app.post('/api/locations', (req, res) => {
 app.post('/api/admin/drivers', (req, res) => {
   const { name, email, phone, licenseNumber, vehicleType, plateNumber, ratePerKm, ratePerHour } = req.body;
   
-  const finalRatePerKm = (parseFloat(ratePerKm) > 0) ? ratePerKm : settings.ratePerKm;
+  const selectedCategory = vehicleCategories.find(c => c.name === vehicleType || c.id === vehicleType);
+  const defaultRatePerKm = selectedCategory && selectedCategory.ratePerKm > 0 ? selectedCategory.ratePerKm : settings.ratePerKm;
+  
+  const finalRatePerKm = (parseFloat(ratePerKm) > 0) ? ratePerKm : defaultRatePerKm;
   const finalRatePerHour = (parseFloat(ratePerHour) > 0) ? ratePerHour : settings.minRatePerHour;
 
   const newDriver = {
