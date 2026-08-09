@@ -268,6 +268,7 @@ const PassengerDashboard = () => {
   const [wallet, setWallet] = useState({ totalSpent: 0, taxPaid: 0 });
   const [passengerProfilePic, setPassengerProfilePic] = useState(localStorage.getItem('passengerProfilePic') || null);
   const [passengerRating, setPassengerRating] = useState(5.0);
+  const [passengerId, setPassengerId] = useState(null);
 
   // In-Trip Chat States (Strictly enabled for matched driver & passenger on active ride)
   const [showInTripChat, setShowInTripChat] = useState(false);
@@ -355,6 +356,7 @@ const PassengerDashboard = () => {
       if (response.ok) {
         const data = await response.json();
         setPassengerRating(data.rating || 5.0);
+        if (data.id) setPassengerId(data.id);
         if (data.profilePic) {
           setPassengerProfilePic(data.profilePic);
           localStorage.setItem('passengerProfilePic', data.profilePic);
@@ -1072,9 +1074,9 @@ const PassengerDashboard = () => {
                   <span>★ {passengerRating.toFixed(1)} Rating</span>
                   <span style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>• HUM Customer Profile</span>
                 </div>
-                {localStorage.getItem('passengerVerificationCode') && (
+                {passengerId && (
                   <div style={{ marginTop: '4px', fontSize: '12px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#3b82f6', padding: '2px 8px', borderRadius: '4px', display: 'inline-block', fontWeight: 'bold' }}>
-                    Customer ID: {localStorage.getItem('passengerVerificationCode')}
+                    Customer ID: {passengerId}
                   </div>
                 )}
               </div>

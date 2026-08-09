@@ -628,6 +628,7 @@ app.get('/api/passengers/status', (req, res) => {
   const passenger = passengers.find(p => p.email === email);
   if (passenger) {
     res.json({
+      id: passenger.id || passenger._id,
       name: passenger.name,
       email: passenger.email,
       phone: passenger.phone,
