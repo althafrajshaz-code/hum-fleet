@@ -326,7 +326,6 @@ const PendingPayments = ({
                   </table>
                 </div>
               )}
-              </div>
             </div>
           )}
 
