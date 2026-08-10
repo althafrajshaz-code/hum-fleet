@@ -408,7 +408,7 @@ app.post('/api/passengers/signup', (req, res) => {
     return res.status(400).json({ error: 'A passenger account with this email or phone number is already registered. Please log in.' });
   }
   const newPassenger = {
-    id: passengers.length + 1,
+    id: (passengers.length > 0 ? Math.max(...passengers.map(x => Number(x.id) || 0)) : 0) + 1,
     name,
     email,
     phone,
@@ -466,7 +466,7 @@ app.post('/api/passengers/google-auth', async (req, res) => {
 
     if (!passenger) {
       passenger = {
-        id: passengers.length + 1,
+        id: (passengers.length > 0 ? Math.max(...passengers.map(x => Number(x.id) || 0)) : 0) + 1,
         name: googleUser.name || googleUser.email.split('@')[0],
         email: googleUser.email,
         phone: '',
@@ -1126,7 +1126,7 @@ app.post('/api/drivers', (req, res) => {
   req.body.ratePerHour = finalRatePerHour;
 
   const newDriver = {
-    id: drivers.length + 1,
+    id: (drivers.length > 0 ? Math.max(...drivers.map(x => Number(x.id) || 0)) : 0) + 1,
     status: 'Pending',
     isBlocked: false,
     wallet: { cashCollected: 0, toBePaid: 0 },
@@ -1148,6 +1148,27 @@ app.post('/api/drivers/:id/approve', (req, res) => {
   const driver = drivers.find(d => String(d.id) === String(targetId) || d.email === targetId);
   if (driver) {
     driver.status = 'Approved';
+    
+    if (driver.vehicles && driver.vehicles.length > 0) {
+      driver.vehicles.forEach(v => {
+        if (v.status === 'Pending' || !v.status) v.status = 'Approved';
+      });
+      
+      const activeVehicle = driver.vehicles.find(v => v.isActive && v.status === 'Approved');
+      if (!activeVehicle) {
+        const firstApproved = driver.vehicles.find(v => v.status === 'Approved');
+        if (firstApproved) {
+          driver.vehicles.forEach(v => { v.isActive = (v.id === firstApproved.id); });
+          driver.manufacturer = firstApproved.manufacturer;
+          driver.model = firstApproved.model;
+          driver.year = firstApproved.year;
+          driver.plate = firstApproved.plate;
+          driver.photos = firstApproved.photos || {};
+          driver.docs = firstApproved.docs || {};
+        }
+      }
+    }
+
     saveData();
     res.json(driver);
   } else {
@@ -1249,7 +1270,7 @@ app.post('/api/rides', (req, res) => {
   const passengerRating = passenger ? passenger.rating : 5.0;
 
   const newRide = {
-    id: activeRides.length + 1,
+    id: (activeRides.length > 0 ? Math.max(...activeRides.map(x => Number(x.id) || 0)) : 0) + 1,
     pickup,
     dropoff,
     fare,
@@ -1888,6 +1909,61 @@ app.get('/api/admin/financials', (req, res) => {
     totalCommission: totalCommission.toFixed(2),
     totalGST: totalGST.toFixed(2),
     toBeCollected: toBeCollected.toFixed(2)
+  });
+});
+
+app.get('/api/admin/analytics', (req, res) => {
+  const now = new Date();
+  const revenueData = [0, 0, 0, 0, 0, 0, 0];
+  const rideVolumeData = [0, 0, 0, 0, 0, 0, 0];
+  let totalCommission = 0;
+  let completedTrips = 0;
+
+  activeRides.filter(r => r.status === 'Completed').forEach(r => {
+    completedTrips++;
+    const fare = parseFloat(r.fare || 0);
+    const comm = fare * 0.05;
+    totalCommission += comm;
+
+    const completedAtStr = r.completedAt || r.createdAt || new Date().toISOString();
+    const completedDate = new Date(completedAtStr);
+    
+    // Set both to midnight to accurately count calendar days difference
+    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const compMidnight = new Date(completedDate.getFullYear(), completedDate.getMonth(), completedDate.getDate());
+    
+    const diffTime = nowMidnight - compMidnight;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays >= 0 && diffDays < 7) {
+      revenueData[6 - diffDays] += comm;
+      rideVolumeData[6 - diffDays]++;
+    }
+  });
+
+  const activeDrivers = drivers.filter(d => d.isOnline).length;
+  let totalRating = 0;
+  let ratingCount = 0;
+  drivers.filter(d => d.status === 'Approved').forEach(d => {
+    if (d.rating) {
+      totalRating += parseFloat(d.rating);
+      ratingCount++;
+    }
+  });
+  const avgRating = ratingCount > 0 ? (totalRating / ratingCount).toFixed(2) : 5.00;
+
+  // Round all revenue items
+  const roundedRevenue = revenueData.map(r => Math.round(r));
+
+  res.json({
+    revenueData: roundedRevenue,
+    rideVolumeData,
+    metrics: {
+      commission: totalCommission.toFixed(2),
+      activeDrivers,
+      completedTrips,
+      avgRating
+    }
   });
 });
 

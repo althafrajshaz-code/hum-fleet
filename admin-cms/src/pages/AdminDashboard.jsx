@@ -33,11 +33,7 @@ const MOCK_PHOTOS = {
   document: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600'
 };
 
-const API_BASE = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
-  ? 'http://localhost:5000'
-  : (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
-    ? 'https://hum-fleet-backend.loca.lt'
-    : 'https://hum-fleet-api.onrender.com';
+const API_BASE = 'https://hum-fleet-api.onrender.com';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -144,6 +140,8 @@ const AdminDashboard = () => {
 
   // Search State Queries
   const [driverSearch, setDriverSearch] = useState('');
+  const { data: pendingDriversData, refetch: refetchPendingDriversQuery } = useDrivers(1, 100, driverSearch, 'Pending');
+  const pendingDriversList = Array.isArray(pendingDriversData) ? pendingDriversData : (pendingDriversData?.data || []);
   const [businessListings, setBusinessListings] = useState([]);
   const [newLocName, setNewLocName] = useState('');
   const [newLocLat, setNewLocLat] = useState('');
@@ -252,7 +250,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchDrivers = async () => { await refetchDriversQuery(); };
+  const fetchDrivers = async () => { await refetchDriversQuery(); await refetchPendingDriversQuery(); };
 
   const fetchPassengers = async () => { await refetchPassengersQuery(); };
 
@@ -579,8 +577,7 @@ const AdminDashboard = () => {
   const approvedDriversCount = drivers.filter(d => d.status === 'Approved').length;
 
   // Filter lists based on search queries
-  const filteredPendingDrivers = drivers
-    .filter(d => d.status === 'Pending')
+  const filteredPendingDrivers = pendingDriversList
     .filter(d => 
       String(d.name || '').toLowerCase().includes(driverSearch.toLowerCase()) ||
       String(d.phone || '').includes(driverSearch) ||

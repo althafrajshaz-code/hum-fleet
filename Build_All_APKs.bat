@@ -18,7 +18,7 @@ copy app\build\outputs\apk\debug\app-debug.apk d:\Althaf\HUM_APKs\HUM_Admin.apk
 cd ..\..
 
 echo [2/3] Building Passenger APK...
-node set-capacitor-url.cjs "https://hum-cyan.vercel.app/passenger"
+node set-capacitor-url.cjs "https://hum-cyan.vercel.app/passenger" "com.humfleet.passenger" "Hum Fleet Passenger"
 call npx cap sync
 cd android
 call gradlew clean assembleDebug
@@ -27,7 +27,7 @@ copy app\build\outputs\apk\debug\app-debug.apk d:\Althaf\HUM_APKs\HUM_Passenger.
 cd ..
 
 echo [3/3] Building Driver APK...
-node set-capacitor-url.cjs "https://hum-cyan.vercel.app/driver"
+node set-capacitor-url.cjs "https://hum-cyan.vercel.app/driver" "com.humfleet.driver" "Hum Fleet Driver"
 call npx cap sync
 cd android
 call gradlew clean assembleDebug
@@ -36,7 +36,7 @@ copy app\build\outputs\apk\debug\app-debug.apk d:\Althaf\HUM_APKs\HUM_Driver.apk
 cd ..
 
 echo Restoring capacitor config...
-node set-capacitor-url.cjs
+node set-capacitor-url.cjs "" "com.humfleet.main" "Hum Fleet"
 
 echo ==========================================
 echo        ALL 3 APKS BUILT SUCCESSFULLY!     

@@ -1,6 +1,5 @@
 @echo off
-echo Starting HUM Fleet Backend Server...
-start cmd /k "cd server && node index.js"
+echo (Skipping local backend - connected to live cloud server)
 
 echo Starting HUM Fleet Admin Panel...
 start cmd /k "cd admin-cms && npm run dev"

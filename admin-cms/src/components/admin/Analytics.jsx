@@ -1,26 +1,43 @@
-import React, { useState } from 'react';
-import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar, RefreshCw, Loader } from 'lucide-react';
 import Button from '../Button';
 
 const Analytics = ({ activeTab, platformStats, recentTrips, analyticsFilter, setAnalyticsFilter }) => {
-  const [revenueData, setRevenueData] = useState([40, 70, 50, 90, 60, 100, 80]);
-  const [rideVolumeData, setRideVolumeData] = useState([30, 50, 45, 80, 55, 95, 75]);
+  const [revenueData, setRevenueData] = useState([0, 0, 0, 0, 0, 0, 0]);
+  const [rideVolumeData, setRideVolumeData] = useState([0, 0, 0, 0, 0, 0, 0]);
   const [metrics, setMetrics] = useState({
-    commission: 142500,
-    activeDrivers: 428,
-    completedTrips: 12840,
-    avgRating: 4.82
+    commission: 0,
+    activeDrivers: 0,
+    completedTrips: 0,
+    avgRating: 0
   });
+  const [loading, setLoading] = useState(false);
 
-  const handleResetData = () => {
-    setRevenueData([0, 0, 0, 0, 0, 0, 0]);
-    setRideVolumeData([0, 0, 0, 0, 0, 0, 0]);
-    setMetrics({
-      commission: 0,
-      activeDrivers: 0,
-      completedTrips: 0,
-      avgRating: 0
-    });
+  const fetchAnalytics = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${window.API_BASE || 'https://hum-fleet-api.onrender.com'}/api/admin/analytics`);
+      if (res.ok) {
+        const data = await res.json();
+        setRevenueData(data.revenueData);
+        setRideVolumeData(data.rideVolumeData);
+        setMetrics(data.metrics);
+      }
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      fetchAnalytics();
+    }
+  }, [activeTab]);
+
+  const handleRefreshData = () => {
+    fetchAnalytics();
   };
 
   return (
@@ -36,8 +53,8 @@ const Analytics = ({ activeTab, platformStats, recentTrips, analyticsFilter, set
                     </h2>
                     <p className="tab-subtitle">Real-time revenue metrics, ride volume, and platform growth graphs.</p>
                   </div>
-                  <Button variant="outline" onClick={handleResetData} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '8px 12px' }}>
-                    <RefreshCw size={14} /> Reset Data
+                  <Button variant="outline" onClick={handleRefreshData} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '8px 12px' }}>
+                    <RefreshCw size={14} className={loading ? "spin" : ""} /> {loading ? 'Refreshing...' : 'Refresh Data'}
                   </Button>
                 </div>
                 
