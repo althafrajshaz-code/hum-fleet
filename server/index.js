@@ -22,7 +22,8 @@ const AppStateSchema = new mongoose.Schema({
   passengerMessages: { type: mongoose.Schema.Types.Mixed, default: {} },
   rideMessages: { type: mongoose.Schema.Types.Mixed, default: {} },
   dynamicLocations: { type: mongoose.Schema.Types.Mixed, default: [] },
-  employees: { type: mongoose.Schema.Types.Mixed, default: [] }
+  employees: { type: mongoose.Schema.Types.Mixed, default: [] },
+  analyticsResetDate: { type: String, default: null }
 }, { timestamps: true, minimize: false });
 
 const AppState = mongoose.model('AppState', AppStateSchema);
@@ -193,6 +194,7 @@ let rideMessages = {};
 let dynamicLocations = []; // Store for newly searched/added locations by passengers
 let promotions = [];
 let employees = [];
+let analyticsResetDate = null; // ISO string — analytics only count rides after this date
 
 // Helper to safely save to DB without hanging if disconnected
 async function saveToMongoDB() {
@@ -216,7 +218,8 @@ async function saveToMongoDB() {
           rideMessages,
           dynamicLocations,
           promotions,
-          employees
+          employees,
+          analyticsResetDate
         }
       },
       { upsert: true }
@@ -318,6 +321,10 @@ async function loadData() {
         promotions = doc.promotions;
       } else {
         needsSave = true;
+      }
+
+      if (doc.analyticsResetDate !== undefined) {
+        analyticsResetDate = doc.analyticsResetDate;
       }
 
       console.log('Successfully restored HUM Fleet database state from MongoDB');
@@ -1919,7 +1926,17 @@ app.get('/api/admin/analytics', (req, res) => {
   let totalCommission = 0;
   let completedTrips = 0;
 
-  activeRides.filter(r => r.status === 'Completed').forEach(r => {
+  // Only count rides after the last analytics reset
+  const cutoff = analyticsResetDate ? new Date(analyticsResetDate) : null;
+
+  activeRides.filter(r => {
+    if (r.status !== 'Completed') return false;
+    if (cutoff) {
+      const rideDate = new Date(r.completedAt || r.createdAt || 0);
+      if (rideDate < cutoff) return false;
+    }
+    return true;
+  }).forEach(r => {
     completedTrips++;
     const fare = parseFloat(r.fare || 0);
     const comm = fare * 0.05;
@@ -1967,7 +1984,13 @@ app.get('/api/admin/analytics', (req, res) => {
   });
 });
 
-// Get status of a specific ride request
+// Reset analytics — sets a new cutoff timestamp so old rides are excluded
+app.post('/api/admin/analytics/reset', async (req, res) => {
+  analyticsResetDate = new Date().toISOString();
+  await saveToMongoDB();
+  res.json({ success: true, resetAt: analyticsResetDate });
+});
+
 app.get('/api/rides/:id/status', (req, res) => {
   const id = parseInt(req.params.id);
   const ride = activeRides.find(r => r.id === id);

@@ -10,7 +10,7 @@ mkdir d:\Althaf\HUM_APKs
 echo [1/3] Building Admin APK...
 cd admin-cms
 call npm run build
-call npx cap sync
+call npx.cmd cap sync
 cd android
 call gradlew assembleDebug
 if %errorlevel% neq 0 ( echo Error building Admin APK && exit /b %errorlevel% )
@@ -19,7 +19,7 @@ cd ..\..
 
 echo [2/3] Building Passenger APK...
 node set-capacitor-url.cjs "https://hum-cyan.vercel.app/passenger" "com.humfleet.passenger" "Hum Fleet Passenger"
-call npx cap sync
+call npx.cmd cap sync
 cd android
 call gradlew clean assembleDebug
 if %errorlevel% neq 0 ( echo Error building Passenger APK && exit /b %errorlevel% )
@@ -28,7 +28,7 @@ cd ..
 
 echo [3/3] Building Driver APK...
 node set-capacitor-url.cjs "https://hum-cyan.vercel.app/driver" "com.humfleet.driver" "Hum Fleet Driver"
-call npx cap sync
+call npx.cmd cap sync
 cd android
 call gradlew clean assembleDebug
 if %errorlevel% neq 0 ( echo Error building Driver APK && exit /b %errorlevel% )

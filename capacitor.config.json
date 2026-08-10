@@ -1,9 +1,10 @@
 {
-  "appId": "com.humfleet.main",
-  "appName": "Hum Fleet",
+  "appId": "com.humfleet.driver",
+  "appName": "Hum Fleet Driver",
   "webDir": "dist",
   "server": {
-    "cleartext": true
+    "cleartext": true,
+    "url": "https://hum-cyan.vercel.app/driver"
   },
   "android": {
     "backgroundColor": "#0b0f17",
@@ -17,7 +18,10 @@
       "resizeOnFullScreen": false
     },
     "GoogleAuth": {
-      "scopes": ["profile", "email"],
+      "scopes": [
+        "profile",
+        "email"
+      ],
       "serverClientId": "271720743741-tpaarbgmi2u1fjc326gh42kkh0aijb7u.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true
     }

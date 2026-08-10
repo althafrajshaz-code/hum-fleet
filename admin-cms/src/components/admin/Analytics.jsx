@@ -40,6 +40,20 @@ const Analytics = ({ activeTab, platformStats, recentTrips, analyticsFilter, set
     fetchAnalytics();
   };
 
+  const handleResetData = async () => {
+    if (!window.confirm('Are you sure you want to reset analytics? All current revenue and trip counts will be set to ₹0. This cannot be undone.')) return;
+    setLoading(true);
+    try {
+      await fetch(`${window.API_BASE || 'https://hum-fleet-api.onrender.com'}/api/admin/analytics/reset`, { method: 'POST' });
+      // After reset, re-fetch (will return zeros)
+      await fetchAnalytics();
+    } catch (err) {
+      console.error('Reset failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
 {/* TAB: Analytics */}
@@ -53,9 +67,14 @@ const Analytics = ({ activeTab, platformStats, recentTrips, analyticsFilter, set
                     </h2>
                     <p className="tab-subtitle">Real-time revenue metrics, ride volume, and platform growth graphs.</p>
                   </div>
-                  <Button variant="outline" onClick={handleRefreshData} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '8px 12px' }}>
-                    <RefreshCw size={14} className={loading ? "spin" : ""} /> {loading ? 'Refreshing...' : 'Refresh Data'}
-                  </Button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button variant="outline" onClick={handleResetData} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '8px 12px', color: '#ef4444', borderColor: '#ef4444' }}>
+                      Reset to ₹0
+                    </Button>
+                    <Button variant="outline" onClick={handleRefreshData} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '8px 12px' }}>
+                      <RefreshCw size={14} className={loading ? "spin" : ""} /> {loading ? 'Refreshing...' : 'Refresh Data'}
+                    </Button>
+                  </div>
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
