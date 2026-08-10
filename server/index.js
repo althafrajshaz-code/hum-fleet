@@ -2696,9 +2696,22 @@ app.get('/api/debug-db', (req, res) => {
 
 app.get('/api/admin/clear-all', (req, res) => {
 
-  drivers = [];
+    drivers = [];
   passengers = [];
   saveData();
   res.json({ message: 'All drivers and passengers have been cleared successfully.' });
 });
 
+app.get('/api/admin/fix-ids', (req, res) => {
+  let updated = false;
+  let seenIds = new Set();
+  for (let i = 0; i < drivers.length; i++) {
+    if (seenIds.has(drivers[i].id)) {
+      drivers[i].id = Math.max(0, ...drivers.map(d => Number(d.id) || 0)) + 1;
+      updated = true;
+    }
+    seenIds.add(drivers[i].id);
+  }
+  if (updated) saveData();
+  res.json({ success: true, drivers });
+});
