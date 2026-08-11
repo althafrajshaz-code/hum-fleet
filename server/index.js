@@ -1,6 +1,5 @@
 require('dotenv').config();
 const http = require('http');
-const { Server } = require('socket.io');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -196,9 +195,11 @@ let promotions = [];
 let employees = [];
 let analyticsResetDate = null; // ISO string — analytics only count rides after this date
 
+mongoose.set('bufferCommands', false); // Fail fast instead of buffering in serverless
+
 // Helper to safely save to DB without hanging if disconnected
-async function saveToMongoDB() {
-  if (mongoose.connection.readyState !== 1) {
+async function saveToMongoDB(isRetry = false) {
+  if (mongoose.connection.readyState !== 1 && !isRetry) {
     console.warn("MongoDB not connected. Skipping DB save (data is in memory).");
     return;
   }
@@ -226,16 +227,43 @@ async function saveToMongoDB() {
     );
   } catch (err) {
     console.error("Failed to save to MongoDB:", err);
+    // If it's a serverless dropped connection, force a reconnect and retry once
+    if (!isRetry) {
+      console.log("Attempting to recover MongoDB connection and retry save...");
+      try {
+        await mongoose.disconnect();
+        await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000, maxPoolSize: 1 });
+        await saveToMongoDB(true);
+      } catch (retryErr) {
+        console.error("Retry failed:", retryErr);
+      }
+    }
   }
 }
 
-// Persistence Helpers — MongoDB backed with debounce
-let _saveTimer = null;
+// Persistence Helpers — Serverless compatible
+let pendingSavePromise = null;
 function saveData() {
-  if (_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(async () => {
-    await saveToMongoDB();
-  }, 300);
+  if (mongoose.connection.readyState !== 1) return;
+  pendingSavePromise = saveToMongoDB();
+}
+
+mongoose.set('bufferCommands', false); // Fail fast instead of buffering in serverless
+
+async function saveFieldToMongoDB(fieldName, value) {
+  if (mongoose.connection.readyState !== 1) return;
+  try {
+    await AppState.updateOne({ _id: 'humFleetState' }, { $set: { [fieldName]: value } });
+  } catch (err) {
+    console.log(`Recovering connection for ${fieldName}...`);
+    try {
+      await mongoose.disconnect();
+      await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000, maxPoolSize: 1 });
+      await AppState.updateOne({ _id: 'humFleetState' }, { $set: { [fieldName]: value } });
+    } catch (retryErr) {
+      console.error(`Retry failed for ${fieldName}:`, retryErr);
+    }
+  }
 }
 
 async function loadData() {
@@ -343,25 +371,75 @@ async function loadData() {
 
 let dbConnectionError = null;
 
-// Connect to MongoDB and load data before starting server
-// This prevents a race condition on Render wakeup where early API requests are overwritten by a late DB restore
-mongoose.connect(process.env.MONGODB_URI)
-  .then(async () => {
+// ── Serverless-compatible MongoDB connection ──────────────────────────────────
+// Vercel runs each request in a serverless function — app.listen() is not used.
+// We connect lazily on first request and reuse the connection across warm invocations.
+async function connectDB() {
+  if (mongoose.connection.readyState === 1) return;
+  
+  if (mongoose.connection.readyState === 2) {
+    // Currently connecting, wait a bit but don't establish a new one
+    let retries = 10;
+    while (mongoose.connection.readyState === 2 && retries > 0) {
+      await new Promise(r => setTimeout(r, 100));
+      retries--;
+    }
+    if (mongoose.connection.readyState === 1) return;
+  }
+
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 1 // Optimize for serverless environments
+    });
     console.log('Connected to MongoDB');
     await loadData();
+  } catch (err) {
+    console.error('MongoDB connection failed:', err);
+    dbConnectionError = err.toString();
+    loadData(); // Fallback to in-memory
+  }
+}
+
+// Middleware: Serverless compatibility wrapper
+app.use(async (req, res, next) => {
+  // 1. Ensure DB is connected
+  await connectDB();
+  
+  // 2. Always reload memory from DB to sync Vercel's stateless instances
+  if (mongoose.connection.readyState === 1 && req.path !== '/api/debug/db') {
+    await loadData();
+  }
+  
+  // 3. Intercept response to wait for any pending saveData() calls to finish 
+  // before Vercel freezes the execution context
+  const originalJson = res.json;
+  const originalSend = res.send;
+  
+  const ensureSavedAndSend = async (fn, args) => {
+    if (pendingSavePromise) {
+      try { await pendingSavePromise; } catch(err) { console.error(err); }
+      pendingSavePromise = null;
+    }
+    fn.apply(res, args);
+  };
+
+  res.json = function(...args) { ensureSavedAndSend(originalJson, args); };
+  res.send = function(...args) { ensureSavedAndSend(originalSend, args); };
+  
+  next();
+});
+
+// Local development: start HTTP server normally
+if (process.env.NODE_ENV !== 'production' || process.env.LOCAL_DEV === '1') {
+  connectDB().then(() => {
     app.listen(PORT, () => {
       console.log(`HUM Fleet API Server running on port ${PORT}`);
     });
-  })
-  .catch(err => {
-    console.error('MongoDB connection failed:', err);
-    dbConnectionError = err.toString();
-    console.error('PLEASE ENSURE MONGODB ATLAS NETWORK ACCESS IS SET TO ALLOW ALL IP ADDRESSES (0.0.0.0/0)');
-    loadData(); // Fallback to memory if offline
-    app.listen(PORT, () => {
-      console.log(`HUM Fleet API Server running on port ${PORT} (DB Connection Failed)`);
-    });
   });
+}
+
+
 
 // Haversine formula to compute distance in KM
 function getDistance(lat1, lon1, lat2, lon2) {
@@ -565,6 +643,25 @@ app.get('/api/debug/db', (req, res) => {
   });
 });
 
+app.get('/api/debug/save', async (req, res) => {
+  try {
+    const result = await AppState.updateOne(
+      { _id: 'humFleetState' },
+      {
+        $set: {
+          vehicleCategories,
+          settings
+        }
+      },
+      { upsert: true }
+    );
+    res.json({ success: true, result });
+  } catch (err) {
+    res.json({ success: false, error: err.toString(), stack: err.stack });
+  }
+});
+
+
 // Add new vehicle category
 app.post('/api/vehicle-categories', async (req, res) => {
   const { name, maxPassengers, baseFare, ratePerKm, icon } = req.body;
@@ -588,7 +685,8 @@ app.post('/api/vehicle-categories', async (req, res) => {
   };
   vehicleCategories.push(newCategory);
   
-  await saveToMongoDB();
+  // Instantly save ONLY the categories array
+  await saveFieldToMongoDB('vehicleCategories', vehicleCategories);
   
   res.status(201).json(newCategory);
 });
@@ -604,8 +702,8 @@ app.put('/api/vehicle-categories/:id', async (req, res) => {
     if (baseFare !== undefined) category.baseFare = parseFloat(baseFare);
     if (ratePerKm !== undefined) category.ratePerKm = parseFloat(ratePerKm);
     
-    // Immediately persist to DB in serverless env
-    await saveToMongoDB();
+    // Instantly save ONLY the categories array, skipping the 18MB drivers array
+    await saveFieldToMongoDB('vehicleCategories', vehicleCategories);
     
     res.json(category);
   } else {
@@ -617,9 +715,7 @@ app.put('/api/vehicle-categories/:id', async (req, res) => {
 app.delete('/api/vehicle-categories/:id', async (req, res) => {
   const id = req.params.id;
   vehicleCategories = vehicleCategories.filter(c => String(c.id) !== id && String(c._id) !== id);
-  
-  await saveToMongoDB();
-  
+  await saveFieldToMongoDB('vehicleCategories', vehicleCategories);
   res.json({ message: 'Category deleted successfully' });
 });
 
@@ -1124,13 +1220,9 @@ app.post('/api/drivers', (req, res) => {
   const selectedCategory = vehicleCategories.find(c => c.name === vehicleType || c.id === vehicleType || (c.name && vehicleType && c.name.toLowerCase().includes(vehicleType.toLowerCase())));
   const defaultRatePerKm = selectedCategory && selectedCategory.ratePerKm > 0 ? selectedCategory.ratePerKm : settings.ratePerKm;
 
-  // Auto-correct custom rates to platform minimums (or category minimums) if they are too low
-  const finalRatePerKm = (parseFloat(ratePerKm) < parseFloat(defaultRatePerKm) || !ratePerKm) ? defaultRatePerKm : ratePerKm;
-  const finalRatePerHour = (parseFloat(ratePerHour) < parseFloat(settings.minRatePerHour) || !ratePerHour) ? settings.minRatePerHour : ratePerHour;
-  
-  // Apply corrected rates to body before saving
-  req.body.ratePerKm = finalRatePerKm;
-  req.body.ratePerHour = finalRatePerHour;
+  // Apply default rates to body before saving
+  req.body.ratePerKm = defaultRatePerKm;
+  req.body.ratePerHour = settings.minRatePerHour;
 
   const newDriver = {
     id: (drivers.length > 0 ? Math.max(...drivers.map(x => Number(x.id) || 0)) : 0) + 1,
@@ -1254,9 +1346,9 @@ app.get('/api/settings', (req, res) => {
 });
 
 // Save settings
-app.post('/api/settings', (req, res) => {
+app.post('/api/settings', async (req, res) => {
   settings = { ...settings, ...req.body };
-  saveData();
+  await saveFieldToMongoDB('settings', settings);
   res.json(settings);
 });
 
@@ -1300,6 +1392,7 @@ app.post('/api/rides', (req, res) => {
     preBookDate: preBookDate || null,
     preBookTime: preBookTime || null,
     withPet: withPet || false,
+    vehicleCategory: req.body.vehicleCategory || 'Mini / Hatchback',
     isActivated: false,
     createdAt: new Date().toISOString()
   };
@@ -1414,8 +1507,7 @@ app.get('/api/drivers/nearby', (req, res) => {
   const passengerLat = parseFloat(lat);
   const passengerLng = parseFloat(lng);
 
-  // Find all online, unblocked drivers who are not paused
-  const onlineDrivers = drivers.filter(d => d.status === 'Online' && !d.isBlocked && !d.isPaused && d.lat && d.lng);
+  const onlineDrivers = drivers.filter(d => d.status === 'Approved' && d.isOnline && !d.isBlocked && !d.isPaused && d.lat && d.lng);
 
   const driversWithDistance = onlineDrivers.map(d => {
     const distance = getDistance(passengerLat, passengerLng, parseFloat(d.lat), parseFloat(d.lng));
@@ -1675,7 +1767,7 @@ app.post('/api/rides/:id/update-destination', (req, res) => {
     ride.isIntercity = updatedKm > 35.0;
 
     const driver = drivers.find(d => d.email === ride.driverEmail);
-    const catObj = vehicleCategories.find(c => c.name === ride.category) || {};
+    const catObj = vehicleCategories.find(c => c.name === ride.vehicleCategory) || {};
     
     let catRatePerKm = parseFloat(catObj.ratePerKm !== undefined ? catObj.ratePerKm : settings.ratePerKm);
     if (parseFloat(settings.ratePerKm) > catRatePerKm) catRatePerKm = parseFloat(settings.ratePerKm);
@@ -1764,7 +1856,7 @@ app.post('/api/rides/:id/complete', (req, res) => {
     ride.completedAt = new Date().toISOString();
 
     // Dynamically calculate fare based on actual traveled distance and Category ratePerKm
-    const catObj = vehicleCategories.find(c => c.name === ride.category) || {};
+    const catObj = vehicleCategories.find(c => c.name === ride.vehicleCategory) || {};
     let catRatePerKm = parseFloat(catObj.ratePerKm !== undefined ? catObj.ratePerKm : settings.ratePerKm);
     if (parseFloat(settings.ratePerKm) > catRatePerKm) catRatePerKm = parseFloat(settings.ratePerKm);
     const rate = catRatePerKm;
@@ -2484,13 +2576,10 @@ app.post('/api/locations', (req, res) => {
 
 // Admin Add Driver
 app.post('/api/admin/drivers', (req, res) => {
-  const { name, email, phone, licenseNumber, vehicleType, plateNumber, ratePerKm, ratePerHour } = req.body;
+  const { name, email, phone, licenseNumber, vehicleType, plateNumber } = req.body;
   
   const selectedCategory = vehicleCategories.find(c => c.name === vehicleType || c.id === vehicleType);
   const defaultRatePerKm = selectedCategory && selectedCategory.ratePerKm > 0 ? selectedCategory.ratePerKm : settings.ratePerKm;
-  
-  const finalRatePerKm = (parseFloat(ratePerKm) > 0) ? ratePerKm : defaultRatePerKm;
-  const finalRatePerHour = (parseFloat(ratePerHour) > 0) ? ratePerHour : settings.minRatePerHour;
 
   const newDriver = {
     id: drivers.length > 0 ? Math.max(...drivers.map(d => d.id)) + 1 : 1,
@@ -2503,8 +2592,8 @@ app.post('/api/admin/drivers', (req, res) => {
     status: 'Approved',
     wallet: { cashCollected: 0, toBePaid: 0 },
     vehicles: [{ make: vehicleType, model: vehicleType, year: new Date().getFullYear(), plateNumber, isActive: true }],
-    ratePerKm: finalRatePerKm,
-    ratePerHour: finalRatePerHour,
+    ratePerKm: defaultRatePerKm,
+    ratePerHour: settings.minRatePerHour,
     rating: 5,
     ratings: [],
     createdAt: new Date().toISOString()
@@ -2738,3 +2827,7 @@ app.get('/api/admin/fix-ids', (req, res) => {
   if (updated) saveData();
   res.json({ success: true, drivers });
 });
+
+// Vercel serverless export — must be last, after all routes are registered
+module.exports = app;
+

@@ -11,7 +11,7 @@ const API_BASE = (typeof window !== 'undefined' && window.location.hostname.incl
   ? 'https://hum-fleet-backend.loca.lt'
   : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
     ? 'http://localhost:5000'
-    : (import.meta.env.VITE_BACKEND_URL || 'https://hum-fleet-api.onrender.com');
+    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
 
 const getBackendUrl = () => { return API_BASE; };
 

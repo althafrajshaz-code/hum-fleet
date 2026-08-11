@@ -3,7 +3,11 @@ import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 
 
-const API_BASE = 'https://hum-fleet-api.onrender.com';
+const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
+  ? 'https://hum-fleet-backend.loca.lt'
+  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+    ? 'http://localhost:5000'
+    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
 
 const fetchJSON = async (url) => {
   const response = await fetch(`${API_BASE}${url}`, {

@@ -8,7 +8,7 @@ const API_BASE = (typeof window !== 'undefined' && window.location.hostname.incl
   ? 'https://hum-fleet-backend.loca.lt'
   : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.protocol !== 'capacitor:')
     ? 'http://localhost:5000'
-    : (import.meta.env.VITE_BACKEND_URL || 'https://hum-fleet-api.onrender.com');
+    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
 
 
 const KERALA_LOCATIONS = [
@@ -258,7 +258,13 @@ const PassengerDashboard = () => {
 
   const [pickupFocused, setPickupFocused] = useState(false);
   const [dropoffFocused, setDropoffFocused] = useState(false);
-  const [selectedTier, setSelectedTier] = useState('HUM Go');
+  const [selectedTier, setSelectedTier] = useState('');
+  
+  useEffect(() => {
+    if (categories.length > 0 && !selectedTier) {
+      setSelectedTier(categories[0].name);
+    }
+  }, [categories, selectedTier]);
   
   // Custom offered fare states
   const [customFare, setCustomFare] = useState('');
@@ -664,7 +670,12 @@ const PassengerDashboard = () => {
 
   // Sync custom fare input when selected tier changes
   useEffect(() => {
-    setCustomFare(minFare);
+    setCustomFare(prev => {
+      if (!prev || parseFloat(prev) < parseFloat(minFare)) {
+        return minFare;
+      }
+      return prev;
+    });
     setFareWarning('');
   }, [selectedTier, settings, categories, minFare]);
 
@@ -922,7 +933,8 @@ const PassengerDashboard = () => {
           isPreBooked: isPreBookToggle,
           preBookDate: isPreBookToggle ? preBookDate : null,
           preBookTime: isPreBookToggle ? preBookTime : null,
-          withPet
+          withPet,
+          vehicleCategory: selectedTier
         })
       });
 

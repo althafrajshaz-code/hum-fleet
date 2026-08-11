@@ -8,13 +8,13 @@ const API_BASE = (typeof window !== 'undefined' && window.location.hostname.incl
   ? 'https://hum-fleet-backend.loca.lt'
   : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.protocol !== 'capacitor:')
     ? 'http://localhost:5000'
-    : (import.meta.env.VITE_BACKEND_URL || 'https://hum-fleet-api.onrender.com');
+    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
 
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
   const [activeMenu, setActiveMenu] = useState('dispatches'); // 'dispatches' | 'wallet' | 'messages' | 'settings'
-  const [settingsSubTab, setSettingsSubTab] = useState('rates'); // 'rates' | 'documents' | 'profile' | 'bank' | 'vehicles'
+  const [settingsSubTab, setSettingsSubTab] = useState('profile'); // 'documents' | 'profile' | 'bank' | 'vehicles'
   const [earningsPeriod, setEarningsPeriod] = useState('daily'); // 'daily' | 'weekly' | 'monthly'
   const [homeEarnings, setHomeEarnings] = useState(null);
   const [showEarningsHistory, setShowEarningsHistory] = useState(false);
@@ -461,6 +461,9 @@ const DriverDashboard = () => {
 
   const goOnline = () => {
     setIsOnline(true);
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
     const email = localStorage.getItem('driverEmail');
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(async (position) => {
@@ -1019,6 +1022,29 @@ const DriverDashboard = () => {
                 }
                 window.speechSynthesis.speak(utterance);
               }
+
+              // Play a notifying sound
+              try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.5);
+              } catch(e) { console.error('AudioContext error', e); }
+
+              // Show desktop popup notification
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('New Ride Request!', {
+                  body: `Passenger is requesting a ride to ${data.dropoff || 'their destination'}. Open the app to accept!`,
+                  icon: '/favicon.ico'
+                });
+              }
             }
           } else {
             setIncomingRide(null);
@@ -1111,8 +1137,8 @@ You can only accept prepaid trips until your balance is cleared.`);
           driverName: driverDetails.name,
           driverPhone: driverDetails.phone,
           driverEmail: driverDetails.email,
-          vehicleModel: driverDetails.activeVehicle.model,
-          vehiclePlate: driverDetails.activeVehicle.plate
+          vehicleModel: driverDetails.activeVehicle?.model || 'Tata Nexon',
+          vehiclePlate: driverDetails.activeVehicle?.plateNo || driverDetails.activeVehicle?.plate || 'DL 3C AY 4567'
         })
       });
       const data = await response.json();
@@ -1454,7 +1480,8 @@ You can only accept prepaid trips until your balance is cleared.`);
                   style={{ width: '100%', borderColor: '#f59e0b', color: '#f59e0b', fontSize: '13px' }}
                   onClick={async () => {
                     try {
-                      const res = await fetch(`${API_BASE}/api/rides/nearby?email=${encodeURIComponent(email)}`);
+                      const currentEmail = localStorage.getItem('driverEmail');
+                      const res = await fetch(`${API_BASE}/api/rides/nearby?email=${encodeURIComponent(currentEmail)}`);
                       const rides = await res.json();
                       if (rides.length > 0) {
                         alert(`Found ${rides.length} passengers searching for a ride nearby!\nClosest passenger is ${rides[0].distance} KM away.\n(Incoming ride popup will trigger automatically for the nearest passenger)`);
@@ -1959,7 +1986,17 @@ You can only accept prepaid trips until your balance is cleared.`);
 
               {/* Incoming request block */}
               {isOnline && incomingRide && !currentRide && !showRating && (
-                <div className="incoming-request animate-fade-in delay-100">
+                <div className="incoming-request animate-fade-in delay-100" style={{
+                  position: 'fixed',
+                  top: '24px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  zIndex: 10000,
+                  width: '92%',
+                  maxWidth: '420px',
+                  boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                  border: '2px solid var(--primary)'
+                }}>
                   <div className="request-pulse"></div>
                   <h3>New Ride Request!</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
@@ -2481,28 +2518,6 @@ You can only accept prepaid trips until your balance is cleared.`);
                 borderRadius: '12px'
               }}>
                 <button
-                  onClick={() => setSettingsSubTab('rates')}
-                  style={{
-                    flex: 1,
-                    padding: '6px 10px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: settingsSubTab === 'rates' ? 'var(--primary)' : 'transparent',
-                    color: settingsSubTab === 'rates' ? '#000' : 'var(--text-muted)',
-                    fontWeight: '800',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <DollarSign size={13} /> Rates
-                </button>
-
-                <button
                   onClick={() => setSettingsSubTab('documents')}
                   style={{
                     flex: 1,
@@ -2851,50 +2866,8 @@ You can only accept prepaid trips until your balance is cleared.`);
                     ))}
                   </div>
                 </div>
-              )}
 
-              {/* SUB-SECTION 1: FARE RATES */}
-              {settingsSubTab === 'rates' && (
-                <div style={{ border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', background: 'rgba(255, 255, 255, 0.01)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <DollarSign size={18} color="var(--primary)" /> Custom Partner Fare Controls
-                  </span>
-                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-                    Set your base pricing per kilometer and per hour. Passengers bidding for rides in your area will receive fare offers based on these custom parameters.
-                  </p>
 
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-main)', display: 'block', marginBottom: '4px' }}>Rate / KM (₹)</label>
-                      <input 
-                        type="number" 
-                        className="input-field" 
-                        value={ratePerKm}
-                        onChange={(e) => setRatePerKm(e.target.value)}
-                        style={{ padding: '10px 14px', fontSize: '14px' }}
-                      />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-main)', display: 'block', marginBottom: '4px' }}>Rate / Hour (₹)</label>
-                      <input 
-                        type="number" 
-                        className="input-field" 
-                        value={ratePerHour}
-                        onChange={(e) => setRatePerHour(e.target.value)}
-                        style={{ padding: '10px 14px', fontSize: '14px' }}
-                      />
-                    </div>
-                  </div>
-
-                  <Button 
-                    variant="primary" 
-                    className="full-width" 
-                    style={{ padding: '10px 14px', fontSize: '13px', marginTop: '6px' }}
-                    onClick={handleSaveRates}
-                  >
-                    Save Custom Rates
-                  </Button>
-                </div>
               )}
 
               {/* SUB-SECTION 2: CAR PHOTOS & DOCUMENTS */}

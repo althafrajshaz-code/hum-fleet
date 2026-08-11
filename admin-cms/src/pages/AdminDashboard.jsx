@@ -33,7 +33,11 @@ const MOCK_PHOTOS = {
   document: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600'
 };
 
-const API_BASE = 'https://hum-fleet-api.onrender.com';
+const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
+  ? 'https://hum-fleet-backend.loca.lt'
+  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+    ? 'http://localhost:5000'
+    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -96,7 +100,7 @@ const AdminDashboard = () => {
 
   // Add/Remove Driver & Passenger State
   const [showAddDriverModal, setShowAddDriverModal] = useState(false);
-  const [newDriverData, setNewDriverData] = useState({ name: '', email: '', phone: '', licenseNumber: '', vehicleType: '', plateNumber: '', ratePerKm: '', ratePerHour: '' });
+  const [newDriverData, setNewDriverData] = useState({ name: '', email: '', phone: '', licenseNumber: '', vehicleType: 'Sedan', plateNumber: '' });
   const [showAddPassengerModal, setShowAddPassengerModal] = useState(false);
   const [newPassengerData, setNewPassengerData] = useState({ name: '', email: '', phone: '' });
   // Employee Management State
@@ -2023,7 +2027,7 @@ const AdminDashboard = () => {
             )}
             
             {activeTab === 'analytics' && (
-              <Analytics activeTab={activeTab} />
+              <Analytics activeTab={activeTab} API_BASE={API_BASE} />
             )}
             
             {activeTab === 'staff' && (
@@ -2119,10 +2123,7 @@ const AdminDashboard = () => {
                 </select>
                 <input type="text" placeholder="Plate Number" className="input-field" value={newDriverData.plateNumber} onChange={(e) => setNewDriverData({...newDriverData, plateNumber: e.target.value})} required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <input type="number" step="0.01" placeholder={`Rate per KM (Optional)`} className="input-field" value={newDriverData.ratePerKm} onChange={(e) => setNewDriverData({...newDriverData, ratePerKm: e.target.value})} />
-                <input type="number" step="0.01" placeholder={`Rate per Hour (Optional)`} className="input-field" value={newDriverData.ratePerHour} onChange={(e) => setNewDriverData({...newDriverData, ratePerHour: e.target.value})} />
-              </div>
+
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
                 <Button type="button" variant="outline" onClick={() => setShowAddDriverModal(false)}>Cancel</Button>
                 <Button type="submit" variant="primary">Add Driver</Button>

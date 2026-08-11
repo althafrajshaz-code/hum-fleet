@@ -2,7 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Search, X, Users, MapPin, Navigation, Car, Radio, Compass, MessageSquare, Edit2, Shield, Trash2, Phone, FileText, Check, DollarSign, Download, TrendingUp, AlertCircle, Calendar, RefreshCw, Loader } from 'lucide-react';
 import Button from '../Button';
 
-const Analytics = ({ activeTab, platformStats, recentTrips, analyticsFilter, setAnalyticsFilter }) => {
+const API_BASE_FALLBACK = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
+  ? 'https://hum-fleet-backend.loca.lt'
+  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+    ? 'http://localhost:5000'
+    : 'https://server-ashen-beta.vercel.app';
+
+const Analytics = ({ activeTab, API_BASE: propApiBase }) => {
+  const API_BASE = propApiBase || API_BASE_FALLBACK;
   const [revenueData, setRevenueData] = useState([0, 0, 0, 0, 0, 0, 0]);
   const [rideVolumeData, setRideVolumeData] = useState([0, 0, 0, 0, 0, 0, 0]);
   const [metrics, setMetrics] = useState({
@@ -16,7 +23,7 @@ const Analytics = ({ activeTab, platformStats, recentTrips, analyticsFilter, set
   const fetchAnalytics = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${window.API_BASE || 'https://hum-fleet-api.onrender.com'}/api/admin/analytics`);
+      const res = await fetch(`${API_BASE}/api/admin/analytics`);
       if (res.ok) {
         const data = await res.json();
         setRevenueData(data.revenueData);
@@ -44,7 +51,7 @@ const Analytics = ({ activeTab, platformStats, recentTrips, analyticsFilter, set
     if (!window.confirm('Are you sure you want to reset analytics? All current revenue and trip counts will be set to ₹0. This cannot be undone.')) return;
     setLoading(true);
     try {
-      await fetch(`${window.API_BASE || 'https://hum-fleet-api.onrender.com'}/api/admin/analytics/reset`, { method: 'POST' });
+      await fetch(`${API_BASE}/api/admin/analytics/reset`, { method: 'POST' });
       // After reset, re-fetch (will return zeros)
       await fetchAnalytics();
     } catch (err) {
