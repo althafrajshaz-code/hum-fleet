@@ -66,8 +66,6 @@ const DriverSignup = () => {
       .then(data => setDbCategories(data))
       .catch(err => console.error("Error fetching vehicle categories:", err));
   }, []);
-  const [ratePerKm, setRatePerKm] = useState('15.00');
-  const [ratePerHour, setRatePerHour] = useState('120.00');
   const [isPinkVehicle, setIsPinkVehicle] = useState(false);
   const [allowsPets, setAllowsPets] = useState(false);
 
@@ -238,8 +236,6 @@ const DriverSignup = () => {
       year,
       plate,
       vehicleCategory: vehicleCategory === 'Other' ? customVehicleCategory : vehicleCategory,
-      ratePerKm,
-      ratePerHour,
       isPinkVehicle,
       allowsPets,
       isDriverOnly,

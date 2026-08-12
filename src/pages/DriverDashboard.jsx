@@ -76,10 +76,6 @@ const DriverDashboard = () => {
     { id: 3, name: 'Technopark Phase 1 (Trivandrum)', multiplier: '1.7x Surge', distance: '8.5 KM', lat: 8.5581, lng: 76.8816, color: '#3b82f6' }
   ]);
 
-  // Custom driver rates state
-  const [ratePerKm, setRatePerKm] = useState('15.00');
-  const [ratePerHour, setRatePerHour] = useState('120.00');
-
   // Bank Account Details State
   const [bankHolder, setBankHolder] = useState('');
   const [bankName, setBankName] = useState('');
@@ -175,8 +171,7 @@ const DriverDashboard = () => {
         if (data.docs) setDriverDocs(data.docs);
         if (data.profilePic) setDriverProfilePic(data.profilePic);
         if (initialLoad) {
-          setRatePerKm(data.ratePerKm || '15.00');
-          setRatePerHour(data.ratePerHour || '120.00');
+          setWallet(data.wallet || { balance: 0, pending: 0, hold: 0, activePenalty: 0, totalDue: 0, toBePaid: 0, settlementPending: false, penaltyDetails: [] });
         }
         fetchVehicles();
       } else {
@@ -1073,46 +1068,7 @@ const DriverDashboard = () => {
     }
   }, [driverDetails, isOnline]);
 
-  const handleSaveRates = async (e) => {
-    e.preventDefault();
-    const email = localStorage.getItem('driverEmail');
-    if (!email) return;
 
-    try {
-      // Fetch platform settings limits
-      const settingsResponse = await fetch(`${API_BASE}/api/settings`);
-      if (settingsResponse.ok) {
-        const settingsData = await settingsResponse.json();
-        
-        if (parseFloat(ratePerKm) < parseFloat(settingsData.ratePerKm)) {
-          alert(`Your custom Rate/KM cannot be less than the platform minimum of ₹${settingsData.ratePerKm}!`);
-          return;
-        }
-        
-        if (parseFloat(ratePerHour) < parseFloat(settingsData.minRatePerHour)) {
-          alert(`Your custom Rate/Hour cannot be less than the platform minimum of ₹${settingsData.minRatePerHour}!`);
-          return;
-        }
-      }
-
-      const response = await fetch(`${API_BASE}/api/drivers/rates`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, ratePerKm, ratePerHour })
-      });
-      if (response.ok) {
-        alert('Your custom rates have been updated successfully!');
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Failed to update rates.');
-      }
-    } catch (err) {
-      console.error("Error saving rates:", err);
-      alert('Failed to connect to API server.');
-    }
-  };
 
   const handleAcceptRide = async () => {
     if (!incomingRide) return;
@@ -1875,7 +1831,7 @@ You can only accept prepaid trips until your balance is cleared.`);
 
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%', justifyContent: 'flex-end', marginTop: '4px' }}>
                       <a 
-                        href={`https://api.whatsapp.com/send?phone=918848347290&text=${encodeURIComponent(`Hello Admin, I am driver ${driverInfo?.name || 'Partner'} (${driverInfo?.phone || ''}). My pending platform commission & GST dues have reached ₹${parseFloat(wallet.toBePaid || 0).toFixed(2)}. I would like to clear my dues.`)}`}
+                        href={`https://api.whatsapp.com/send?phone=918848347290&text=${encodeURIComponent(`Hello Admin, I am driver ${driverDetails?.name || 'Partner'} (${driverDetails?.phone || ''}). My pending platform commission & GST dues have reached ₹${parseFloat(wallet.toBePaid || 0).toFixed(2)}. I would like to clear my dues.`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
@@ -2081,7 +2037,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                         const liveDist = parseFloat(liveGpsDistance || 0);
                         const finalDist = liveDist > 0 ? liveDist : baseTotal;
                         
-                        const rate = parseFloat(ratePerKm || 15.00);
+                        const rate = parseFloat(driverDetails?.ratePerKm || 15.00);
                         let originalMinFare = baseTotal * rate;
                         if (currentRide.isIntercity) originalMinFare += 250;
                         
@@ -2212,7 +2168,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                             LIVE GPS TRIP METER ACTIVE
                           </span>
                           <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '700' }}>
-                            Rate: ₹{parseFloat(ratePerKm || 15.00).toFixed(2)}/KM
+                            Rate: ₹{parseFloat(driverDetails?.ratePerKm || 15.00).toFixed(2)}/KM
                           </span>
                         </div>
 
@@ -2227,7 +2183,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Est. Fare</span>
                             <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
-                              ₹{((liveGpsDistance > 0 ? liveGpsDistance : parseFloat(currentRide.totalKm || 8.0)) * parseFloat(ratePerKm || 15.00) + (currentRide.isIntercity ? 250 : 0)).toFixed(2)}
+                              ₹{((liveGpsDistance > 0 ? liveGpsDistance : parseFloat(currentRide.totalKm || 8.0)) * parseFloat(driverDetails?.ratePerKm || 15.00) + (currentRide.isIntercity ? 250 : 0)).toFixed(2)}
                             </div>
                           </div>
                         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { auth, googleProvider } from '../firebase';
@@ -18,6 +18,12 @@ const getBackendUrl = () => { return API_BASE; };
 
 const DriverLogin = () => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (localStorage.getItem('driverEmail')) {
+      navigate('/driver');
+    }
+  }, [navigate]);
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

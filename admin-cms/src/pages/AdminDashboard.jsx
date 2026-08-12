@@ -16,6 +16,7 @@ import RegisteredPassengers from '../components/admin/RegisteredPassengers';
 import SecurityCredentials from '../components/admin/SecurityCredentials';
 import StaffManagement from '../components/admin/StaffManagement';
 import SystemSettings from '../components/admin/SystemSettings';
+import VehicleCategoriesAdmin from '../components/admin/VehicleCategoriesAdmin';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { 
   useDrivers, 
@@ -1892,6 +1893,9 @@ const AdminDashboard = () => {
             <button className={`nav-btn ${activeTab === 'broadcasts' ? 'active' : ''}`} onClick={() => setActiveTab('broadcasts')}>
               <Send size={18} /> Global Broadcasts
             </button>
+            <button className={`nav-btn ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => setActiveTab('categories')}>
+              <Settings size={18} /> Vehicle Categories
+            </button>
             <button className={`nav-btn ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
               <Settings size={18} /> System Settings
             </button>
@@ -2069,6 +2073,11 @@ const AdminDashboard = () => {
                 accountNo={accountNo} setAccountNo={setAccountNo}
                 ifscCode={ifscCode} setIfscCode={setIfscCode}
                 handleSaveSettings={handleSaveSettings}
+              />
+            )}
+
+            {activeTab === 'categories' && (
+              <VehicleCategoriesAdmin 
                 categories={categories}
                 catName={catName} setCatName={setCatName}
                 catPassengers={catPassengers} setCatPassengers={setCatPassengers}
