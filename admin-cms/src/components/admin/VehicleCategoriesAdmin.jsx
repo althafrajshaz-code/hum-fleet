@@ -96,6 +96,7 @@ const VehicleCategoriesAdmin = ({
                   type="number" 
                   className="input-field" 
                   min="0"
+                  step="any"
                   value={catBaseFare}
                   onChange={(e) => setCatBaseFare(e.target.value)}
                   required
@@ -107,6 +108,7 @@ const VehicleCategoriesAdmin = ({
                   type="number" 
                   className="input-field" 
                   min="0"
+                  step="any"
                   value={catRatePerKm}
                   onChange={(e) => setCatRatePerKm(e.target.value)}
                   required

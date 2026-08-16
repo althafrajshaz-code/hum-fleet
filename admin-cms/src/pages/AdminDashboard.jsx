@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, FileText, LogOut, Key, UserCheck, TrendingUp, Search, MapPin, Navigation, Activity, Map, Radio, Compass, MessageSquare, Send, CreditCard, Upload, Tag, Phone, AlertTriangle, Download } from 'lucide-react';
+import { Shield, Users, Car, DollarSign, Settings, Eye, Check, X, AlertCircle, FileText, LogOut, Key, UserCheck, TrendingUp, Search, MapPin, Navigation, Activity, Map, Radio, Compass, MessageSquare, Send, CreditCard, Upload, Tag, Phone, AlertTriangle, Download, Moon, Sun, Monitor } from 'lucide-react';
 import Button from '../components/Button';
 import './AdminDashboard.css';
 import Analytics from '../components/admin/Analytics';
@@ -17,6 +17,10 @@ import SecurityCredentials from '../components/admin/SecurityCredentials';
 import StaffManagement from '../components/admin/StaffManagement';
 import SystemSettings from '../components/admin/SystemSettings';
 import VehicleCategoriesAdmin from '../components/admin/VehicleCategoriesAdmin';
+import LocationsManagement from '../components/admin/LocationsManagement';
+import AnalyticsDashboard from '../components/admin/AnalyticsDashboard';
+import LiveMap from '../components/admin/LiveMap';
+import WalletApprovals from '../components/admin/WalletApprovals';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { 
   useDrivers, 
@@ -60,6 +64,10 @@ const AdminDashboard = () => {
 
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('adminActiveTab') || 'approvals');
   
+  useEffect(() => {
+    localStorage.setItem('adminActiveTab', activeTab);
+  }, [activeTab]);
+
   // --- REACT QUERY & PAGINATION INTEGRATION ---
   const [driverPage, setDriverPage] = useState(1);
   const [passengerPage, setPassengerPage] = useState(1);
@@ -124,7 +132,7 @@ const AdminDashboard = () => {
   const [newMessageText, setNewMessageText] = useState('');
 
   // Live Fleet Monitor States
-  const [fleetData, setFleetData] = useState({ drivers: [], passengers: [], activeRides: [], onlineDriversCount: 0, ridingDriversCount: 0, offlineDriversCount: 0 });
+  const [fleetData, setFleetData] = useState({ drivers: [], passengers: [], activeRides: [], activeEmergencies: [], onlineDriversCount: 0, ridingDriversCount: 0, offlineDriversCount: 0 });
   const [fleetSearch, setFleetSearch] = useState('');
   const [fleetFilter, setFleetFilter] = useState('all'); // 'all' | 'online' | 'riding' | 'offline'
   const [fleetEntity, setFleetEntity] = useState('drivers'); // 'drivers' | 'passengers'
@@ -205,6 +213,39 @@ const AdminDashboard = () => {
   const [minRatePerHour, setMinRatePerHour] = useState('100.00');
   const [surgeMultiplier, setSurgeMultiplier] = useState('1.0');
   const [systemStatus, setSystemStatus] = useState('online');
+  const [systemSettings, setSystemSettings] = useState(null);
+
+  const [themeSetting, setThemeSetting] = useState(localStorage.getItem('adminThemeSetting') || 'auto'); // 'light', 'dark', 'auto'
+
+  useEffect(() => {
+    let activeTheme = themeSetting;
+    if (themeSetting === 'auto') {
+      const hour = new Date().getHours();
+      activeTheme = (hour >= 6 && hour < 18) ? 'light' : 'dark';
+    }
+    document.documentElement.setAttribute('data-theme', activeTheme);
+    localStorage.setItem('adminThemeSetting', themeSetting);
+  }, [themeSetting]);
+
+  useEffect(() => {
+    if (themeSetting !== 'auto') return;
+    const interval = setInterval(() => {
+      const hour = new Date().getHours();
+      const activeTheme = (hour >= 6 && hour < 18) ? 'light' : 'dark';
+      if (document.documentElement.getAttribute('data-theme') !== activeTheme) {
+        document.documentElement.setAttribute('data-theme', activeTheme);
+      }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [themeSetting]);
+
+  const cycleTheme = () => {
+    if (themeSetting === 'light') setThemeSetting('dark');
+    else if (themeSetting === 'dark') setThemeSetting('auto');
+    else setThemeSetting('light');
+  };
+
+  // State to track modified settings before saving
   const [voipMasking, setVoipMasking] = useState(true);
 
   // Payment Gateway states
@@ -568,7 +609,6 @@ const AdminDashboard = () => {
       fetchEmployees();
       fetchFinancials();
       fetchCategories();
-      fetchSettings();
       fetchFleetLive();
       fetchPendingPayments();
       fetchLocations();
@@ -780,6 +820,18 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error("Error saving settings:", err);
       alert('Failed to connect to operations server.');
+    }
+  };
+
+  const handleResolveSOS = async (id) => {
+    if (!window.confirm("Are you sure you want to resolve this SOS alert?")) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/sos/resolve/${id}`, { method: 'POST' });
+      if (response.ok) {
+        fetchFleetLive();
+      }
+    } catch (err) {
+      console.error("Error resolving SOS:", err);
     }
   };
 
@@ -1867,6 +1919,9 @@ const AdminDashboard = () => {
             <button className={`nav-btn ${activeTab === 'fleet' ? 'active' : ''}`} onClick={() => setActiveTab('fleet')}>
               <Radio size={18} /> Live Fleet Monitor
             </button>
+            <button className={`nav-btn ${activeTab === 'livemap' ? 'active' : ''}`} onClick={() => setActiveTab('livemap')}>
+              <Compass size={18} /> God's Eye Map
+            </button>
           </div>
 
           <div className="nav-section">
@@ -1880,6 +1935,9 @@ const AdminDashboard = () => {
             <button className={`nav-btn ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>
               <TrendingUp size={18} /> Revenue Analytics
             </button>
+            <button className={`nav-btn ${activeTab === 'wallet-approvals' ? 'active' : ''}`} onClick={() => setActiveTab('wallet-approvals')}>
+              <CreditCard size={18} /> Wallet Approvals
+            </button>
           </div>
 
           <div className="nav-section">
@@ -1892,6 +1950,9 @@ const AdminDashboard = () => {
             </button>
             <button className={`nav-btn ${activeTab === 'broadcasts' ? 'active' : ''}`} onClick={() => setActiveTab('broadcasts')}>
               <Send size={18} /> Global Broadcasts
+            </button>
+            <button className={`nav-btn ${activeTab === 'locations' ? 'active' : ''}`} onClick={() => setActiveTab('locations')}>
+              <MapPin size={18} /> Locations
             </button>
             <button className={`nav-btn ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => setActiveTab('categories')}>
               <Settings size={18} /> Vehicle Categories
@@ -1914,6 +1975,11 @@ const AdminDashboard = () => {
             <input type="text" placeholder="Global search..." />
           </div>
           <div className="header-actions">
+            <button className="icon-btn" onClick={cycleTheme} title={`Theme: ${themeSetting}`}>
+              {themeSetting === 'light' && <Sun size={20} />}
+              {themeSetting === 'dark' && <Moon size={20} />}
+              {themeSetting === 'auto' && <Monitor size={20} />}
+            </button>
             <button className="icon-btn position-relative">
               <AlertCircle size={20} />
             </button>
@@ -1922,6 +1988,46 @@ const AdminDashboard = () => {
             </button>
           </div>
         </header>
+
+        {fleetData?.activeEmergencies?.filter(e => e.status === 'Active').map(sos => (
+          <div key={sos.id} style={{
+            background: '#ef4444',
+            color: 'white',
+            padding: '16px 24px',
+            margin: '16px 32px 0',
+            borderRadius: '12px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+            animation: 'pulse 2s infinite'
+          }}>
+            <div>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px' }}>
+                <AlertCircle size={24} />
+                EMERGENCY SOS TRIGGERED
+              </h3>
+              <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: '14px' }}>
+                {sos.userType === 'passenger' ? 'Passenger' : 'Driver'} ({sos.userEmail}) triggered SOS at {new Date(sos.timestamp).toLocaleTimeString()}.
+                Location: {sos.lat?.toFixed(4)}, {sos.lng?.toFixed(4)}
+              </p>
+            </div>
+            <button 
+              onClick={() => handleResolveSOS(sos.id)}
+              style={{
+                background: 'white',
+                color: '#ef4444',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              Resolve Alert
+            </button>
+          </div>
+        ))}
 
         <main className="admin-content glass-card">
           <ErrorBoundary>
@@ -1943,6 +2049,10 @@ const AdminDashboard = () => {
                 setMessageModalDriver={setMessageModalDriver}
                 fetchChatMessages={fetchChatMessages}
               />
+            )}
+            
+            {activeTab === 'wallet-approvals' && (
+              <WalletApprovals API_BASE={API_BASE} />
             )}
             
             {activeTab === 'partners' && (
@@ -2031,7 +2141,11 @@ const AdminDashboard = () => {
             )}
             
             {activeTab === 'analytics' && (
-              <Analytics activeTab={activeTab} API_BASE={API_BASE} />
+              <AnalyticsDashboard />
+            )}
+            
+            {activeTab === 'livemap' && (
+              <LiveMap />
             )}
             
             {activeTab === 'staff' && (
@@ -2055,6 +2169,10 @@ const AdminDashboard = () => {
                 handleBroadcastAll={handleBroadcastAll}
                 handleBroadcastToOffline={handleBroadcastToOffline}
               />
+            )}
+            
+            {activeTab === 'locations' && (
+              <LocationsManagement API_BASE={API_BASE} />
             )}
             
             {activeTab === 'settings' && (

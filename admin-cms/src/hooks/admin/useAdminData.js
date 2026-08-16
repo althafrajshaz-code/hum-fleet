@@ -62,7 +62,7 @@ export const useEmployees = () => {
 export const useFinancials = () => {
   return useQuery({
     queryKey: ['financials'],
-    queryFn: () => fetchJSON('/api/financials'),
+    queryFn: () => fetchJSON('/api/admin/financials'),
     refetchInterval: 30000,
   });
 };
@@ -84,7 +84,7 @@ export const useSettings = () => {
 export const useFleetLive = () => {
   return useQuery({
     queryKey: ['fleetLive'],
-    queryFn: () => fetchJSON('/api/fleet/live'),
+    queryFn: () => fetchJSON('/api/admin/fleet-live'),
     refetchInterval: 3000,
   });
 };

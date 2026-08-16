@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Power, MapPin, Navigation, Car, AlertTriangle, ShieldCheck, DollarSign, Wallet, FileText, CheckCircle, Camera, X, Coffee, Pause, Play, MessageSquare, Send, Flame, Zap, Award, TrendingUp, Gauge, Compass, Activity, Sparkles, Settings, CreditCard, User, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import Button from '../components/Button';
 import './Dashboard.css';
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 
 const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
   ? 'https://hum-fleet-backend.loca.lt'
@@ -454,11 +456,62 @@ const DriverDashboard = () => {
     }
   };
 
+  const registerPushNotifications = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        let permStatus = await PushNotifications.checkPermissions();
+        if (permStatus.receive === 'prompt') {
+          permStatus = await PushNotifications.requestPermissions();
+        }
+        if (permStatus.receive !== 'granted') {
+          console.warn('User denied push notification permissions');
+          return;
+        }
+
+        await PushNotifications.register();
+
+        PushNotifications.addListener('registration', async (token) => {
+          console.log('Push registration success, token: ' + token.value);
+          const email = localStorage.getItem('driverEmail');
+          if (email) {
+            try {
+              await fetch(`${API_BASE}/api/drivers/fcm-token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, fcmToken: token.value })
+              });
+            } catch (err) {
+              console.error('Failed to save FCM token to backend', err);
+            }
+          }
+        });
+
+        PushNotifications.addListener('registrationError', (error) => {
+          console.error('Error on registration: ' + JSON.stringify(error));
+        });
+
+        PushNotifications.addListener('pushNotificationReceived', (notification) => {
+          console.log('Push received: ' + JSON.stringify(notification));
+          // If the app is foregrounded, we could show a toast here. 
+          // The normal polling will also pick up the ride.
+        });
+
+        PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+          console.log('Push action performed: ' + JSON.stringify(notification));
+          // App brought to foreground from tap.
+        });
+      }
+    } catch (err) {
+      console.error('Push Notifications setup failed:', err);
+    }
+  };
+
   const goOnline = () => {
     setIsOnline(true);
     if ('Notification' in window && Notification.permission !== 'granted') {
       Notification.requestPermission();
     }
+    registerPushNotifications();
     const email = localStorage.getItem('driverEmail');
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(async (position) => {
@@ -1336,7 +1389,18 @@ You can only accept prepaid trips until your balance is cleared.`);
                   <span style={{ background: 'rgba(251, 191, 36, 0.2)', border: '1px solid rgba(251, 191, 36, 0.5)', color: '#fbbf24', fontSize: '11px', fontWeight: '800', borderRadius: '12px', padding: '1px 8px' }}>
                     ★ {driverDetails?.rating || '5.0'} Rating
                   </span>
-                </div>
+              </div>
+                
+                {/* Badges Display */}
+                {driverDetails?.badges && driverDetails.badges.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '4px', marginTop: '10px' }}>
+                    {[...new Set(driverDetails.badges)].map(badge => (
+                      <span key={badge} style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', color: '#3b82f6', fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '8px' }}>
+                        {badge} <span style={{ color: 'var(--text-muted)' }}>({driverDetails.badges.filter(b => b === badge).length})</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             
@@ -3444,11 +3508,11 @@ You can only accept prepaid trips until your balance is cleared.`);
 
         </div>
         
-        <div className="dashboard-map glass-card animate-fade-in delay-100" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+        <div className="dashboard-map animate-fade-in delay-100" style={{ padding: 0, overflow: 'hidden', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
           <iframe 
-            id="driver-map-iframe"
+            id="map-iframe"
             src="/map.html" 
-            style={{ width: '100%', height: '100%', border: 'none', borderRadius: '18px' }}
+            style={{ width: '100%', height: '100%', border: 'none' }}
             title="Interactive Map"
           />
           {(isOnline) && (

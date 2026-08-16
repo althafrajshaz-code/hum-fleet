@@ -1,11 +1,38 @@
 require('dotenv').config();
 const http = require('http');
 const express = require('express');
+const fs = require('fs');
 const cors = require('cors');
 const path = require('path');
 const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Push Notification Setup (Firebase Cloud Messaging)
+const admin = require('firebase-admin');
+let isFirebaseInitialized = false;
+try {
+  // admin.initializeApp({ credential: admin.credential.cert(require('./serviceAccountKey.json')) });
+  // isFirebaseInitialized = true;
+  console.log('Firebase Admin: Ready for serviceAccountKey.json');
+} catch (e) {
+  console.log('Firebase Admin: Running in MOCK mode (missing serviceAccountKey.json)');
+}
+
+const sendPushNotification = async (fcmToken, title, body, data = {}) => {
+  if (!fcmToken) return;
+  console.log(`[PUSH NOTIFICATION MOCK] To: ${fcmToken.substring(0,10)}... | Title: "${title}" | Body: "${body}"`);
+  if (!isFirebaseInitialized) return;
+  try {
+    await admin.messaging().send({
+      token: fcmToken,
+      notification: { title, body },
+      data
+    });
+  } catch (err) {
+    console.error('Push Error:', err);
+  }
+};
 
 // MongoDB Schema — single document persistence pattern
 const AppStateSchema = new mongoose.Schema({
@@ -22,10 +49,30 @@ const AppStateSchema = new mongoose.Schema({
   rideMessages: { type: mongoose.Schema.Types.Mixed, default: {} },
   dynamicLocations: { type: mongoose.Schema.Types.Mixed, default: [] },
   employees: { type: mongoose.Schema.Types.Mixed, default: [] },
+  walletRequests: { type: mongoose.Schema.Types.Mixed, default: [] },
   analyticsResetDate: { type: String, default: null }
 }, { timestamps: true, minimize: false });
 
 const AppState = mongoose.model('AppState', AppStateSchema);
+
+// Replace LocationModel with a local JSON file to avoid MongoDB limits and connection issues
+const LOCATIONS_FILE = path.join(__dirname, 'locations.json');
+let localLocations = [];
+try {
+  if (fs.existsSync(LOCATIONS_FILE)) {
+    localLocations = JSON.parse(fs.readFileSync(LOCATIONS_FILE, 'utf8'));
+    console.log(`Loaded ${localLocations.length} locations from local file.`);
+  }
+} catch (err) {
+  console.error('Failed to load locations.json', err);
+}
+
+function saveLocationsLocally() {
+  fs.writeFile(LOCATIONS_FILE, JSON.stringify(localLocations), (err) => {
+    if (err) console.error('Failed to save locations.json', err);
+  });
+}
+
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -86,11 +133,14 @@ let passengers = [
     email: 'anoop.nair@gmail.com',
     phone: '+91 99999 88888',
     password: 'pass123',
-    wallet: { totalSpent: 0, taxPaid: 0 },
+    wallet: { totalSpent: 0, taxPaid: 0, balance: 0 },
     rating: 5.0,
     ratings: []
   }
 ];
+
+// Stores manual wallet top-up requests
+let walletRequests = [];
 
 // Mock drivers preset with default Kerala coordinates (Kochi, Trivandrum, Calicut)
 let drivers = [
@@ -194,6 +244,7 @@ let dynamicLocations = []; // Store for newly searched/added locations by passen
 let promotions = [];
 let employees = [];
 let analyticsResetDate = null; // ISO string — analytics only count rides after this date
+let activeEmergencies = []; // SOS system state
 
 mongoose.set('bufferCommands', false); // Fail fast instead of buffering in serverless
 
@@ -220,7 +271,9 @@ async function saveToMongoDB(isRetry = false) {
           dynamicLocations,
           promotions,
           employees,
-          analyticsResetDate
+          walletRequests,
+          analyticsResetDate,
+          activeEmergencies
         }
       },
       { upsert: true }
@@ -338,6 +391,12 @@ async function loadData() {
       } else {
         needsSave = true;
       }
+      
+      if (doc.activeEmergencies) {
+        activeEmergencies = doc.activeEmergencies;
+      } else {
+        needsSave = true;
+      }
 
       if (doc.employees) {
         employees = doc.employees;
@@ -347,6 +406,12 @@ async function loadData() {
 
       if (doc.promotions) {
         promotions = doc.promotions;
+      } else {
+        needsSave = true;
+      }
+
+      if (doc.walletRequests) {
+        walletRequests = doc.walletRequests;
       } else {
         needsSave = true;
       }
@@ -611,6 +676,15 @@ app.post('/api/drivers/login', (req, res) => {
     (d.password === password || (!d.password && password === 'driver123'))
   );
   if (user) {
+    if (user.status === 'Pending') {
+      return res.status(403).json({ error: 'Your application is pending approval. Please wait for an admin to verify your documents.' });
+    }
+    if (user.status === 'Rejected') {
+      return res.status(403).json({ error: 'Your application was rejected. Please contact support.' });
+    }
+    if (user.isBlocked) {
+      return res.status(403).json({ error: 'Your account has been blocked. Please contact support.' });
+    }
     console.log(`Driver login successful for: ${user.email}`);
     res.json({ success: true, name: user.name, email: user.email, phone: user.phone });
   } else {
@@ -719,6 +793,21 @@ app.delete('/api/vehicle-categories/:id', async (req, res) => {
   res.json({ message: 'Category deleted successfully' });
 });
 
+// Admin Reset Categories
+app.post('/api/admin/reset-categories', async (req, res) => {
+  vehicleCategories = [
+    { id: 'auto', name: '🛺 Auto Rickshaw', maxPassengers: 3, baseFare: 30.00, ratePerKm: 15.00, icon: '🛺' },
+    { id: 'mini', name: '🚙 Mini', maxPassengers: 4, baseFare: 40.00, ratePerKm: 18.00, icon: '🚙' },
+    { id: 'hatchback', name: '🚗 Hatchback', maxPassengers: 4, baseFare: 50.00, ratePerKm: 20.00, icon: '🚗' },
+    { id: 'sedan', name: '🚘 Sedan (AC)', maxPassengers: 4, baseFare: 60.00, ratePerKm: 22.00, icon: '🚘' },
+    { id: 'suv', name: '🚐 SUV / XL (6 Seater)', maxPassengers: 6, baseFare: 80.00, ratePerKm: 25.00, icon: '🚐' },
+    { id: 'ev', name: '⚡ EV Green Cab (Eco)', maxPassengers: 4, baseFare: 45.00, ratePerKm: 16.00, icon: '⚡' },
+    { id: 'premium', name: '💎 Premium / Luxury', maxPassengers: 4, baseFare: 100.00, ratePerKm: 30.00, icon: '💎' }
+  ];
+  await saveFieldToMongoDB('vehicleCategories', vehicleCategories);
+  res.json({ success: true, message: 'Categories reset to default', vehicleCategories });
+});
+
 // Get passenger status by email
 app.get('/api/passengers/status', (req, res) => {
   const { email } = req.query;
@@ -734,6 +823,21 @@ app.get('/api/passengers/status', (req, res) => {
     });
   } else {
     res.status(404).json({ error: 'Passenger not found' });
+  }
+});
+
+// Save driver FCM Token
+app.post('/api/drivers/fcm-token', async (req, res) => {
+  const { email, fcmToken } = req.body;
+  if (!email || !fcmToken) return res.status(400).json({ error: 'Email and fcmToken required' });
+
+  const driverIndex = drivers.findIndex(d => d.email === email);
+  if (driverIndex !== -1) {
+    drivers[driverIndex].fcmToken = fcmToken;
+    await saveState();
+    res.json({ success: true, message: 'FCM Token saved successfully' });
+  } else {
+    res.status(404).json({ error: 'Driver not found' });
   }
 });
 
@@ -1115,10 +1219,106 @@ app.get('/api/admin/fleet-live', (req, res) => {
     drivers: fleetDrivers,
     passengers: fleetPassengers,
     activeRides,
+    activeEmergencies,
     onlineDriversCount: fleetDrivers.filter(d => d.isOnline).length,
     ridingDriversCount: fleetDrivers.filter(d => d.currentRide).length,
     offlineDriversCount: fleetDrivers.filter(d => !d.isOnline).length
   });
+});
+
+// Admin Financials Endpoint
+app.get('/api/admin/financials', (req, res) => {
+  const completedRides = activeRides.filter(r => r.status === 'Completed');
+  const totalRevenue = completedRides.reduce((sum, r) => sum + (parseFloat(r.fare) || 0), 0);
+  const totalRides = completedRides.length;
+  const activeDriversCount = drivers.filter(d => d.isOnline).length;
+  
+  const chartData = [
+    { name: 'Mon', revenue: Math.round(totalRevenue * 0.1), rides: Math.floor(totalRides * 0.1) },
+    { name: 'Tue', revenue: Math.round(totalRevenue * 0.15), rides: Math.floor(totalRides * 0.15) },
+    { name: 'Wed', revenue: Math.round(totalRevenue * 0.12), rides: Math.floor(totalRides * 0.12) },
+    { name: 'Thu', revenue: Math.round(totalRevenue * 0.2), rides: Math.floor(totalRides * 0.2) },
+    { name: 'Fri', revenue: Math.round(totalRevenue * 0.18), rides: Math.floor(totalRides * 0.18) },
+    { name: 'Sat', revenue: Math.round(totalRevenue * 0.25), rides: Math.floor(totalRides * 0.25) },
+    { name: 'Sun', revenue: Math.round(totalRevenue * 0.1), rides: Math.floor(totalRides * 0.1) }
+  ];
+
+  res.json({
+    totalRevenue,
+    totalRides,
+    activeDriversCount,
+    chartData
+  });
+});
+
+// Passenger applies promo code
+app.post('/api/passengers/promo', (req, res) => {
+  const { email, code } = req.body;
+  const passenger = passengers.find(p => p.email === email);
+  if (!passenger) return res.status(404).json({ error: 'Passenger not found' });
+
+  if (!passenger.wallet) {
+    passenger.wallet = { totalSpent: 0, taxPaid: 0, balance: 0, appliedPromos: [] };
+  } else if (!passenger.wallet.appliedPromos) {
+    passenger.wallet.appliedPromos = [];
+  }
+
+  if (passenger.wallet.appliedPromos.includes(code.toUpperCase())) {
+    return res.status(400).json({ error: 'Promo code already applied!' });
+  }
+
+  if (code.toUpperCase() === 'HUM50') {
+    passenger.wallet.balance = (passenger.wallet.balance || 0) + 50;
+    passenger.wallet.appliedPromos.push('HUM50');
+    saveData();
+    return res.json({ success: true, message: '₹50 added to your wallet!', balance: passenger.wallet.balance });
+  }
+
+  return res.status(400).json({ error: 'Invalid or expired promo code.' });
+});
+
+// Passenger Ride History
+app.get('/api/passengers/rides', (req, res) => {
+  const email = req.query.email;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  const history = activeRides.filter(r => r.passengerEmail === email && r.status === 'Completed');
+  // Sort descending by completion time or creation time
+  history.sort((a, b) => (b.completionTime || b.id) - (a.completionTime || a.id));
+  res.json(history);
+});
+
+// SOS System
+app.post('/api/rides/sos', (req, res) => {
+  const { rideId, userType, userEmail, lat, lng } = req.body;
+  const ride = activeRides.find(r => r.id === rideId);
+  
+  const sosEvent = {
+    id: Date.now().toString(),
+    rideId: rideId || 'UNKNOWN',
+    userType,
+    userEmail,
+    lat,
+    lng,
+    status: 'Active',
+    timestamp: new Date().toISOString(),
+    rideDetails: ride || null
+  };
+
+  activeEmergencies.push(sosEvent);
+  saveData();
+  res.json({ success: true, message: 'SOS Alert Sent!' });
+});
+
+app.post('/api/admin/sos/resolve/:id', (req, res) => {
+  const sosEvent = activeEmergencies.find(e => e.id === req.params.id);
+  if (sosEvent) {
+    sosEvent.status = 'Resolved';
+    sosEvent.resolvedAt = new Date().toISOString();
+    saveData();
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: 'SOS event not found' });
+  }
 });
 
 // Update driver custom rates (with backend validation against platform limits!)
@@ -1368,11 +1568,36 @@ app.post('/api/rides', (req, res) => {
   const passenger = passengers.find(p => p.email === passengerEmail);
   const passengerRating = passenger ? passenger.rating : 5.0;
 
+  // Dynamic Surge Pricing & Geofencing
+  let surgeMultiplier = 1.0;
+  let appliedSurgeReason = null;
+  const currentHour = new Date().getHours();
+  
+  // Rush Hour Surge (8-10 AM, 5-8 PM)
+  if ((currentHour >= 8 && currentHour <= 10) || (currentHour >= 17 && currentHour <= 20)) {
+    surgeMultiplier = 1.3;
+    appliedSurgeReason = 'Rush Hour Surge';
+  }
+
+  // Geofencing Surge (e.g., Airport Zone roughly 8.482, 76.920)
+  if (pickupCoords && pickupCoords.lat && pickupCoords.lng) {
+    const distToAirport = getDistance(pickupCoords.lat, pickupCoords.lng, 8.482, 76.920);
+    if (distToAirport < 3.0) { // Within 3km of Airport
+      surgeMultiplier = 1.8;
+      appliedSurgeReason = 'Airport Zone Surge';
+    }
+  }
+
+  const finalFare = Math.round(parseFloat(fare || 0) * surgeMultiplier);
+
   const newRide = {
     id: (activeRides.length > 0 ? Math.max(...activeRides.map(x => Number(x.id) || 0)) : 0) + 1,
     pickup,
     dropoff,
-    fare,
+    originalFare: fare,
+    fare: finalFare,
+    surgeMultiplier,
+    surgeReason: appliedSurgeReason,
     passengerName: passengerName || 'Customer',
     passengerEmail: passengerEmail || 'anoop.nair@gmail.com',
     passengerRating,
@@ -1398,6 +1623,20 @@ app.post('/api/rides', (req, res) => {
   };
   activeRides.push(newRide);
   saveData();
+
+  // Send Push Notifications to online drivers
+  const onlineDrivers = drivers.filter(d => d.isOnline && !d.currentRide);
+  if (onlineDrivers.length > 0) {
+    onlineDrivers.forEach(d => {
+      if (d.fcmToken) {
+        sendPushNotification(d.fcmToken, 'New Ride Request', `Pickup: ${pickup} - ₹${newRide.price}`);
+      } else {
+        // Fallback mock log if token isn't registered yet
+        sendPushNotification(`mock-driver-token-${d.id}`, 'New Ride Request', `Pickup: ${pickup}`);
+      }
+    });
+  }
+
   res.status(201).json(newRide);
 });
 
@@ -1929,13 +2168,17 @@ app.post('/api/rides/:id/complete', (req, res) => {
 // Rate driver
 app.post('/api/rides/:id/rate-driver', (req, res) => {
   const id = parseInt(req.params.id);
-  const { rating, comment } = req.body;
+  const { rating, comment, badges = [] } = req.body;
   const ride = activeRides.find(r => r.id === id);
   if (ride) {
     const driver = drivers.find(d => d.email === ride.driverEmail);
     if (driver) {
       if (!driver.ratings) driver.ratings = [];
+      if (!driver.badges) driver.badges = [];
       driver.ratings.push({ rating: parseInt(rating), comment });
+      // Add all submitted badges to driver
+      badges.forEach(b => driver.badges.push(b));
+      
       const total = driver.ratings.reduce((sum, r) => sum + r.rating, 0);
       driver.rating = parseFloat((total / driver.ratings.length).toFixed(1));
     }
@@ -2519,7 +2762,7 @@ app.get('/api/admin/rides', (req, res) => {
 
 // --- DYNAMIC LOCATIONS (MAPPING) ---
 app.get('/api/locations', (req, res) => {
-  res.json(dynamicLocations);
+  res.json(localLocations);
 });
 
 // Proxy OpenStreetMap Nominatim API to avoid browser CORS/User-Agent blocking
@@ -2528,22 +2771,55 @@ app.get('/api/geocode', async (req, res) => {
   if (!query) return res.json([]);
   
   try {
-    // Upgraded limit to 50 (maximum allowed usually) to maximize results for hospitals, hotels, etc.
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', India')}&format=json&addressdetails=1&limit=50&countrycodes=in`;
-    // We MUST send a custom User-Agent to satisfy OpenStreetMap Nominatim's strict usage policy
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Hum-Taxi-App-Backend/1.0 (Contact: admin@hum.local)',
-        'Accept': 'application/json'
-      }
-    });
+    // 1. Query Local JSON (Case-insensitive)
+    const regex = new RegExp(query, 'i');
+    const localMatches = localLocations.filter(l => regex.test(l.name)).slice(0, 10);
     
-    if (response.ok) {
-      const data = await response.json();
-      res.json(data);
-    } else {
-      res.status(response.status).json({ error: 'Geocoding failed' });
+    // Format local matches to look like Nominatim results
+    const formattedLocal = localMatches.map((loc, idx) => ({
+      place_id: `local_${idx}`,
+      name: loc.name,
+      display_name: `${loc.name}, Kerala, India`,
+      lat: loc.lat.toString(),
+      lon: loc.lng.toString(),
+      address: {
+        hotel: loc.name,
+        state: 'Kerala',
+        country: 'India'
+      }
+    }));
+
+    // 2. Query Nominatim Proxy
+    let externalMatches = [];
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Kerala, India')}&format=json&addressdetails=1&limit=50&countrycodes=in`;
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Hum-Taxi-App-Backend/1.0 (Contact: admin@hum.local)',
+          'Accept': 'application/json'
+        }
+      });
+      if (response.ok) {
+        externalMatches = await response.json();
+      }
+    } catch (err) {
+      console.error('Nominatim error', err);
     }
+
+    // Combine & Return (Local first)
+    const combined = [...formattedLocal, ...externalMatches];
+    // Deduplicate by name roughly
+    const unique = [];
+    const names = new Set();
+    for (const item of combined) {
+      const nm = (item.name || item.display_name || '').toLowerCase();
+      if (!names.has(nm)) {
+        names.add(nm);
+        unique.push(item);
+      }
+    }
+    
+    res.json(unique);
   } catch (error) {
     console.error('Geocoding Proxy Error:', error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -2556,22 +2832,57 @@ app.post('/api/locations', (req, res) => {
     return res.status(400).json({ error: 'name, lat, and lng are required' });
   }
 
-  // Check if location already exists by name or close coordinates
   const parsedLat = parseFloat(lat);
   const parsedLng = parseFloat(lng);
-  const nameExists = dynamicLocations.some(loc => loc.name.toLowerCase() === name.toLowerCase());
-  const coordsExist = dynamicLocations.some(loc => {
-    return Math.abs(loc.lat - parsedLat) < 0.005 && Math.abs(loc.lng - parsedLng) < 0.005;
-  });
+  
+  const exists = localLocations.find(l => 
+    l.name.toLowerCase() === name.toLowerCase() || 
+    (Math.abs(l.lat - parsedLat) < 0.005 && Math.abs(l.lng - parsedLng) < 0.005)
+  );
 
-  if (!nameExists && !coordsExist) {
+  if (!exists) {
     const newLoc = { name, lat: parsedLat, lng: parsedLng };
-    dynamicLocations.push(newLoc);
-    saveData();
+    localLocations.push(newLoc);
+    saveLocationsLocally();
     res.status(201).json(newLoc);
   } else {
     res.json({ message: 'Location already exists' });
   }
+});
+
+app.delete('/api/locations/:name', (req, res) => {
+  const initialLen = localLocations.length;
+  localLocations = localLocations.filter(l => l.name.toLowerCase() !== req.params.name.toLowerCase());
+  if (localLocations.length < initialLen) {
+    saveLocationsLocally();
+    res.json({ success: true, message: 'Location deleted' });
+  } else {
+    res.status(404).json({ error: 'Location not found' });
+  }
+});
+
+app.post('/api/locations/bulk', (req, res) => {
+  const { locations } = req.body;
+  if (!locations || !Array.isArray(locations)) {
+    return res.status(400).json({ error: 'Valid locations array required' });
+  }
+
+  let added = 0;
+  
+  locations.forEach(loc => {
+    if (!loc.name || loc.lat === undefined || loc.lng === undefined) return;
+    const exists = localLocations.some(l => l.name.toLowerCase() === loc.name.toLowerCase());
+    if (!exists) {
+      localLocations.push({ name: loc.name, lat: parseFloat(loc.lat), lng: parseFloat(loc.lng) });
+      added++;
+    }
+  });
+
+  if (added > 0) {
+    saveLocationsLocally();
+  }
+  
+  res.json({ success: true, added, total: localLocations.length });
 });
 
 // Admin Add Driver
@@ -2826,6 +3137,68 @@ app.get('/api/admin/fix-ids', (req, res) => {
   }
   if (updated) saveData();
   res.json({ success: true, drivers });
+});
+
+// --- MANUAL WALLET TOP-UP APIs ---
+
+app.post('/api/passengers/wallet/topup', (req, res) => {
+  const { email, amount, screenshotBase64 } = req.body;
+  if (!email || !amount || !screenshotBase64) {
+    return res.status(400).json({ error: 'Missing required fields.' });
+  }
+
+  const newRequest = {
+    id: Date.now().toString(),
+    email,
+    amount: parseFloat(amount),
+    screenshot: screenshotBase64,
+    status: 'Pending',
+    createdAt: new Date().toISOString()
+  };
+
+  walletRequests.push(newRequest);
+  saveData();
+  res.json({ success: true, request: newRequest });
+});
+
+app.get('/api/admin/wallet/requests', (req, res) => {
+  res.json(walletRequests);
+});
+
+app.post('/api/admin/wallet/approve/:id', (req, res) => {
+  const requestId = req.params.id;
+  const request = walletRequests.find(r => r.id === requestId);
+
+  if (!request) return res.status(404).json({ error: 'Request not found' });
+  if (request.status !== 'Pending') return res.status(400).json({ error: 'Already processed' });
+
+  const passenger = passengers.find(p => p.email === request.email);
+  if (!passenger) return res.status(404).json({ error: 'Passenger not found' });
+
+  // Add to passenger balance
+  if (!passenger.wallet) passenger.wallet = { totalSpent: 0, taxPaid: 0, balance: 0 };
+  if (passenger.wallet.balance === undefined) passenger.wallet.balance = 0;
+  
+  passenger.wallet.balance += request.amount;
+  request.status = 'Approved';
+  request.processedAt = new Date().toISOString();
+
+  saveData();
+  res.json({ success: true, request, newBalance: passenger.wallet.balance });
+});
+
+app.post('/api/admin/wallet/reject/:id', (req, res) => {
+  const requestId = req.params.id;
+  const request = walletRequests.find(r => r.id === requestId);
+
+  if (!request) return res.status(404).json({ error: 'Request not found' });
+  if (request.status !== 'Pending') return res.status(400).json({ error: 'Already processed' });
+
+  request.status = 'Rejected';
+  request.processedAt = new Date().toISOString();
+
+  saveData();
+  res.json({ success: true, request });
 });
 
 // Vercel serverless export — must be last, after all routes are registered

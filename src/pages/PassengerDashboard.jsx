@@ -271,7 +271,18 @@ const PassengerDashboard = () => {
   const [fareWarning, setFareWarning] = useState('');
 
   // Wallet & Profile State
-  const [wallet, setWallet] = useState({ totalSpent: 0, taxPaid: 0 });
+  const [wallet, setWallet] = useState({ totalSpent: 0, taxPaid: 0, balance: 0 });
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [topupAmount, setTopupAmount] = useState('');
+  const [topupScreenshot, setTopupScreenshot] = useState(null);
+  const [topupScreenshotBase64, setTopupScreenshotBase64] = useState(null);
+  const [isUploadingTopup, setIsUploadingTopup] = useState(false);
+  
+  const [showRideHistory, setShowRideHistory] = useState(false);
+  const [rideHistoryData, setRideHistoryData] = useState([]);
+
   const [passengerProfilePic, setPassengerProfilePic] = useState(localStorage.getItem('passengerProfilePic') || null);
   const [passengerRating, setPassengerRating] = useState(5.0);
   const [passengerId, setPassengerId] = useState(null);
@@ -330,6 +341,7 @@ const PassengerDashboard = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [rideAccepted, setRideAccepted] = useState(false);
   const [withPet, setWithPet] = useState(false);
+  const [sosCountdown, setSosCountdown] = useState(null);
 
   // Pre-booking states
   const [isPreBookToggle, setIsPreBookToggle] = useState(false);
@@ -341,6 +353,7 @@ const PassengerDashboard = () => {
   const [showRating, setShowRating] = useState(false);
   const [ratingValue, setRatingValue] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
+  const [selectedBadges, setSelectedBadges] = useState([]);
 
   // Change / Update Destination Mid-Trip States
   const [showUpdateDestModal, setShowUpdateDestModal] = useState(false);
@@ -487,6 +500,45 @@ const PassengerDashboard = () => {
       alert('Failed to connect to operations server.');
     } finally {
       setIsSubmittingDestUpdate(false);
+    }
+  };
+
+  const handleTriggerSOS = () => {
+    if (sosCountdown !== null) return;
+    setSosCountdown(5);
+    let count = 5;
+    const interval = setInterval(async () => {
+      count--;
+      if (count > 0) {
+        setSosCountdown(count);
+      } else {
+        clearInterval(interval);
+        setSosCountdown(null);
+        try {
+          const res = await fetch(`${API_BASE}/api/rides/sos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              rideId: activeRide?.id,
+              userType: 'passenger',
+              userEmail: localStorage.getItem('passengerEmail'),
+              lat: activeRide?.pickupCoords?.lat || 0,
+              lng: activeRide?.pickupCoords?.lng || 0
+            })
+          });
+          if (res.ok) {
+            alert('🚨 SOS ALERT SENT TO ADMIN AND AUTHORITIES!');
+          }
+        } catch(e) { console.error(e); }
+      }
+    }, 1000);
+    window.sosInterval = interval;
+  };
+
+  const handleCancelSOS = () => {
+    if (window.sosInterval) {
+      clearInterval(window.sosInterval);
+      setSosCountdown(null);
     }
   };
 
@@ -979,6 +1031,8 @@ const PassengerDashboard = () => {
     setIsSearching(false);
     setRideAccepted(false);
     setActiveRide(null);
+    setSosCountdown(null);
+    setCustomFare('');
     setPickup('');
     setDropoff('');
     setPickupCoords(null);
@@ -1013,7 +1067,8 @@ const PassengerDashboard = () => {
         },
         body: JSON.stringify({
           rating: ratingValue,
-          comment: ratingComment
+          comment: ratingComment,
+          badges: selectedBadges
         })
       });
     } catch (err) {
@@ -1031,10 +1086,76 @@ const PassengerDashboard = () => {
     setShowRating(false);
     setRatingValue(5);
     setRatingComment('');
+    setSelectedBadges([]);
 
     const mapIframe = document.getElementById('map-iframe');
     if (mapIframe && mapIframe.contentWindow) {
       mapIframe.contentWindow.postMessage({ type: 'RESET_MAP' }, '*');
+    }
+  };
+
+  const handleTopupSubmit = async (e) => {
+    e.preventDefault();
+    if (!topupAmount || !topupScreenshotBase64) return;
+    setIsUploadingTopup(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/wallet/topup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: localStorage.getItem('passengerEmail'), amount: topupAmount, screenshot: topupScreenshotBase64 })
+      });
+      if (res.ok) {
+        alert('Top-up request sent to admin for approval!');
+        setShowWalletModal(false);
+        setTopupAmount('');
+        setTopupScreenshot(null);
+        setTopupScreenshotBase64('');
+      } else {
+        alert('Failed to submit top-up request.');
+      }
+    } catch(err) {
+      console.error(err);
+      alert('Error connecting to server.');
+    } finally {
+      setIsUploadingTopup(false);
+    }
+  };
+
+  const handleApplyPromo = async (e) => {
+    e.preventDefault();
+    if (!promoCode.trim()) return;
+    setIsApplyingPromo(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/passengers/promo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: localStorage.getItem('passengerEmail'), code: promoCode })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        setWallet(prev => ({ ...prev, balance: data.balance }));
+        setPromoCode('');
+      } else {
+        alert(data.error || 'Failed to apply promo.');
+      }
+    } catch(err) {
+      alert('Error connecting to server.');
+    } finally {
+      setIsApplyingPromo(false);
+    }
+  };
+
+  const handleFetchRideHistory = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/passengers/rides?email=${encodeURIComponent(currentUser.email || localStorage.getItem('passengerEmail'))}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRideHistoryData(data);
+        setShowRideHistory(true);
+      }
+    } catch(err) {
+      console.error(err);
     }
   };
 
@@ -1093,13 +1214,23 @@ const PassengerDashboard = () => {
                 )}
               </div>
             </div>
-            <button 
-              onClick={handleLogout}
-              style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', flexShrink: 0 }}
-              title="Logout"
-            >
-              <LogOut size={16} /> <span className="hide-on-mobile">Logout</span>
-            </button>
+            
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={handleFetchRideHistory}
+                style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', flexShrink: 0 }}
+                title="Ride History"
+              >
+                <Clock size={16} /> <span className="hide-on-mobile">History</span>
+              </button>
+              <button 
+                onClick={handleLogout}
+                style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', flexShrink: 0 }}
+                title="Logout"
+              >
+                <LogOut size={16} /> <span className="hide-on-mobile">Logout</span>
+              </button>
+            </div>
           </div>
 
           {/* Passenger Wallet Overview Widget */}
@@ -1107,14 +1238,19 @@ const PassengerDashboard = () => {
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', margin: 0 }}>
               <Wallet size={18} color="var(--primary)" /> Passenger Wallet
             </h2>
-            <div className="stats-grid" style={{ marginTop: '8px', gridTemplateColumns: '1fr 1fr', gap: '10px', width: '100%' }}>
+            <div className="stats-grid" style={{ marginTop: '8px', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', width: '100%' }}>
               <div className="stat-card" style={{ padding: '10px' }}>
                 <span className="stat-label" style={{ fontSize: '10px' }}>Total Cash Spent</span>
                 <span className="stat-value" style={{ fontSize: '15px' }}>₹{parseFloat(wallet.totalSpent || 0).toFixed(2)}</span>
               </div>
               <div className="stat-card" style={{ padding: '10px' }}>
-                <span className="stat-label" style={{ fontSize: '10px' }}>GST Tax Paid (5%)</span>
-                <span className="stat-value" style={{ fontSize: '15px', color: '#f59e0b' }}>₹{parseFloat(wallet.taxPaid || 0).toFixed(2)}</span>
+                <span className="stat-label" style={{ fontSize: '10px' }}>Wallet Balance</span>
+                <span className="stat-value" style={{ fontSize: '15px', color: '#10b981' }}>₹{parseFloat(wallet.balance || 0).toFixed(2)}</span>
+              </div>
+              <div className="stat-card" style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Button variant="outline" style={{ width: '100%', fontSize: '12px' }} onClick={() => setShowWalletModal(true)}>
+                  + Top-Up
+                </Button>
               </div>
             </div>
           </div>
@@ -1913,18 +2049,36 @@ const PassengerDashboard = () => {
                   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
                 }}
               >
-                <Share2 size={16} /> Share Status on WhatsApp
+                <Share2 size={16} /> Share Trip on WhatsApp
               </Button>
+
+              {sosCountdown !== null ? (
+                <Button 
+                  variant="primary" 
+                  style={{ background: '#333', color: 'white', borderColor: '#333', width: '100%', marginTop: '10px' }} 
+                  onClick={handleCancelSOS}
+                >
+                  Cancel SOS ({sosCountdown}s)
+                </Button>
+              ) : (
+                <Button 
+                  variant="primary" 
+                  style={{ background: '#ef4444', color: 'white', borderColor: '#ef4444', width: '100%', marginTop: '10px', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)' }} 
+                  onClick={handleTriggerSOS}
+                >
+                  🚨 EMERGENCY SOS
+                </Button>
+              )}
             </div>
           )}
 
         </div>
         
-        <div className="dashboard-map glass-card animate-fade-in delay-100" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+        <div className="dashboard-map animate-fade-in delay-100" style={{ padding: 0, overflow: 'hidden', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
           <iframe 
             id="map-iframe"
             src="/map.html" 
-            style={{ width: '100%', height: '100%', border: 'none', borderRadius: '18px' }}
+            style={{ width: '100%', height: '100%', border: 'none' }}
             title="Interactive Map"
           />
 
@@ -2464,6 +2618,109 @@ const PassengerDashboard = () => {
           </div>
         </div>
       )}
+      {showWalletModal && (
+        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '24px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><Wallet size={20} /> Top-Up Wallet</h3>
+              <button onClick={() => setShowWalletModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Scan the QR code or use the UPI ID to send money. Then upload the screenshot of the payment receipt.</p>
+            
+            <div style={{ textAlign: 'center', margin: '20px 0' }}>
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=humfleet@upi&pn=HUM%20Fleet" alt="QR Code" style={{ borderRadius: '8px', border: '2px solid var(--border)' }} />
+              <p style={{ margin: '10px 0 0 0', fontWeight: 'bold' }}>UPI ID: humfleet@upi</p>
+            </div>
+
+            <form onSubmit={handleTopupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Top-Up Amount (₹)</label>
+                <input required type="number" className="input-field" value={topupAmount} onChange={e => setTopupAmount(e.target.value)} style={{ width: '100%' }} min="1" placeholder="Enter amount paid" />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Payment Screenshot</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <label style={{ padding: '8px 16px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '8px', cursor: 'pointer', display: 'inline-block' }}>
+                    Choose File
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setTopupScreenshot(file);
+                        const reader = new FileReader();
+                        reader.onloadend = () => setTopupScreenshotBase64(reader.result);
+                        reader.readAsDataURL(file);
+                      }
+                    }} />
+                  </label>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{topupScreenshot ? topupScreenshot.name : 'No file chosen'}</span>
+                </div>
+              </div>
+
+              <Button type="submit" variant="primary" style={{ marginTop: '8px' }} disabled={isUploadingTopup}>
+                {isUploadingTopup ? 'Submitting...' : 'Submit Request'}
+              </Button>
+            </form>
+
+            <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'var(--text-main)' }}>Have a Promo Code?</h4>
+              <form onSubmit={handleApplyPromo} style={{ display: 'flex', gap: '8px' }}>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  value={promoCode} 
+                  onChange={e => setPromoCode(e.target.value.toUpperCase())} 
+                  placeholder="e.g. HUM50" 
+                  style={{ flex: 1, textTransform: 'uppercase' }} 
+                />
+                <Button type="submit" variant="outline" disabled={isApplyingPromo || !promoCode}>
+                  Apply
+                </Button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RIDE HISTORY MODAL */}
+      {showRideHistory && (
+        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyItems: 'center', padding: '16px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto', padding: '24px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)', margin: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={20} /> Ride History</h3>
+              <button onClick={() => setShowRideHistory(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+
+            {rideHistoryData.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)' }}>
+                <Clock size={40} style={{ opacity: 0.2, marginBottom: '10px' }} />
+                <p>No past rides found.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {rideHistoryData.map(ride => (
+                  <div key={ride.id} style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', background: 'rgba(255,255,255,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{new Date(ride.completionTime || ride.id).toLocaleDateString()}</span>
+                      <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--primary)' }}>₹{parseFloat(ride.totalCollected || ride.fare).toFixed(2)}</span>
+                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '4px' }}>
+                      To: {ride.dropoff.split(',')[0]}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                      Driver: {ride.driverName} • {ride.vehicleModel}
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => alert('Downloading invoice PDF... (Simulated)')}>
+                      Download Invoice
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

@@ -12,6 +12,16 @@
   --glass-border: rgba(0, 0, 0, 0.08);
 }
 
+[data-theme='dark'] {
+  --bg-dark: #0b0f17;
+  --bg-card: #151c2c;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(21, 28, 44, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.05);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

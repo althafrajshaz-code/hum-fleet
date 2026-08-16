@@ -13,9 +13,18 @@ const query = `
 
 fetch('https://overpass-api.de/api/interpreter', {
   method: 'POST',
-  body: query
+  body: query,
+  headers: {
+    'User-Agent': 'Hum-Taxi-App-Seed-Script/1.0'
+  }
 })
-.then(r => r.json())
+.then(async r => {
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`Overpass API error: ${r.status} ${text.substring(0, 100)}`);
+  }
+  return r.json();
+})
 .then(async data => {
   const elements = data.elements.filter(e => e.tags && e.tags.name && e.lat && e.lon);
   
@@ -29,15 +38,24 @@ fetch('https://overpass-api.de/api/interpreter', {
   console.log(`Found ${locations.length} valid locations. Adding them to live site...`);
   
   let successCount = 0;
-  for (const loc of locations) {
-    try {
-      const res = await fetch('https://hum-fleet-api.onrender.com/api/locations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loc)
-      });
-      if (res.ok) successCount++;
-    } catch(err) {}
+  
+  // Send in bulk to new bulk endpoint
+  console.log('Sending to local backend bulk endpoint...');
+  try {
+    const res = await fetch('http://localhost:5000/api/locations/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locations })
+    });
+    
+    if (res.ok) {
+      const respData = await res.json();
+      successCount = respData.added;
+    } else {
+      console.error('Bulk insert failed with status:', res.status);
+    }
+  } catch(err) {
+    console.error('Network error to backend:', err);
   }
   
   console.log(`Successfully injected ${successCount} locations directly into the live MongoDB database!`);

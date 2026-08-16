@@ -18,7 +18,7 @@ copy /y /b app\build\outputs\bundle\release\app-release.aab d:\Althaf\HUM_AABs\H
 cd ..\..
 
 echo [2/3] Building Passenger AAB...
-node set-capacitor-url.cjs "https://hum-cyan.vercel.app/passenger" "com.humfleet.passenger" "Hum Fleet Passenger"
+node set-capacitor-url.cjs "http://187.127.165.79:3000/passenger" "com.humfleet.passenger" "Hum Fleet Passenger"
 call npx cap sync
 cd android
 call gradlew clean bundleRelease
@@ -27,7 +27,7 @@ copy /y /b app\build\outputs\bundle\release\app-release.aab d:\Althaf\HUM_AABs\H
 cd ..
 
 echo [3/3] Building Driver AAB...
-node set-capacitor-url.cjs "https://hum-cyan.vercel.app/driver" "com.humfleet.driver" "Hum Fleet Driver"
+node set-capacitor-url.cjs "http://187.127.165.79:3000/driver" "com.humfleet.captain" "Hum Fleet Driver"
 call npx cap sync
 cd android
 call gradlew clean bundleRelease

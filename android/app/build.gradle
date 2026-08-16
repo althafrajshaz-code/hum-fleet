@@ -10,10 +10,10 @@ android {
     namespace = "com.humfleet.main"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.humfleet.driver"
+        applicationId "com.humfleet.main"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
+        versionCode 4
         versionName "1.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
