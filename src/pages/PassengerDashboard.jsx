@@ -409,7 +409,7 @@ const PassengerDashboard = () => {
         const data = await response.json();
         setCategories(data);
         if (data.length > 0) {
-          setSelectedTier(data[0].name);
+          setSelectedTier(prev => prev || data[0].name);
         }
       }
     } catch (err) {
