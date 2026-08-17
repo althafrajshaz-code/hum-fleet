@@ -6,7 +6,7 @@ const API_BASE_FALLBACK = (typeof window !== 'undefined' && window.location.host
   ? 'https://hum-fleet-backend.loca.lt'
   : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
     ? 'http://localhost:5000'
-    : 'https://server-ashen-beta.vercel.app';
+    : 'http://187.127.165.79:5000';
 
 const Analytics = ({ activeTab, API_BASE: propApiBase }) => {
   const API_BASE = propApiBase || API_BASE_FALLBACK;

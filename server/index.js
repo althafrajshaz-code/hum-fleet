@@ -472,9 +472,10 @@ app.use(async (req, res, next) => {
   await connectDB();
   
   // 2. Always reload memory from DB to sync Vercel's stateless instances
-  if (mongoose.connection.readyState === 1 && req.path !== '/api/debug/db') {
-    await loadData();
-  }
+  // NOTE: Removed for VPS deployment to prevent race conditions and memory overwrites
+  // if (mongoose.connection.readyState === 1 && req.path !== '/api/debug/db') {
+  //   await loadData();
+  // }
   
   // 3. Intercept response to wait for any pending saveData() calls to finish 
   // before Vercel freezes the execution context
@@ -857,6 +858,8 @@ app.get('/api/drivers/status', (req, res) => {
       email: driver.email,
       manufacturer: driver.manufacturer, 
       model: driver.model,
+      vehicleType: driver.vehicleType,
+      vehicleCategory: driver.vehicleCategory,
       plate: driver.plate,
       phone: driver.phone,
       lat: driver.lat,
@@ -1109,6 +1112,17 @@ app.post('/api/drivers/profile', (req, res) => {
 });
 
 // Update driver custom coordinates & online / rest break status
+
+app.post('/api/drivers/preferences', (req, res) => {
+  const { email, acceptedCategories, acceptsIntercity } = req.body;
+  const driver = drivers.find(d => d.email === email);
+  if (!driver) return res.status(404).json({ error: 'Driver not found' });
+  if (acceptedCategories) driver.acceptedCategories = acceptedCategories;
+  if (acceptsIntercity !== undefined) driver.acceptsIntercity = acceptsIntercity;
+  saveFieldToMongoDB('drivers', drivers);
+  res.json(driver);
+});
+
 app.post('/api/drivers/location', (req, res) => {
   const { email, lat, lng, isOnline, isPaused } = req.body;
   const driver = drivers.find(d => d.email === (email || 'rajesh.k@gmail.com'));
@@ -1772,7 +1786,17 @@ app.get('/api/rides/nearby', (req, res) => {
   const driverLng = parseFloat(driver.lng);
 
   // Get all active searching rides
-  let searchingRides = activeRides.filter(r => r.status === 'Searching' && (!r.isPreBooked || r.isActivated));
+  let searchingRides = activeRides.filter(r => {
+    if (r.status !== 'Searching' || (r.isPreBooked && !r.isActivated)) return false;
+    if (r.withPet && (!driver || !driver.allowsPets)) return false;
+    if (r.isIntercity && (!driver || !driver.acceptsIntercity)) return false;
+    if (driver && driver.acceptedCategories && driver.acceptedCategories.length > 0) {
+      if (!driver.acceptedCategories.includes(r.vehicleCategory)) return false;
+    } else {
+      if (driver && driver.vehicleCategory && r.vehicleCategory !== driver.vehicleCategory) return false;
+    }
+    return true;
+  });
 
   const ridesWithDistance = searchingRides.map(ride => {
     let distance = 0;
@@ -1794,7 +1818,17 @@ app.get('/api/rides/prebooked', (req, res) => {
   }
 
   // Find all pre-booked rides that are searching
-  const searchingPreBooked = activeRides.filter(r => r.status === 'Searching' && r.isPreBooked);
+  const searchingPreBooked = activeRides.filter(r => {
+    if (r.status !== 'Searching' || !r.isPreBooked) return false;
+    if (r.withPet && (!driver || !driver.allowsPets)) return false;
+    if (r.isIntercity && (!driver || !driver.acceptsIntercity)) return false;
+    if (driver && driver.acceptedCategories && driver.acceptedCategories.length > 0) {
+      if (!driver.acceptedCategories.includes(r.vehicleCategory)) return false;
+    } else {
+      if (driver && driver.vehicleCategory && r.vehicleCategory !== driver.vehicleCategory) return false;
+    }
+    return true;
+  });
   
   // Filter those within 20 KM of the driver
   const eligibleRides = searchingPreBooked.filter(ride => {

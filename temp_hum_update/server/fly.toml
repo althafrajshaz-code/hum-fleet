@@ -1,0 +1,24 @@
+# fly.toml — Fly.io app configuration for HUM Fleet API
+# Docs: https://fly.io/docs/reference/configuration/
+
+app = "hum-fleet-api"
+primary_region = "sin"   # Singapore (closest to your users)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"   # Sleep when idle (saves free credits)
+  auto_start_machines = true    # Wake up on first request (~1-2s)
+  min_machines_running = 0
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

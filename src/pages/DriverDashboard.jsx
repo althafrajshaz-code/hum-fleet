@@ -30,6 +30,9 @@ const DriverDashboard = () => {
   const [loading, setLoading] = useState(true);
   
   const [driverDetails, setDriverDetails] = useState(null);
+  const [acceptedCategories, setAcceptedCategories] = useState([]);
+  const [acceptsIntercity, setAcceptsIntercity] = useState(false);
+  const [availableCategories, setAvailableCategories] = useState([]);
 
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('driverTheme') || 'light';
@@ -172,6 +175,8 @@ const DriverDashboard = () => {
         if (data.photos) setDriverPhotos(data.photos);
         if (data.docs) setDriverDocs(data.docs);
         if (data.profilePic) setDriverProfilePic(data.profilePic);
+        if (data.acceptedCategories) setAcceptedCategories(data.acceptedCategories);
+        if (data.acceptsIntercity !== undefined) setAcceptsIntercity(data.acceptsIntercity);
         if (initialLoad) {
           setWallet(data.wallet || { balance: 0, pending: 0, hold: 0, activePenalty: 0, totalDue: 0, toBePaid: 0, settlementPending: false, penaltyDetails: [] });
         }
@@ -306,6 +311,26 @@ const DriverDashboard = () => {
       alert('Network error, please verify the server is running.');
       setVehicleSaveStatus('error');
       setTimeout(() => setVehicleSaveStatus(null), 3000);
+    }
+  };
+
+  const handleSaveRidePreferences = async () => {
+    const email = localStorage.getItem('driverEmail');
+    try {
+      const res = await fetch(`${API_BASE}/api/drivers/preferences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, acceptedCategories, acceptsIntercity })
+      });
+      if (res.ok) {
+        alert('Ride preferences saved successfully!');
+        fetchStatus(false);
+      } else {
+        alert('Failed to save ride preferences.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Network error.');
     }
   };
 
@@ -3115,6 +3140,61 @@ You can only accept prepaid trips until your balance is cleared.`);
                         </button>
                       </div>
                     </div>
+                  </div>
+
+
+                  {/* --- RIDE PREFERENCES --- */}
+                  <div style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', padding: '16px', marginBottom: '10px' }}>
+                    <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: '800', color: '#10b981' }}>Ride Preferences</h3>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '14px' }}>Select the vehicle categories you are willing to accept rides for, and whether you want intercity trips. Note: You can only select categories equal to or cheaper than your assigned vehicle.</p>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+                      {(() => {
+                        const driverRate = parseFloat(driverDetails?.ratePerKm || 0);
+                        let eligible = availableCategories;
+                        if (driverRate > 0) {
+                          eligible = availableCategories.filter(cat => {
+                             const catRate = parseFloat(cat.ratePerKm || 0);
+                             return catRate <= driverRate;
+                          });
+                          if (eligible.length === 0) eligible = availableCategories;
+                        }
+                        
+                        return eligible.map(cat => (
+                          <label key={cat.id || cat.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={acceptedCategories.includes(cat.name)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setAcceptedCategories([...acceptedCategories, cat.name]);
+                                } else {
+                                  setAcceptedCategories(acceptedCategories.filter(c => c !== cat.name));
+                                }
+                              }}
+                              style={{ width: '18px', height: '18px' }}
+                            />
+                            {cat.name}
+                          </label>
+                        ));
+                      })()}
+                      
+                      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+                      
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer', color: '#f59e0b', fontWeight: 'bold' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={acceptsIntercity}
+                          onChange={(e) => setAcceptsIntercity(e.target.checked)}
+                          style={{ width: '18px', height: '18px' }}
+                        />
+                        Ready to take Intercity Trips (&gt;35 KM)
+                      </label>
+                    </div>
+                    
+                    <Button variant="primary" onClick={handleSaveRidePreferences} className="full-width" style={{ background: '#10b981', color: '#000', border: 'none' }}>
+                      Save Ride Preferences
+                    </Button>
                   </div>
 
                   {/* Current read-only info */}

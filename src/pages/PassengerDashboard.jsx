@@ -259,6 +259,21 @@ const PassengerDashboard = () => {
   const [pickupFocused, setPickupFocused] = useState(false);
   const [dropoffFocused, setDropoffFocused] = useState(false);
   const [selectedTier, setSelectedTier] = useState('');
+
+  // Dynamic Vehicle Categories State
+  const [categories, setCategories] = useState([
+    { id: 'auto', name: '🛺 Auto Rickshaw', maxPassengers: 3, baseFare: 30, ratePerKm: 12, icon: '🛺' },
+    { id: 'hatchback', name: 'Mini / Hatchback', maxPassengers: 4, baseFare: 50, ratePerKm: 15, icon: '🚗' },
+    { id: 'sedan', name: 'Sedan (AC)', maxPassengers: 4, baseFare: 70, ratePerKm: 18, icon: '🚘' },
+    { id: 'suv', name: 'SUV / XL (6 Seater)', maxPassengers: 6, baseFare: 120, ratePerKm: 25, icon: '🚐' },
+    { id: 'ev', name: '⚡ EV Green Cab (Eco)', maxPassengers: 4, baseFare: 60, ratePerKm: 16, icon: '⚡' }
+  ]);
+
+  const [settings, setSettings] = useState({
+    baseFare: '50.00',
+    ratePerKm: '15.00',
+    surgeMultiplier: '1.0'
+  });
   
   useEffect(() => {
     if (categories.length > 0 && !selectedTier) {
@@ -321,20 +336,7 @@ const PassengerDashboard = () => {
     reader.readAsDataURL(file);
   };
 
-  // Dynamic Vehicle Categories State
-  const [categories, setCategories] = useState([
-    { id: 'auto', name: '🛺 Auto Rickshaw', maxPassengers: 3, baseFare: 30, ratePerKm: 12, icon: '🛺' },
-    { id: 'hatchback', name: 'Mini / Hatchback', maxPassengers: 4, baseFare: 50, ratePerKm: 15, icon: '🚗' },
-    { id: 'sedan', name: 'Sedan (AC)', maxPassengers: 4, baseFare: 70, ratePerKm: 18, icon: '🚘' },
-    { id: 'suv', name: 'SUV / XL (6 Seater)', maxPassengers: 6, baseFare: 120, ratePerKm: 25, icon: '🚐' },
-    { id: 'ev', name: '⚡ EV Green Cab (Eco)', maxPassengers: 4, baseFare: 60, ratePerKm: 16, icon: '⚡' }
-  ]);
 
-  const [settings, setSettings] = useState({
-    baseFare: '50.00',
-    ratePerKm: '15.00',
-    surgeMultiplier: '1.0'
-  });
 
   // Ride Booking Workflow State
   const [activeRide, setActiveRide] = useState(null);
@@ -1148,7 +1150,7 @@ const PassengerDashboard = () => {
 
   const handleFetchRideHistory = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/passengers/rides?email=${encodeURIComponent(currentUser.email || localStorage.getItem('passengerEmail'))}`);
+      const res = await fetch(`${API_BASE}/api/passengers/rides?email=${encodeURIComponent(localStorage.getItem('passengerEmail'))}`);
       if (res.ok) {
         const data = await res.json();
         setRideHistoryData(data);

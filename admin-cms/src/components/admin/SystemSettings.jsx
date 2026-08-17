@@ -39,7 +39,7 @@ const SystemSettings = ({
             <div className="form-group">
               <label>Base Ride Fare (INR)</label>
               <input 
-                type="number" 
+                type="text" inputMode="decimal"
                 className="input-field" 
                 value={baseFare}
                 onChange={(e) => setBaseFare(e.target.value)} 
@@ -50,7 +50,7 @@ const SystemSettings = ({
             <div className="form-group">
               <label>Driver Min Rate/KM (INR)</label>
               <input 
-                type="number" 
+                type="text" inputMode="decimal"
                 className="input-field" 
                 value={ratePerKm}
                 onChange={(e) => setRatePerKm(e.target.value)}
@@ -61,7 +61,7 @@ const SystemSettings = ({
             <div className="form-group">
               <label>Driver Min Rate/Hour (INR)</label>
               <input 
-                type="number" 
+                type="text" inputMode="decimal"
                 className="input-field" 
                 value={minRatePerHour}
                 onChange={(e) => setMinRatePerHour(e.target.value)}

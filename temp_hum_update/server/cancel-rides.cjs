@@ -1,0 +1,1 @@
+const fs = require('fs'); const file = 'server/data_store.json'; const data = JSON.parse(fs.readFileSync(file, 'utf8')); data.activeRides.forEach(r => { if (r.status === 'Searching') r.status = 'Cancelled'; }); fs.writeFileSync(file, JSON.stringify(data, null, 4)); console.log('Rides cancelled.');

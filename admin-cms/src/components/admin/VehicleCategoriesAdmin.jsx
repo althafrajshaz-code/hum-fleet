@@ -93,7 +93,7 @@ const VehicleCategoriesAdmin = ({
               <div className="form-group" style={{ flex: 1, margin: 0 }}>
                 <label>Base Fare (₹)</label>
                 <input 
-                  type="number" 
+                  type="text" inputMode="decimal"
                   className="input-field" 
                   min="0"
                   step="any"
@@ -105,7 +105,7 @@ const VehicleCategoriesAdmin = ({
               <div className="form-group" style={{ flex: 1, margin: 0 }}>
                 <label>Rate / KM (₹)</label>
                 <input 
-                  type="number" 
+                  type="text" inputMode="decimal"
                   className="input-field" 
                   min="0"
                   step="any"
