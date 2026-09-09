@@ -1,0 +1,1 @@
+const fs = require('fs'); const code = fs.readFileSync('server/index.js', 'utf8'); let stack = []; let line = 1; for(let i=0; i<code.length; i++) { const c=code[i]; if(c==='\n') line++; if(c==='{') stack.push({c, line}); else if(c==='}') stack.pop(); else if(c==='(') stack.push({c, line}); else if(c===')') stack.pop(); } console.log(stack);

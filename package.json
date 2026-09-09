@@ -10,18 +10,25 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@anuradev/capacitor-background-mode": "^8.1.0",
     "@capacitor/android": "^8.5.0",
     "@capacitor/cli": "^8.5.0",
-    "@capacitor/core": "^8.5.0",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/geolocation": "^8.2.2",
+    "@capacitor/local-notifications": "^8.3.1",
     "@capacitor/push-notifications": "^8.1.2",
     "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
     "@react-oauth/google": "^0.13.5",
+    "express": "^5.2.1",
     "firebase": "^12.17.0",
+    "jsdom": "^30.0.1",
     "lucide-react": "^1.26.0",
+    "puppeteer": "^25.9.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "ssh2": "^1.17.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

@@ -1,21 +1,80 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { registerPlugin } from '@capacitor/core';
+const HumFleet = registerPlugin('HumFleet');
+import { setupBackground, enableBackgroundMode, disableBackgroundMode, triggerRideNotification, bringToFront, startRidePoller, stopRidePoller, requestOverlayPermission } from '../utils/background';
 import { useNavigate } from 'react-router-dom';
-import { Power, MapPin, Navigation, Car, AlertTriangle, ShieldCheck, DollarSign, Wallet, FileText, CheckCircle, Camera, X, Coffee, Pause, Play, MessageSquare, Send, Flame, Zap, Award, TrendingUp, Gauge, Compass, Activity, Sparkles, Settings, CreditCard, User, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Sun, Moon, Menu, Power, MapPin, Navigation, Car, AlertTriangle, ShieldCheck, IndianRupee, Wallet, FileText, CheckCircle, Camera, X, Coffee, Pause, Play, MessageSquare, Star, Send, Flame, Zap, Award, TrendingUp, Gauge, Compass, Activity, Sparkles, Settings, CreditCard, User, ChevronRight, Eye, EyeOff, Phone } from 'lucide-react';
 import Button from '../components/Button';
 import './Dashboard.css';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 
-const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
-  ? 'https://hum-fleet-backend.loca.lt'
-  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.protocol !== 'capacitor:')
-    ? 'http://localhost:5000'
-    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://humfleet.xyz';
 
+const getFrontendDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2); 
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+  return R * c;
+};
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
+  const [showMainMenu, setShowMainMenu] = useState(false);
+  const [showDriverHeader, setShowDriverHeader] = useState(false);
+  const [showRidePreferencesModal, setShowRidePreferencesModal] = useState(false);
+  const [hideEarningsAmount, setHideEarningsAmount] = useState(false);
+  const [showEarningsDetails, setShowEarningsDetails] = useState(false);
+  const [invoiceHtml, setInvoiceHtml] = useState(null);
+
+  const generateDriverInvoice = (ride, driverDet) => {
+    const fare = parseFloat(ride.fare || 0);
+    const gst = 0;
+    const commission = 0;
+    const totalCollected = parseFloat(ride.totalCollected || (fare + gst));
+    const driverPayout = fare.toFixed(2);
+    const driverName = driverDet?.name || 'Partner Driver';
+    const driverPhone = driverDet?.phone || '-';
+    const completedDate = ride.completedAt ? new Date(ride.completedAt).toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' }) : '-';
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invoice #HUMF-${String(ride.id).padStart(5,'0')}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#fff;color:#1a1a2e;padding:16px}.inv-box{max-width:540px;margin:0 auto;border:1px solid #e2e8f0;border-radius:14px;padding:20px}.inv-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:2px solid #10b981;margin-bottom:14px}.inv-brand{font-size:18px;font-weight:900;color:#10b981}.inv-id{font-size:11px;color:#64748b;font-weight:700;text-align:right}.inv-title{font-size:14px;font-weight:800;color:#1a1a2e}.sec{margin-bottom:14px}.sec-title{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#10b981;margin-bottom:6px;padding-bottom:3px;border-bottom:1px dashed #d1fae5}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}.lbl{font-size:9px;color:#64748b;font-weight:600}.val{font-size:11px;font-weight:700;color:#1a1a2e}.route-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;margin-bottom:14px}.route-lbl{font-size:8px;font-weight:800;text-transform:uppercase;color:#16a34a;margin-bottom:2px}.route-val{font-size:11px;font-weight:600;margin-bottom:6px;color:#1a1a2e}table{width:100%;border-collapse:collapse}td{padding:5px 0;font-size:11px;border-bottom:1px solid #f1f5f9}td:last-child{text-align:right;font-weight:700}.total td{border-top:2px solid #10b981;border-bottom:none;font-size:13px;font-weight:800;color:#10b981;padding-top:8px}.payout td{border-bottom:none;font-size:12px;font-weight:800;color:#3b82f6}.footer{text-align:center;margin-top:14px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:8px;color:#94a3b8;line-height:1.4}.badge{display:inline-block;padding:2px 7px;border-radius:12px;font-size:8px;font-weight:800;text-transform:uppercase}.cash{background:#fef3c7;color:#92400e;border:1px solid #fde68a}.prepaid{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd}@media print{body{padding:0}.inv-box{border:none}}</style></head><body>
+<div class="inv-box">
+<div class="inv-head"><div class="inv-brand">🚗 HUM Fleet</div><div><div class="inv-title">Trip Invoice</div><div class="inv-id">#HUMF-${String(ride.id).padStart(5,'0')}</div></div></div>
+<div class="sec"><div class="sec-title">Trip Information</div><div class="grid2">
+<div><div class="lbl">Payment</div><div class="val"><span class="badge ${ride.paymentType === 'prepaid' ? 'prepaid' : 'cash'}">${ride.paymentType === 'prepaid' ? '💳 Prepaid' : '💵 Cash'}</span></div></div>
+<div><div class="lbl">Passenger</div><div class="val">${ride.passengerName || '-'}</div></div>
+</div></div>
+<div class="route-box">
+<div class="route-lbl">🟢 Pickup</div><div class="route-val">${ride.pickup || '-'}</div>
+<div class="route-lbl">🔴 Drop-off</div><div class="route-val" style="margin-bottom:0">${ride.dropoff || '-'}</div>
+</div>
+<div class="sec"><div class="sec-title">Driver</div><div class="grid2">
+<div><div class="lbl">Name</div><div class="val">${driverName}</div></div>
+<div><div class="lbl">Phone</div><div class="val">${driverPhone}</div></div>
+</div></div>
+<div class="sec"><div class="sec-title">Fare Breakdown</div>
+<table>
+<tr><td>Trip Fare</td><td>₹${fare.toFixed(2)}</td></tr>
+
+<tr class="total"><td>Total Collected</td><td>₹${totalCollected.toFixed(2)}</td></tr>
+
+<tr class="payout"><td>💰 Your Payout</td><td>₹${driverPayout}</td></tr>
+</table></div>
+<div class="footer">HUM Fleet Pvt Ltd • System-generated invoice • For disputes contact admin support</div>
+</div>
+</body></html>`;
+
+    setInvoiceHtml(html);
+  };
+
   const [activeMenu, setActiveMenu] = useState('dispatches'); // 'dispatches' | 'wallet' | 'messages' | 'settings'
+
   const [settingsSubTab, setSettingsSubTab] = useState('profile'); // 'documents' | 'profile' | 'bank' | 'vehicles'
   const [earningsPeriod, setEarningsPeriod] = useState('daily'); // 'daily' | 'weekly' | 'monthly'
   const [homeEarnings, setHomeEarnings] = useState(null);
@@ -114,7 +173,40 @@ const DriverDashboard = () => {
 
   // Real-time Active Ride States
   const [incomingRide, setIncomingRide] = useState(null);
+  const declinedRideIdsRef = useRef([]);
+  const [isAccepting, setIsAccepting] = useState(false);
   const [currentRide, setCurrentRide] = useState(null);
+
+  const getRideRate = (ride) => {
+    if (!ride) return parseFloat(driverDetails?.ratePerKm || 15.00);
+    const catName = ride.category || ride.vehicleCategory;
+    if (availableCategories && availableCategories.length > 0) {
+      const cat = availableCategories.find(c => c.name === catName);
+      if (cat && cat.ratePerKm !== undefined) return parseFloat(cat.ratePerKm);
+    }
+    return parseFloat(driverDetails?.ratePerKm || 15.00);
+  };
+
+  const getPlatformFee = (fare) => {
+  const f = parseFloat(fare || 0);
+  if (f >= 500) return 15;
+  if (f >= 200) return 10;
+  return 5;
+};
+
+  const getRideBase = (ride) => {
+    if (!ride) return 50.00;
+    const catName = ride.category || ride.vehicleCategory;
+    if (availableCategories && availableCategories.length > 0) {
+      const cat = availableCategories.find(c => c.name === catName);
+      if (cat && cat.baseFare !== undefined) return parseFloat(cat.baseFare);
+    }
+    let b = 50.00;
+    if (catName && catName.includes('Auto')) b = 30.00;
+    if (catName && catName.includes('SUV')) b = 70.00;
+    return b;
+  };
+
 
   // Pre-booked / scheduled ride states
   const [availablePreBooked, setAvailablePreBooked] = useState([]);
@@ -124,6 +216,7 @@ const DriverDashboard = () => {
   const [showRating, setShowRating] = useState(false);
   const [ratingValue, setRatingValue] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
+  const [showRatingStep2, setShowRatingStep2] = useState(false);
 
   // Travel Route / En-Route Destination states
   const [travelRoute, setTravelRoute] = useState(null); // The currently set route from the server
@@ -131,6 +224,8 @@ const DriverDashboard = () => {
   const [routeInputFocused, setRouteInputFocused] = useState(false);
   const [nominatimResults, setNominatimResults] = useState([]);
   const [isGeoSearching, setIsGeoSearching] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapModalTarget, setMapModalTarget] = useState(null);
   const nominatimTimerRef = useRef(null);
   
   // Real-time GPS Trip Meter State
@@ -141,6 +236,24 @@ const DriverDashboard = () => {
   const [showEndTripSummary, setShowEndTripSummary] = useState(false);
   const [collectCash, setCollectCash] = useState(true);
   const [ridePin, setRidePin] = useState('');
+  const [waitTimerSeconds, setWaitTimerSeconds] = useState(0);
+
+  // Live Waiting Timer Effect
+  useEffect(() => {
+    let interval;
+    if (currentRide && currentRide.status === 'Arrived' && currentRide.arrivedAt) {
+      interval = setInterval(() => {
+        const arrived = new Date(currentRide.arrivedAt).getTime();
+        const now = new Date().getTime();
+        setWaitTimerSeconds(Math.floor((now - arrived) / 1000));
+      }, 1000);
+    } else {
+      setWaitTimerSeconds(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [currentRide]);
   const [queuedRide, setQueuedRide] = useState(null);
 
   // Daily face verification states
@@ -177,6 +290,10 @@ const DriverDashboard = () => {
         if (data.profilePic) setDriverProfilePic(data.profilePic);
         if (data.acceptedCategories) setAcceptedCategories(data.acceptedCategories);
         if (data.acceptsIntercity !== undefined) setAcceptsIntercity(data.acceptsIntercity);
+        if (data.isOnline !== undefined) setIsOnline(data.isOnline);
+        if (data.isPaused !== undefined) setIsPaused(data.isPaused);
+        if (data.isOnline !== undefined) setIsOnline(data.isOnline);
+        if (data.isPaused !== undefined) setIsPaused(data.isPaused);
         if (initialLoad) {
           setWallet(data.wallet || { balance: 0, pending: 0, hold: 0, activePenalty: 0, totalDue: 0, toBePaid: 0, settlementPending: false, penaltyDetails: [] });
         }
@@ -264,8 +381,8 @@ const DriverDashboard = () => {
       return;
     }
 
-    if (!newVehicleDocs.rc || !newVehicleDocs.pollution || !newVehicleDocs.insurance || !newVehicleDocs.fitness) {
-      alert('Please upload all 4 required compliance documents (RC, Pollution, Insurance, Fitness).');
+    if (!newVehicleDocs.rc || !newVehicleDocs.insurance) {
+      alert('Please upload all 2 required compliance documents (RC, Insurance).');
       return;
     }
     
@@ -536,8 +653,11 @@ const DriverDashboard = () => {
     if ('Notification' in window && Notification.permission !== 'granted') {
       Notification.requestPermission();
     }
+    enableBackgroundMode();
     registerPushNotifications();
     const email = localStorage.getItem('driverEmail');
+    startRidePoller(email); // native Android background poller — works even when app is minimized
+    requestOverlayPermission(); // Ensure we can draw over other apps for maximum visibility
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(async (position) => {
         try {
@@ -549,7 +669,7 @@ const DriverDashboard = () => {
         } catch (err) {
           console.error('Error updating location:', err);
         }
-      });
+      }, undefined, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
     } else {
       fetch(`${API_BASE}/api/drivers/location`, {
         method: 'POST',
@@ -566,6 +686,8 @@ const DriverDashboard = () => {
   const goOffline = () => {
     setIsOnline(false);
     setIsPaused(false);
+    disableBackgroundMode();
+    stopRidePoller(); // stop native Android background poller
     const email = localStorage.getItem('driverEmail');
     fetch(`${API_BASE}/api/drivers/location`, {
       method: 'POST',
@@ -585,6 +707,20 @@ const DriverDashboard = () => {
       });
     } catch (err) {
       console.error('Error toggling rest break:', err);
+    }
+  };
+
+  const fetchHomeEarnings = async () => {
+    const email = localStorage.getItem('driverEmail');
+    if (!email) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/drivers/earnings?email=${encodeURIComponent(email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setHomeEarnings(data);
+      }
+    } catch (err) {
+      console.error("Error fetching home earnings:", err);
     }
   };
 
@@ -614,6 +750,18 @@ const DriverDashboard = () => {
       }
     } catch (err) {
       console.error("Error fetching settings:", err);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/vehicle-categories`);
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableCategories(data.categories || data);
+      }
+    } catch (err) {
+      console.error("Error fetching vehicle categories:", err);
     }
   };
 
@@ -743,7 +891,7 @@ const DriverDashboard = () => {
   useEffect(() => {
     if (!showDriverTripChat || !currentRide) return;
     fetchDriverTripChatMessages();
-    const interval = setInterval(fetchDriverTripChatMessages, 2000);
+    const interval = setInterval(fetchDriverTripChatMessages, 1000);
     return () => clearInterval(interval);
   }, [showDriverTripChat, currentRide]);
 
@@ -792,6 +940,8 @@ const DriverDashboard = () => {
 
   // Sync liveGpsDistance with backend during active ride
   const latestLiveGpsDistance = useRef(0);
+  // Ref to track which ride ID we already fired a notification for — never goes stale in closures
+  const notifiedRideIdRef = useRef(null);
   useEffect(() => {
     latestLiveGpsDistance.current = liveGpsDistance;
   }, [liveGpsDistance]);
@@ -819,13 +969,11 @@ const DriverDashboard = () => {
     }
     fetchStatus(true);
     // Fetch home earnings summary
-    fetch(`${API_BASE}/api/drivers/earnings?email=${encodeURIComponent(email)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setHomeEarnings(d); })
-      .catch(() => {});
+    fetchHomeEarnings();
     fetchWallet();
     fetchAdminMessages();
     fetchSystemSettings();
+    fetchCategories();
     fetchTravelRoute();
   }, []);
 
@@ -909,16 +1057,27 @@ const DriverDashboard = () => {
     }, 400);
   };
 
-  // Poll status of driver profile updates & admin messages
+  // Poll status of driver profile updates & admin messages (Optimized to reduce lag)
   useEffect(() => {
-    const interval = setInterval(() => {
+    // Regular updates (12s)
+    const slowInterval = setInterval(() => {
       fetchStatus(false);
       fetchWallet();
+      fetchHomeEarnings();
       fetchAdminMessages();
+    }, 12000);
+
+    // Infrequent updates (45s)
+    const verySlowInterval = setInterval(() => {
       fetchSystemSettings();
+      fetchCategories();
       fetchTravelRoute();
-    }, 3000);
-    return () => clearInterval(interval);
+    }, 45000);
+
+    return () => {
+      clearInterval(slowInterval);
+      clearInterval(verySlowInterval);
+    };
   }, []);
 
   const fetchAvailablePreBooked = async () => {
@@ -958,7 +1117,7 @@ const DriverDashboard = () => {
         const data = await response.json();
         if (data) {
           if (data.current) setCurrentRide(data.current);
-          else setCurrentRide(null);
+          else if (!showRating) setCurrentRide(null);
           
           if (data.queued && data.queued.length > 0) setQueuedRide(data.queued[0]);
           else setQueuedRide(null);
@@ -993,8 +1152,8 @@ const DriverDashboard = () => {
           driverName: driverDetails.name,
           driverPhone: driverDetails.phone,
           driverEmail: driverDetails.email,
-          vehicleModel: driverDetails.activeVehicle?.model || 'Tata Nexon',
-          vehiclePlate: driverDetails.activeVehicle?.plateNo || 'DL 3C AY 4567'
+          vehicleModel: (driverDetails.manufacturer ? driverDetails.manufacturer + ' ' + driverDetails.model : driverDetails.model) || 'Unknown Vehicle',
+          vehiclePlate: driverDetails.plate || 'Unknown Plate'
         })
       });
 
@@ -1042,6 +1201,7 @@ const DriverDashboard = () => {
   };
 
   useEffect(() => {
+    setupBackground();
     fetchDriverActiveRide();
     fetchAvailablePreBooked();
     fetchMyScheduledTrips();
@@ -1074,52 +1234,44 @@ const DriverDashboard = () => {
     }
 
     const checkActiveRequests = async () => {
+      // Always poll for updates to the current active/queued ride (e.g. if passenger cancels)
+      if (isOnline) {
+        fetchDriverActiveRide();
+      }
+
       try {
         const email = localStorage.getItem('driverEmail');
         const response = await fetch(`${API_BASE}/api/rides/active?email=${encodeURIComponent(email)}`);
         if (response.ok) {
           const data = await response.json();
           if (data) {
-            // New incoming ride detected!
-            if (!incomingRide || incomingRide.id !== data.id) {
-              setIncomingRide(data);
-              
-              // Voice synthesis "You have a ride"
-              if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance("You have a ride.");
-                const voices = window.speechSynthesis.getVoices();
-                // Try to find a female voice
-                const femaleVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Google UK English Female') || v.name.includes('Samantha') || v.name.includes('Victoria'));
-                if (femaleVoice) {
-                  utterance.voice = femaleVoice;
-                }
-                window.speechSynthesis.speak(utterance);
-              }
+            if (declinedRideIdsRef.current.includes(data.id)) {
+              return; // Driver explicitly declined this ride in the UI, don't show it again
+            }
+            // Always keep React state in sync with latest ride data
+            setIncomingRide(data);
 
-              // Play a notifying sound
+            // Only fire notifications ONCE per unique ride ID — use ref so closure never goes stale
+            if (notifiedRideIdRef.current !== data.id) {
+              notifiedRideIdRef.current = data.id;
+
+              // Show Android incoming-call-style notification (or heads-up if app is in foreground)
+              // This is the ONLY notification path — no duplicate speech/beep/OS notification
               try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
-                gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-                oscillator.start(audioCtx.currentTime);
-                oscillator.stop(audioCtx.currentTime + 0.5);
-              } catch(e) { console.error('AudioContext error', e); }
-
-              // Show desktop popup notification
-              if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('New Ride Request!', {
-                  body: `Passenger is requesting a ride to ${data.dropoff || 'their destination'}. Open the app to accept!`,
-                  icon: '/favicon.ico'
-                });
+                triggerRideNotification(
+                  data.pickup  || 'Current Location',
+                  data.dropoff || 'their destination',
+                  data.fare    || ''
+                );
+              } catch(e) {
+                console.log("Capacitor notification error", e);
               }
             }
           } else {
+            // No active ride — reset so next ride triggers a fresh notification
+            if (notifiedRideIdRef.current !== null) {
+              notifiedRideIdRef.current = null;
+            }
             setIncomingRide(null);
           }
         }
@@ -1128,28 +1280,60 @@ const DriverDashboard = () => {
       }
     };
 
-    const interval = setInterval(checkActiveRequests, 2000);
+    const interval = setInterval(checkActiveRequests, 3000);
     return () => clearInterval(interval);
   }, [isOnline, currentRide, showRating]);
 
   // Sync maps on driver coordinates change
   useEffect(() => {
     if (driverDetails && isOnline) {
-      const mapIframe = document.getElementById('driver-map-iframe');
+      const mapIframe = document.getElementById('map-iframe');
       if (mapIframe && mapIframe.contentWindow) {
         mapIframe.contentWindow.postMessage({
-          type: 'SET_DRIVER_LOCATION',
+          type: 'UPDATE_CAR_LOCATION',
           lat: driverDetails.lat || 28.6304,
-          lng: driverDetails.lng || 77.2177
+          lng: driverDetails.lng || 77.2177,
+          center: true
         }, '*');
       }
     }
   }, [driverDetails, isOnline]);
 
+  // Listen for Leaflet Map location messages for Destination Filter
+  useEffect(() => {
+    const handleMapMessage = (event) => {
+      if (event.data && event.data.type === 'MAP_LOCATION_SELECTED') {
+        if (mapModalTarget === 'destination') {
+          const email = localStorage.getItem('driverEmail');
+          if (email) {
+            fetch(`${API_BASE}/api/drivers/travel-route`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, destination: event.data.address, destinationCoords: { lat: event.data.lat, lng: event.data.lng } })
+            }).then(r => r.json()).then(data => {
+              if (data.travelRoute) setTravelRoute(data.travelRoute);
+            }).catch(e => console.error(e));
+          }
+        }
+      }
+    };
+    window.addEventListener('message', handleMapMessage);
+    return () => window.removeEventListener('message', handleMapMessage);
+  }, [mapModalTarget]);
 
+
+
+  const handleDeclineRide = () => {
+    if (!incomingRide) return;
+    if (!declinedRideIdsRef.current.includes(incomingRide.id)) {
+      declinedRideIdsRef.current.push(incomingRide.id);
+    }
+    setIncomingRide(null);
+  };
 
   const handleAcceptRide = async () => {
     if (!incomingRide) return;
+    setIsAccepting(true);
 
     // Frontend guard: block cash trip acceptance if balance > ₹1500
     const CASH_LOCK_THRESHOLD = 1500;
@@ -1171,8 +1355,8 @@ You can only accept prepaid trips until your balance is cleared.`);
           driverName: driverDetails.name,
           driverPhone: driverDetails.phone,
           driverEmail: driverDetails.email,
-          vehicleModel: driverDetails.activeVehicle?.model || 'Tata Nexon',
-          vehiclePlate: driverDetails.activeVehicle?.plateNo || driverDetails.activeVehicle?.plate || 'DL 3C AY 4567'
+          vehicleModel: (driverDetails.manufacturer ? driverDetails.manufacturer + ' ' + driverDetails.model : driverDetails.model) || 'Unknown Vehicle',
+          vehiclePlate: driverDetails.plate || 'Unknown Plate'
         })
       });
       const data = await response.json();
@@ -1185,7 +1369,7 @@ You can only accept prepaid trips until your balance is cleared.`);
           setCurrentRide(data);
           alert("Trip accepted! You are now navigating to the passenger pickup point.");
         }
-        fetchData();
+        fetchDriverActiveRide();
       } else if (response.status === 403) {
         const errData = await response.json();
         alert(`⚠️ ${errData.message}`);
@@ -1194,6 +1378,8 @@ You can only accept prepaid trips until your balance is cleared.`);
       }
     } catch (err) {
       console.error("Error accepting ride request:", err);
+    } finally {
+      setIsAccepting(false);
     }
   };
 
@@ -1214,9 +1400,27 @@ You can only accept prepaid trips until your balance is cleared.`);
     }
   };
 
+  const handleArrive = async () => {
+    if (!currentRide) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/rides/${currentRide.id}/arrive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentRide(data);
+      } else {
+        alert('Failed to update arrival status.');
+      }
+    } catch (err) {
+      console.error('Error arriving:', err);
+    }
+  };
+
   const handleVerifyPin = async () => {
-    if (!ridePin || ridePin.length !== 6) {
-      alert("Please enter a valid 6-digit PIN.");
+    if (!ridePin || ridePin.length < 4) {
+      alert("Please enter a valid Customer ID.");
       return;
     }
     try {
@@ -1228,16 +1432,22 @@ You can only accept prepaid trips until your balance is cleared.`);
       const data = await response.json();
       if (response.ok) {
         alert("PIN verified successfully! Trip is now in progress.");
-        fetchData();
+        fetchDriverActiveRide();
         setRidePin('');
       } else {
-        alert(data.error || "Invalid PIN. Please ask the passenger for their 6-digit ID.");
+        alert(data.error || "Invalid ID. Please ask the passenger for their Customer ID.");
       }
     } catch (err) {
       console.error('Error verifying PIN:', err);
       alert('Failed to verify PIN. Please check your connection.');
     }
   };
+
+  const handleDownloadInvoice = () => {
+    if (!currentRide) return;
+    generateDriverInvoice(currentRide, driverDetails);
+  };
+
 
   const handleCompleteRide = async (collectCashVal = true) => {
     if (!currentRide) return;
@@ -1262,22 +1472,11 @@ You can only accept prepaid trips until your balance is cleared.`);
 
   const handleSubmitRating = async () => {
     if (!currentRide) return;
-    try {
-      await fetch(`${API_BASE}/api/rides/${currentRide.id}/rate-passenger`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          rating: ratingValue,
-          comment: ratingComment
-        })
-      });
-    } catch (err) {
-      console.error("Failed to submit passenger rating:", err);
-    }
+    
+    const rideId = currentRide.id;
+    const currentRating = ratingValue;
+    const currentComment = ratingComment;
 
-    alert('Passenger feedback registered successfully!');
     if (queuedRide) {
       setCurrentRide(queuedRide);
       setQueuedRide(null);
@@ -1289,6 +1488,22 @@ You can only accept prepaid trips until your balance is cleared.`);
     setRatingValue(5);
     setRatingComment('');
     fetchWallet();
+    fetchHomeEarnings();
+
+    try {
+      await fetch(`${API_BASE}/api/rides/${rideId}/rate-passenger`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          rating: currentRating,
+          comment: currentComment
+        })
+      });
+    } catch (err) {
+      console.error("Failed to submit passenger rating:", err);
+    }
   };
 
   if (loading) {
@@ -1362,25 +1577,296 @@ You can only accept prepaid trips until your balance is cleared.`);
 
   return (
     <div className="dashboard-page">
-      <div className="dashboard-container container">
+
+{/* Incoming request block */}
+              {isOnline && incomingRide && !showRating && (
+                <div className="incoming-request earnings-scroll-container" style={{
+                  position: 'fixed',
+                  top: '24px',
+                  bottom: 'auto',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  zIndex: 999999, background: "#ffffff", color: "#000000",
+                  width: '92%',
+                  maxWidth: '420px',
+                  maxHeight: '85vh',
+                  overflowY: 'auto',
+                  WebkitOverflowScrolling: 'touch',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                  boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                  border: '2px solid var(--primary)'
+                }}>
+                  <div className="request-pulse"></div>
+                  <h3>New Ride Request!</h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                    {incomingRide.matchType === 'en-route' ? (
+                      <div style={{ background: '#3b82f6', color: '#fff', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Navigation size={12} /> En-Route Match
+                      </div>
+                    ) : (
+                      <div style={{ background: '#10b981', color: '#fff', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <MapPin size={12} /> Nearby Pickup ({incomingRide.distance} KM)
+                      </div>
+                    )}
+                    {incomingRide.isIntercity && (
+                      <div style={{ background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>
+                        Intercity Ride (+₹250/₹300 Base)
+                      </div>
+                    )}
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '3px 10px',
+                      borderRadius: '20px',
+                      fontSize: '10px',
+                      fontWeight: '800',
+                      textTransform: 'uppercase',
+                      background: (incomingRide.paymentType === 'prepaid') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.12)',
+                      color: (incomingRide.paymentType === 'prepaid') ? '#10b981' : '#3b82f6',
+                      border: `1px solid ${(incomingRide.paymentType === 'prepaid') ? 'rgba(16,185,129,0.3)' : 'rgba(59,130,246,0.3)'}`
+                    }}>
+                      {(incomingRide.paymentType === 'prepaid') ? '✓ Prepaid Trip' : '💵 Cash Trip'}
+                    </span>
+                  </div>
+
+                  <div className="request-details">
+                    <div className="req-row"><User size={16}/> <strong>Passenger:</strong> {incomingRide.passengerName || 'Guest'}</div>
+                    <div className="req-row"><MapPin size={16}/> <strong>From:</strong> {incomingRide.pickup ? incomingRide.pickup.split(',')[0] : ''}</div>
+                    <div className="req-row"><Navigation size={16}/> <strong>To:</strong> {incomingRide.dropoff ? incomingRide.dropoff.split(',')[0] : ''}</div>
+                    
+                    <div style={{ borderTop: '1px solid #e5e7eb', marginTop: '8px', paddingTop: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px', color: '#000000' }}>
+                      <div><strong>Passenger Rating:</strong> <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>★ {incomingRide.passengerRating || '5.0'}</span></div>
+                      <div><strong>Total Distance:</strong> {incomingRide.totalKm || 8.0} KM</div>
+                      </div>
+                      
+                      <div className="req-price est-price" style={{ marginTop: '8px', color: '#000000', display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #e5e7eb', paddingTop: '8px' }}>
+                        <span style={{ fontSize: '15px', fontWeight: '800' }}>TRIP FARE:</span>
+                        <span style={{ fontSize: '18px', fontWeight: '900' }}>INR {(parseFloat(incomingRide.fare) + parseFloat(incomingRide.driverTip || 0)).toFixed(2)}</span>
+                      </div>
+                  </div>
+
+                  {parseFloat(wallet.toBePaid || 0) > 1500 && incomingRide.paymentType === 'cash' ? (
+                    <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#ef4444', padding: '10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', marginTop: '10px' }}>
+                      🚫 Cannot accept cash trips until ₹1,500 pending dues are settled.
+                    </div>
+                  ) : (
+                    <div className="request-actions">
+                      <Button variant="primary" className="full-width" onClick={handleAcceptRide} disabled={isAccepting}>{isAccepting ? 'Accepting...' : 'Accept'}</Button>
+                      <Button variant="outline" className="full-width" style={{ color: '#ef4444', borderColor: '#ef4444' }} onClick={handleDeclineRide}>Decline</Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              
+
+      <div className="dashboard-container">
         <div className="dashboard-sidebar glass-card" style={{ zIndex: 10 }}>
           
+
+
+              {/* Active ride card — navigate/arrive/verify/in-progress (shown when NOT in End Trip Summary) */}
+              {isOnline && currentRide && !showRating && !showEndTripSummary && (
+                <div className="animate-fade-in delay-100 active-ride-card" style={{ margin: '16px -8px', width: 'calc(100% + 16px)', background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', maxHeight: '60vh', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <style>{`
+                    .active-ride-card::-webkit-scrollbar { display: none; }
+                  `}</style>
+                  {currentRide.status === 'Accepted' ? (
+                    <div style={{ textAlign: 'center', padding: '24px', background: '#ffffff', borderRadius: '16px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', border: '1px solid #e2e8f0' }}>
+                      <h3 style={{ color: '#10b981', marginBottom: '10px', fontSize: '18px', fontWeight: '900' }}>Navigating to Pickup</h3>
+                      <p style={{ fontSize: '13px', color: '#4b5563', marginBottom: '16px', fontWeight: '600' }}>
+                        Please drive to the passenger's pickup location: <br/><strong style={{ color: '#000', fontSize: '14px', display: 'block', marginTop: '6px' }}>{currentRide.pickup}</strong>
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        <Button variant="primary" onClick={() => {
+                          const dest = currentRide.pickupCoords;
+                          const label = currentRide.pickup;
+                          if (dest && dest.lat) {
+                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lng}&travelmode=driving`, '_blank');
+                          } else if (label) {
+                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(label)}&travelmode=driving`, '_blank');
+                          }
+                        }} style={{ width: '100%', background: '#10b981', color: 'white', padding: '18px', fontSize: '18px', fontWeight: '900', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 4px 15px rgba(16,185,129,0.3)' }}>
+                          <Navigation size={22} /> NAVIGATE TO PICKUP
+                        </Button>
+                        <Button variant="outline" onClick={handleArrive} style={{ width: '100%', borderColor: '#10b981', color: '#10b981', padding: '16px', fontSize: '16px', fontWeight: '900', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.05)' }}>
+                          I HAVE ARRIVED
+                        </Button>
+                      </div>
+                    </div>
+                  ) : currentRide.status === 'Arrived' ? (
+                    <div style={{ textAlign: 'center', padding: '24px', background: '#ffffff', borderRadius: '16px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', border: '1px solid #e2e8f0' }}>
+                      <h3 style={{ color: '#3b82f6', marginBottom: '10px', fontSize: '18px', fontWeight: '900' }}>Verify Passenger</h3>
+                      <p style={{ fontSize: '13px', color: '#4b5563', marginBottom: '16px', fontWeight: '600' }}>
+                        Ask the passenger ({currentRide.passengerName || 'Passenger'}) for their Customer ID to verify their identity and start the trip.
+                      </p>
+                      <input 
+                        type="text" 
+                        value={ridePin} 
+                        onChange={(e) => setRidePin(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        placeholder="ENTER CUSTOMER ID" 
+                        style={{ fontSize: '20px', fontWeight: '900', letterSpacing: '4px', textAlign: 'center', width: '100%', padding: '16px', borderRadius: '12px', border: '3px solid #3b82f6', background: '#f8fafc', color: '#0f172a', marginBottom: '16px' }}
+                      />
+                      <Button variant="primary" className="full-width" onClick={handleVerifyPin} style={{ background: '#3b82f6', color: 'white', padding: '18px', fontSize: '18px', fontWeight: '900', borderRadius: '12px', boxShadow: '0 4px 15px rgba(59,130,246,0.3)' }} disabled={ridePin.length < 4}>
+                        Verify & Start Trip
+                      </Button>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '24px', background: '#ffffff', borderRadius: '16px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', border: '1px solid #e2e8f0' }}>
+                      <h3 style={{ color: '#3b82f6', textAlign: 'center', marginBottom: '8px' }}>Trip in Progress</h3>
+                      {currentRide.isIntercity && (
+                        <div style={{ background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px', textAlign: 'center', width: '100%' }}>
+                          Intercity Route Active (+₹250/₹300 Base)
+                        </div>
+                      )}
+                      {/* LIVE RUNNING GPS TAXIMETER CARD */}
+
+
+                      {/* UBER STYLE PASSENGER INFO CARD */}
+                      <div style={{ width: '100%', background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: '16px', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--bg-main)', padding: '2px', overflow: 'hidden', border: '2px solid #3b82f6' }}>
+                            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(currentRide.passengerName || 'Passenger')}&background=3b82f6&color=fff`} alt="Passenger Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                          </div>
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-main)' }}>{currentRide.passengerName || 'Customer'}</div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Star size={14} color="#f59e0b" fill="#f59e0b" /> {currentRide.passengerRating || '5.0'}
+                            </div>
+                          </div>
+                          <Button variant="outline" style={{ borderRadius: '50%', width: '42px', height: '42px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderColor: '#3b82f6', color: '#3b82f6' }} onClick={() => setShowDriverTripChat(true)}>
+                            <MessageSquare size={18} />
+                          </Button>
+                          <Button variant="outline" style={{ borderRadius: '50%', width: '42px', height: '42px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderColor: '#10b981', color: '#10b981' }} onClick={() => alert(`Calling passenger at ${currentRide.passengerPhone || '+91 XXXX'}...`)}>
+                            <Phone size={18} />
+                          </Button>
+                        </div>
+                        
+                        <div style={{ height: '1px', background: 'rgba(59,130,246,0.15)', margin: '4px 0' }}></div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                            <Navigation size={16} color="#3b82f6" style={{ marginTop: '2px' }} />
+                            <div>
+                              <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '2px' }}>DROP-OFF</div>
+                              <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{['Accepted', 'Arrived'].includes(currentRide.status) ? <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Hidden until PIN Verified</span> : currentRide.dropoff}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ borderTop: '1px dashed rgba(59, 130, 246, 0.2)', marginTop: '4px', paddingTop: '12px', color: 'var(--text-main)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>TRIP FARE:</span>
+                          <span style={{ fontSize: '18px', fontWeight: '900', color: '#10b981' }}>₹{(parseFloat(currentRide.fare) + parseFloat(currentRide.driverTip || 0)).toFixed(2)}</span>
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
+                        <Button 
+                          variant="outline"
+                          onClick={() => {
+                            const dest = ['Accepted', 'Arrived'].includes(currentRide.status) ? currentRide.pickupCoords : currentRide.dropoffCoords;
+                            const label = ['Accepted', 'Arrived'].includes(currentRide.status) ? currentRide.pickup : currentRide.dropoff;
+                            if (dest && dest.lat) {
+                              window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lng}&travelmode=driving`, '_blank');
+                            } else if (label) {
+                              window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(label)}&travelmode=driving`, '_blank');
+                            } else {
+                              alert('Location coordinates not available for navigation.');
+                            }
+                          }}
+                          style={{ width: '100%', background: '#8b5cf6', color: 'white', padding: '18px', fontSize: '18px', fontWeight: '900', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 4px 15px rgba(139,92,246,0.3)', border: 'none' }}
+                        >
+                          <Navigation size={22} /> NAVIGATE TO DROP-OFF
+                        </Button>
+                        
+                        <Button variant="primary" className="full-width" onClick={() => setShowEndTripSummary(true)} style={{ background: '#3b82f6', color: 'white', padding: '18px', fontSize: '18px', fontWeight: '900', borderRadius: '12px', boxShadow: '0 4px 15px rgba(59,130,246,0.3)' }}>
+                          COMPLETE RIDE
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+
+
+
           {/* DRIVER PROFILE & ONLINE STATUS CARD */}
-          <div className="driver-header-card" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            padding: '18px 14px',
-            background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a5f 100%)',
-            border: '1px solid rgba(99, 102, 241, 0.4)',
+          {currentRide ? (
+            <>
+              {/* Compact Toggle Button shown during active trip */}
+              <button
+                onClick={() => setShowDriverHeader(!showDriverHeader)}
+                style={{
+                  width: '100%',
+                  marginBottom: '10px',
+                  background: showDriverHeader ? 'rgba(16,185,129,0.12)' : 'var(--bg-card)',
+                  border: '1px solid ' + (showDriverHeader ? 'rgba(16,185,129,0.4)' : 'var(--border)'),
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  color: 'var(--text-main)',
+                  fontSize: '13px',
+                  fontWeight: '700'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--primary)', flexShrink: 0 }}>
+                    {driverProfilePic
+                      ? <img src={driverProfilePic} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 'bold', fontSize: '13px' }}>{(driverDetails?.name || 'D').charAt(0)}</div>
+                    }
+                  </div>
+                  <span>{driverDetails?.name || 'Driver'}</span>
+                  <span style={{ fontSize: '11px', color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '2px 8px', borderRadius: '8px', fontWeight: '800' }}>
+                    ₹{homeEarnings?.daily?.net ?? '0.00'} today
+                  </span>
+                </div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '16px' }}>{showDriverHeader ? '▲' : '▼'}</span>
+              </button>
+
+              {showDriverHeader && (
+          <div className="driver-header-card" style={{ padding: "18px 14px",
+            position: 'relative',
+            background: isOnline ? (theme === 'light' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(24, 24, 27, 0.7)') : 'var(--bg-card)',
+            backdropFilter: isOnline ? 'blur(10px)' : 'none',
+            border: 'none',
             borderRadius: '16px',
             marginBottom: '16px',
-            boxShadow: '0 8px 32px rgba(99, 102, 241, 0.2)'
+            boxShadow: 'var(--shadow-md)',
+            transition: 'all 0.3s ease'
           }}>
+
+            {/* Logo on Left */}
+            <div style={{
+              position: 'absolute',
+              top: '18px',
+              left: '14px',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              border: '2px solid var(--border)'
+            }}>
+              <img src="/hum_fleet_official_logo.jpg" alt="HUM Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+
+
+
             {/* 1. CENTERED DRIVER PROFILE SECTION */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '8px', padding: '6px 0' }}>
               {/* Centered Profile Avatar */}
-              <div style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', border: '3px solid rgba(255,255,255,0.7)', background: '#1e1b4b', boxShadow: '0 0 0 4px rgba(255,255,255,0.12)', margin: '0 auto' }}>
+              <div style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--primary)', background: 'var(--bg-main)', boxShadow: '0 0 0 4px var(--bg-card)', margin: '0 auto' }}>
                 {driverProfilePic ? (
                   <img src={driverProfilePic} alt="Driver Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
@@ -1388,29 +1874,15 @@ You can only accept prepaid trips until your balance is cleared.`);
                     {(driverDetails?.name || 'D').charAt(0)}
                   </div>
                 )}
-                <label 
-                  title="Change Profile Picture"
-                  style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', opacity: 0, transition: 'opacity 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}
-                  onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
-                  onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
-                >
-                  <Camera size={18} />
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={(e) => handleUploadProfilePic(e.target.files[0])} 
-                    style={{ display: 'none' }} 
-                  />
-                </label>
+
               </div>
 
               {/* Centered Driver Name & Rating Badge */}
               <div>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#ffffff' }}>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--text-main)' }}>
                   {driverDetails?.name || 'Partner Driver'}
                 </h2>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '4px' }}>
-                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.55)' }}>HUM Fleet Partner</span>
                   <span style={{ background: 'rgba(251, 191, 36, 0.2)', border: '1px solid rgba(251, 191, 36, 0.5)', color: '#fbbf24', fontSize: '11px', fontWeight: '800', borderRadius: '12px', padding: '1px 8px' }}>
                     ★ {driverDetails?.rating || '5.0'} Rating
                   </span>
@@ -1429,34 +1901,95 @@ You can only accept prepaid trips until your balance is cleared.`);
               </div>
             </div>
             
-            {/* TODAY'S EARNINGS CARD — ABOVE GO ONLINE */}
-            <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', padding: '12px 14px' }}>
-              <div style={{ fontSize: '10px', fontWeight: '800', color: 'rgba(16,185,129,0.7)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '8px' }}>📅 Today's Earnings</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '18px', fontWeight: '800', color: '#10b981' }}>₹{homeEarnings?.daily?.net ?? '0.00'}</div>
-                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '1px' }}>Net Earned</div>
-                </div>
-                <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.08)', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div style={{ fontSize: '18px', fontWeight: '800', color: '#f59e0b' }}>₹{homeEarnings?.daily?.gross ?? '0.00'}</div>
-                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '1px' }}>Gross</div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '18px', fontWeight: '800', color: '#3b82f6' }}>{homeEarnings?.daily?.count ?? 0}</div>
-                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '1px' }}>Trips</div>
-                </div>
+            {/* ACTION BUTTONS */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '16px', zIndex: 20 }}>
+                {/* HAMBURGER MENU BUTTON */}
+                <button onClick={() => setShowMainMenu(!showMainMenu)} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Menu size={20} /></button>
+
+                {/* THEME TOGGLE BUTTON */}
+                <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}</button>
+
+                {/* RIDE PREFERENCES BUTTON */}
+                <button onClick={() => setShowRidePreferencesModal(true)} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Settings size={20} /></button>
+
+                {/* DUES / WALLET BUTTON */}
+                
+
+                {/* LOGOUT BUTTON */}
+                <button onClick={() => { localStorage.removeItem('driverAuthenticated'); localStorage.removeItem('driverEmail'); localStorage.removeItem('driverName'); localStorage.removeItem('driverId'); navigate('/driver-login'); }} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '6px', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Power size={20} /></button>
+            </div>
+            {/* TODAY'S EARNINGS COMPACT CARD */}
+            <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '800', color: 'rgba(16,185,129,0.9)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>📅 Today's Earnings</div>
+                <button onClick={() => setHideEarningsAmount(!hideEarningsAmount)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
+                  {hideEarningsAmount ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
               </div>
+              <div style={{ fontSize: '28px', fontWeight: '900', color: '#10b981', textAlign: 'center' }}>
+                {hideEarningsAmount ? '₹****' : `₹${homeEarnings?.daily?.net ?? '0.00'}`}
+              </div>
+
+              {/* Toggle details button */}
+              <button 
+                onClick={() => setShowEarningsDetails(!showEarningsDetails)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', marginTop: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'center', fontWeight: 'bold' }}
+              >
+                {showEarningsDetails ? 'Hide Details ▲' : 'View More Details ▼'}
+              </button>
+
+              {showEarningsDetails && (
+                <div 
+                  className="earnings-scroll-container"
+                  style={{ 
+                    marginTop: '12px', 
+                    paddingTop: '12px', 
+                    borderTop: '1px solid rgba(16,185,129,0.1)',
+                    maxHeight: '160px',
+                    overflowY: 'auto',
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none'
+                  }}
+                >
+                  <style>
+                    {`
+                      .earnings-scroll-container::-webkit-scrollbar {
+                        display: none;
+                      }
+                    `}
+                  </style>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', marginBottom: '12px' }}>
+                    <div style={{ textAlign: 'center', borderRight: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: '#f59e0b' }}>
+                        {hideEarningsAmount ? '₹****' : `₹${homeEarnings?.daily?.gross ?? '0.00'}`}
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '1px' }}>Gross</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: '#3b82f6' }}>
+                        {hideEarningsAmount ? '****' : (homeEarnings?.daily?.count ?? 0)}
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '1px' }}>Trips</div>
+                    </div>
+                  </div>
+                  
+                  {/* VIEW EARNINGS HISTORY BUTTON */}
+                  <button
+                    onClick={() => setShowEarningsHistory(true)}
+                    style={{ width: '100%', padding: '9px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.2s', marginBottom: '12px' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-main)'}
+                  >
+                    <TrendingUp size={13} /> View Earnings History
+                  </button>
+
+                  
+                </div>
+              )}
             </div>
 
-            {/* VIEW EARNINGS HISTORY BUTTON */}
-            <button
-              onClick={() => setShowEarningsHistory(true)}
-              style={{ width: '100%', padding: '9px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.55)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-            >
-              <TrendingUp size={13} /> View Earnings History
-            </button>
+
 
 
             {/* 2. GO ONLINE BUTTON (POSITIONED DIRECTLY DOWN / UNDER THE PROFILE) */}
@@ -1518,92 +2051,135 @@ You can only accept prepaid trips until your balance is cleared.`);
               </Button>
             </div>
             
-            {isOnline && (
-              <div style={{ marginTop: '10px' }}>
-                <Button 
-                  variant="outline" 
-                  style={{ width: '100%', borderColor: '#f59e0b', color: '#f59e0b', fontSize: '13px' }}
-                  onClick={async () => {
-                    try {
-                      const currentEmail = localStorage.getItem('driverEmail');
-                      const res = await fetch(`${API_BASE}/api/rides/nearby?email=${encodeURIComponent(currentEmail)}`);
-                      const rides = await res.json();
-                      if (rides.length > 0) {
-                        alert(`Found ${rides.length} passengers searching for a ride nearby!\nClosest passenger is ${rides[0].distance} KM away.\n(Incoming ride popup will trigger automatically for the nearest passenger)`);
-                      } else {
-                        alert("No passengers are currently searching for a ride nearby.");
-                      }
-                    } catch (e) {
-                      alert("Error scanning for nearby passengers.");
-                    }
-                  }}
-                >
-                  <Sparkles size={16} style={{ marginRight: '6px' }} /> Scan Nearest Passengers
-                </Button>
-              </div>
-            )}
-          </div>
+            
 
-          {/* DRIVER TRAVEL ROUTE / DESTINATION FILTER */}
-          <div className="glass-card" style={{ padding: '16px', background: travelRoute ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.02)', border: travelRoute ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)', marginBottom: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: travelRoute ? '0' : '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Navigation size={16} color={travelRoute ? '#10b981' : 'var(--text-muted)'} />
-                <span style={{ fontSize: '13px', fontWeight: '700', color: travelRoute ? '#10b981' : 'var(--text-main)' }}>Destination Filter</span>
-              </div>
-              {travelRoute && (
-                <button onClick={handleClearTravelRoute} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '11px', fontWeight: '800', cursor: 'pointer', padding: '4px 8px' }}>CLEAR</button>
+
+
+
+          </div>
               )}
+            </>
+          ) : (
+          <div className="driver-header-card" style={{ padding: "18px 14px",
+            position: 'relative',
+            background: isOnline ? (theme === 'light' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(24, 24, 27, 0.7)') : 'var(--bg-card)',
+            backdropFilter: isOnline ? 'blur(10px)' : 'none',
+            border: 'none',
+            borderRadius: '16px',
+            marginBottom: '16px',
+            boxShadow: 'var(--shadow-md)',
+            transition: 'all 0.3s ease'
+          }}>
+
+            {/* Logo on Left */}
+            <div style={{
+              position: 'absolute',
+              top: '18px',
+              left: '14px',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              border: '2px solid var(--border)'
+            }}>
+              <img src="/hum_fleet_official_logo.jpg" alt="HUM Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
 
-            {travelRoute ? (
-              <div style={{ marginTop: '12px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Currently matching rides along route to:</div>
-                <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <MapPin size={14} color="#f59e0b" /> {travelRoute.destination}
-                </div>
-              </div>
-            ) : (
-              <div style={{ position: 'relative' }}>
-                <input 
-                  type="text"
-                  className="input-field"
-                  placeholder="Set travel destination..."
-                  value={routeInput}
-                  onChange={(e) => { setRouteInput(e.target.value); searchNominatim(e.target.value); }}
-                  onFocus={() => setRouteInputFocused(true)}
-                  onBlur={() => setTimeout(() => setRouteInputFocused(false), 250)}
-                  style={{ fontSize: '12px', padding: '10px 14px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)' }}
-                />
-                {routeInputFocused && (
-                  <div className="autocomplete-dropdown glass-card" style={{ zIndex: 100 }}>
-                    {isGeoSearching && (
-                      <div className="dropdown-item" style={{ color: 'var(--text-muted)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ width: '14px', height: '14px', border: '2px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
-                        Searching locations...
-                      </div>
-                    )}
-                    {nominatimResults.map((loc, idx) => (
-                      <div 
-                        onMouseDown={() => handleSetTravelRoute(loc.name, { lat: loc.lat, lng: loc.lng })}
-                        key={idx} 
-                        className="dropdown-item" 
-                      >
-                        <Navigation size={14} style={{ marginRight: '8px', color: 'var(--secondary)' }} />
-                        {loc.name}
-                      </div>
-                    ))}
-                    {!isGeoSearching && routeInput.trim().length >= 3 && nominatimResults.length === 0 && (
-                      <div className="dropdown-item" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-                        No locations found.
-                      </div>
-                    )}
+
+
+            {/* Centered Driver Profile */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '8px', padding: '6px 0' }}>
+              <div style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--primary)', background: 'var(--bg-main)', boxShadow: '0 0 0 4px var(--bg-card)', margin: '0 auto' }}>
+                {driverProfilePic ? (
+                  <img src={driverProfilePic} alt="Driver Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 'bold', fontSize: '22px' }}>
+                    {(driverDetails?.name || 'D').charAt(0)}
                   </div>
                 )}
               </div>
-            )}
-          </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--text-main)' }}>{driverDetails?.name || 'Partner Driver'}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '4px' }}>
+                  <span style={{ background: 'rgba(251, 191, 36, 0.2)', border: '1px solid rgba(251, 191, 36, 0.5)', color: '#fbbf24', fontSize: '11px', fontWeight: '800', borderRadius: '12px', padding: '1px 8px' }}>
+                    ★ {driverDetails?.rating || '5.0'} Rating
+                  </span>
+                </div>
+                {driverDetails?.badges && driverDetails.badges.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '4px', marginTop: '10px' }}>
+                    {[...new Set(driverDetails.badges)].map(badge => (
+                      <span key={badge} style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', color: '#3b82f6', fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '8px' }}>
+                        {badge} <span style={{ color: 'var(--text-muted)' }}>({driverDetails.badges.filter(b => b === badge).length})</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
 
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '16px', zIndex: 20 }}>
+              <button onClick={() => setShowMainMenu(!showMainMenu)} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Menu size={20} /></button>
+              <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}</button>
+              <button onClick={() => setShowRidePreferencesModal(true)} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Settings size={20} /></button>
+              
+              <button onClick={() => { localStorage.removeItem('driverAuthenticated'); localStorage.removeItem('driverEmail'); localStorage.removeItem('driverName'); localStorage.removeItem('driverId'); navigate('/driver-login'); }} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '6px', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Power size={20} /></button>
+            </div>
+
+            {/* Today's Earnings */}
+            <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '800', color: 'rgba(16,185,129,0.9)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>📅 Today's Earnings</div>
+                <button onClick={() => setHideEarningsAmount(!hideEarningsAmount)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
+                  {hideEarningsAmount ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+              <div style={{ fontSize: '28px', fontWeight: '900', color: '#10b981', textAlign: 'center' }}>
+                {hideEarningsAmount ? '₹****' : `₹${homeEarnings?.daily?.net ?? '0.00'}`}
+              </div>
+              <button onClick={() => setShowEarningsDetails(!showEarningsDetails)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', marginTop: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'center', fontWeight: 'bold' }}>
+                {showEarningsDetails ? 'Hide Details ▲' : 'View More Details ▼'}
+              </button>
+              {showEarningsDetails && (
+                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(16,185,129,0.1)', maxHeight: '160px', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', marginBottom: '12px' }}>
+                    <div style={{ textAlign: 'center', borderRight: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: '#f59e0b' }}>{hideEarningsAmount ? '₹****' : `₹${homeEarnings?.daily?.gross ?? '0.00'}`}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '1px' }}>Gross</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: '#3b82f6' }}>{hideEarningsAmount ? '****' : (homeEarnings?.daily?.count ?? 0)}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '1px' }}>Trips</div>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowEarningsHistory(true)} style={{ width: '100%', padding: '9px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '12px' }}>
+                    <TrendingUp size={13} /> View Earnings History
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Go Online/Offline Button */}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              {isOnline && !currentRide && (
+                <Button variant={isPaused ? 'primary' : 'outline'} onClick={() => togglePauseBreak(!isPaused)} style={{ flex: 1, borderColor: isPaused ? '#f59e0b' : 'var(--border)', background: isPaused ? '#f59e0b' : 'transparent', color: isPaused ? '#000' : 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '13px', padding: '12px' }}>
+                  {isPaused ? <Play size={16} /> : <Coffee size={16} color="#f59e0b" />}
+                  {isPaused ? 'Resume Trips' : 'Take Rest Break'}
+                </Button>
+              )}
+              <Button variant={isOnline ? 'outline' : 'primary'} className={isOnline ? 'status-online' : ''} onClick={async () => { if (isOnline) { goOffline(); return; } if (!isDailyVerified) { setShowVerifyModal(true); setVerifyStep('camera'); setCapturedPhoto(null); setTimeout(() => startCamera(), 200); } else { goOnline(); } }} style={{ flex: 1, width: '100%', padding: '12px', fontSize: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: isOnline ? 'rgba(239, 68, 68, 0.12)' : 'linear-gradient(135deg, #10b981, #059669)', color: isOnline ? '#ef4444' : '#ffffff', borderColor: isOnline ? '#ef4444' : 'transparent', boxShadow: isOnline ? '0 4px 14px rgba(239,68,68,0.2)' : '0 4px 16px rgba(16, 185, 129, 0.35)' }}>
+                <Power size={18} /> {isOnline ? 'Go Offline' : 'Go Online'}
+              </Button>
+            </div>
+
+            
+          </div>
+          )}
+
+          {showMainMenu && (<>
           {/* DEDICATED ROW UNDER GO ONLINE BUTTON FOR ADMIN MESSAGE NOTICE (ELECTRIC PURPLE COLOUR THEME) */}
           {adminMessages.length > 0 && (
             <div style={{ marginBottom: '14px' }}>
@@ -1697,7 +2273,7 @@ You can only accept prepaid trips until your balance is cleared.`);
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Wallet size={18} color={activeMenu === 'wallet' ? 'var(--primary)' : 'var(--text-muted)'} />
-                <span>Wallet & Dues</span>
+                <span>Earnings</span>
               </div>
               <ChevronRight size={16} style={{ opacity: activeMenu === 'wallet' ? 1 : 0.4 }} />
             </button>
@@ -1765,79 +2341,14 @@ You can only accept prepaid trips until your balance is cleared.`);
               <ChevronRight size={16} style={{ opacity: activeMenu === 'settings' ? 1 : 0.4 }} />
             </button>
           </div>
+          </>)}
 
            {/* ================= TAB 1: TRIPS & DISPATCHES ================= */}
           {activeMenu === 'dispatches' && (
             <div className="tab-pane animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               
-              {/* DYNAMIC TELEMETRY & SHIFT GOAL GAUGE */}
-              <div className="dynamic-glow-card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', padding: '12px', background: 'rgba(16, 185, 129, 0.03)', borderRadius: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Gauge size={18} />
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Speed & Heading</span>
-                    <strong style={{ fontSize: '12px', color: 'var(--text-main)' }}>{isOnline ? '34 KM/H' : '0 KM/H'} • NNE</strong>
-                  </div>
-                </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: shiftMinutes >= 900 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.12)', color: shiftMinutes >= 900 ? '#ef4444' : '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Pause size={18} />
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Shift Driving Time</span>
-                    <strong style={{ fontSize: '12px', color: shiftMinutes >= 900 ? '#ef4444' : '#f59e0b' }}>
-                      {(shiftMinutes / 60).toFixed(1)} / 15.0 Hrs
-                    </strong>
-                  </div>
-                </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Activity size={18} />
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>GPS Telemetry</span>
-                    <strong style={{ fontSize: '12px', color: '#3b82f6' }}>4G High Precision</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* 15-HOUR MAXIMUM SHIFT LIMIT & 6-HOUR MANDATORY REST WARNING BANNER */}
-              {shiftMinutes >= 900 && (
-                <div style={{
-                  background: 'rgba(239, 68, 68, 0.12)',
-                  border: '1.5px solid rgba(239, 68, 68, 0.5)',
-                  borderRadius: '14px',
-                  padding: '14px 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justify: 'space-between',
-                  gap: '12px',
-                  boxShadow: '0 4px 16px rgba(239, 68, 68, 0.15)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0 }}>
-                      <AlertTriangle size={22} />
-                    </div>
-                    <div>
-                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: '#ef4444' }}>🛑 15h Shift Completed — Mandatory 6-Hour Rest Active</h4>
-                      <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#fca5a5', lineHeight: '1.4' }}>
-                        You have completed <strong>15 hours of driving shift with passengers</strong>. You must rest for <strong>6 full hours</strong> before restarting rides.
-                      </p>
-                    </div>
-                  </div>
-                  <Button 
-                    variant="primary" 
-                    onClick={handleResetShift}
-                    style={{ background: '#ef4444', color: '#fff', border: 'none', fontWeight: '800', fontSize: '11px', padding: '8px 14px', whiteSpace: 'nowrap' }}
-                  >
-                    Restart Rides (After 6h Rest)
-                  </Button>
-                </div>
-              )}
 
 
 
@@ -1874,128 +2385,73 @@ You can only accept prepaid trips until your balance is cleared.`);
               )}
 
               {/* Daily Verification Status Badge */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '10px 14px',
-                borderRadius: '12px',
-                background: isDailyVerified ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)',
-                border: `1px solid ${isDailyVerified ? 'rgba(16,185,129,0.25)' : 'rgba(245,158,11,0.3)'}`,
-                fontSize: '12px',
-                fontWeight: '700',
-                color: isDailyVerified ? '#10b981' : '#f59e0b'
-              }}>
-                {isDailyVerified ? <ShieldCheck size={16} /> : <Camera size={16} />}
-                {isDailyVerified ? 'Face Verified — Today ✓' : 'Daily Face Verification Required'}
-                {!isDailyVerified && (
-                  <button
-                    onClick={() => { setShowVerifyModal(true); setVerifyStep('camera'); setCapturedPhoto(null); setTimeout(() => startCamera(), 200); }}
-                    style={{ marginLeft: 'auto', background: '#f59e0b', color: '#000', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}
-                  >Verify Now</button>
-                )}
-              </div>
 
-              {/* ₹700 Commission & GST Dues Notification Banner with WhatsApp Link (+91 8848347290) */}
-              {parseFloat(wallet.toBePaid || 0) >= 700 && (
-                <div style={{
-                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(239, 68, 68, 0.12))',
-                  border: '1.5px solid rgba(245, 158, 11, 0.6)',
-                  borderRadius: '14px',
-                  padding: '14px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <AlertTriangle size={22} color="#f59e0b" style={{ flexShrink: 0 }} />
-                      <div>
-                        <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: '#f59e0b' }}>
-                          ⚠️ Platform Dues Payment Notice (≥ ₹700)
-                        </h4>
-                        <span style={{ fontSize: '12px', color: 'var(--text-main)' }}>
-                          Your accumulated commission & GST dues have reached <strong style={{ color: '#ef4444' }}>₹{parseFloat(wallet.toBePaid).toFixed(2)}</strong>. Please clear your dues.
-                        </span>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%', justifyContent: 'flex-end', marginTop: '4px' }}>
-                      <a 
-                        href={`https://api.whatsapp.com/send?phone=918848347290&text=${encodeURIComponent(`Hello Admin, I am driver ${driverDetails?.name || 'Partner'} (${driverDetails?.phone || ''}). My pending platform commission & GST dues have reached ₹${parseFloat(wallet.toBePaid || 0).toFixed(2)}. I would like to clear my dues.`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          textDecoration: 'none',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          background: '#25D366',
-                          color: '#ffffff',
-                          fontWeight: '800',
-                          fontSize: '12px',
-                          padding: '8px 12px',
-                          borderRadius: '8px'
-                        }}
-                      >
-                        💬 Chat Admin on WhatsApp (+91 8848347290)
-                      </a>
-
-                      <button
-                        onClick={() => setShowPayDuesModal(true)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          background: 'linear-gradient(135deg, #10b981, #059669)',
-                          color: '#ffffff',
-                          fontWeight: '800',
-                          fontSize: '12px',
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <CreditCard size={14} /> Pay Dues Online
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              
 
               {/* ₹1500 Balance Lock Warning Banner */}
-              {parseFloat(wallet.toBePaid || 0) > 1500 && (
-                <div style={{
-                  background: 'rgba(239, 68, 68, 0.12)',
-                  border: '1.5px solid rgba(239, 68, 68, 0.5)',
-                  borderRadius: '12px',
-                  padding: '12px 14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <AlertTriangle size={18} color="#ef4444" style={{ flexShrink: 0 }} />
-                    <span style={{ fontSize: '13px', fontWeight: '800', color: '#ef4444' }}>Cash Trip Access Suspended</span>
-                  </div>
-                  <p style={{ margin: 0, fontSize: '11px', color: '#fca5a5', lineHeight: '1.5' }}>
-                    Your pending balance of <strong style={{ color: '#ef4444' }}>₹{parseFloat(wallet.toBePaid).toFixed(2)}</strong> has exceeded the ₹1,500 limit.
-                    You can only accept <strong>prepaid trips</strong> until your dues are settled with HUM Fleet.
-                  </p>
-                </div>
-              )}
+              
+
+              
 
               {/* Rating Panel Screen (Shows after driver completes ride) */}
               {showRating && currentRide && (
-                <div className="incoming-request animate-fade-in delay-100" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center', color: '#f59e0b' }}>
+                <div className="animate-fade-in delay-100 active-ride-card" style={{ margin: '16px -8px', width: 'calc(100% + 16px)', background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px', maxHeight: '60vh', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+<style>{`.active-ride-card::-webkit-scrollbar { display: none; }`}</style>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center', color: '#10b981' }}>
                     <CheckCircle size={28} />
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>Ride Complete!</h3>
+                    <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '900' }}>Ride Complete!</h3>
                   </div>
+                  
+                  {(() => {
+                    const collectCashFlag = (currentRide.paymentType === 'cash' || !currentRide.paymentType);
+                    const baseTotal = parseFloat(currentRide.totalKm || 8.0);
+                    const liveDist = parseFloat(liveGpsDistance || 0);
+                    const finalDist = liveDist > 0 ? liveDist : baseTotal;
+                      
+                      let tripFare = parseFloat(currentRide.fare || 0);
+                      if (liveDist > 0 && Math.abs(liveDist - baseTotal) > 0.5) {
+                          const rate = getRideRate(currentRide);
+                          let catBase = getRideBase(currentRide);
+                          let recalculatedMinFare = catBase + (liveDist * rate);
+                          let currentAllowance = liveDist > 100.0 ? 300 : (liveDist > 32.0 ? 250 : 0);
+                          recalculatedMinFare += currentAllowance;
+                          tripFare = recalculatedMinFare;
+                      }
+                    
+                    const tipAmount = parseFloat(currentRide.driverTip || 0);
+                    const total = tripFare + tipAmount;
+                    
+                    return (
+                      <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                        <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#10b981', margin: '0 0 4px 0' }}>
+                          {collectCashFlag ? 'Collect Cash' : 'Paid Online'}
+                        </h2>
+                        <div style={{ fontSize: '32px', fontWeight: '900', color: '#0f172a', marginBottom: '16px' }}>
+                          ₹{total.toFixed(2)}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', textAlign: 'left', background: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: 'var(--text-muted)' }}>Trip Fare</span>
+                            <strong>₹{tripFare.toFixed(2)}</strong>
+                          </div>
+                          {tipAmount > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>Passenger Tip</span>
+                              <strong>+₹{tipAmount.toFixed(2)}</strong>
+                            </div>
+                          )}
+                        </div>
+                        <Button variant="outline" className="full-width" onClick={handleDownloadInvoice} style={{ marginTop: '16px', borderColor: '#3b82f6', color: '#3b82f6' }}>
+                          Download Invoice
+                        </Button>
+                      </div>
+                    );
+                  })()}
                   
                   <div style={{ padding: '14px', border: '1px solid var(--border)', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.03)', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
                     <h4 style={{ fontSize: '13px', fontWeight: '800', margin: 0 }}>Rate passenger's behaviour</h4>
                     <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
-                      How was your passenger **{currentRide.passengerName || 'Anoop Nair'}**?
+                      How was your passenger **{currentRide.passengerName || 'Passenger'}**?
                     </p>
 
                     <div style={{ display: 'flex', gap: '8px', margin: '6px 0' }}>
@@ -2024,121 +2480,40 @@ You can only accept prepaid trips until your balance is cleared.`);
                   </div>
 
                   <Button variant="primary" className="full-width" onClick={handleSubmitRating}>
-                    Submit Rating
+                    Submit Rating & Finish
                   </Button>
                 </div>
               )}
 
-              {/* Incoming request block */}
-              {isOnline && incomingRide && !currentRide && !showRating && (
-                <div className="incoming-request animate-fade-in delay-100" style={{
-                  position: 'fixed',
-                  top: '24px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  zIndex: 10000,
-                  width: '92%',
-                  maxWidth: '420px',
-                  boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-                  border: '2px solid var(--primary)'
-                }}>
-                  <div className="request-pulse"></div>
-                  <h3>New Ride Request!</h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-                    {incomingRide.matchType === 'en-route' ? (
-                      <div style={{ background: '#3b82f6', color: '#fff', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Navigation size={12} /> En-Route Match
-                      </div>
-                    ) : (
-                      <div style={{ background: '#10b981', color: '#fff', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <MapPin size={12} /> Nearby Pickup ({incomingRide.distance} KM)
-                      </div>
-                    )}
-                    {incomingRide.isIntercity && (
-                      <div style={{ background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>
-                        Intercity Ride (+₹250 Base Included)
-                      </div>
-                    )}
-                  </div>
-
-
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '3px 10px',
-                      borderRadius: '20px',
-                      fontSize: '10px',
-                      fontWeight: '800',
-                      textTransform: 'uppercase',
-                      background: (incomingRide.paymentType === 'prepaid') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.12)',
-                      color: (incomingRide.paymentType === 'prepaid') ? '#10b981' : '#3b82f6',
-                      border: `1px solid ${(incomingRide.paymentType === 'prepaid') ? 'rgba(16,185,129,0.3)' : 'rgba(59,130,246,0.3)'}`
-                    }}>
-                      {(incomingRide.paymentType === 'prepaid') ? '✓ Prepaid Trip' : '💵 Cash Trip'}
-                    </span>
-                  </div>
-
-                  <div className="request-details">
-                    <div className="req-row"><MapPin size={16}/> <strong>From:</strong> {incomingRide.pickup}</div>
-                    <div className="req-row"><Navigation size={16}/> <strong>To:</strong> {incomingRide.dropoff}</div>
-                    
-                    <div style={{ borderTop: '1px solid var(--border)', marginTop: '8px', paddingTop: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <div><strong>Passenger Rating:</strong> <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>★ {incomingRide.passengerRating || '5.0'}</span></div>
-                      <div><strong>Total Distance:</strong> {incomingRide.totalKm || 8.0} KM</div>
-                      <div style={{ paddingLeft: '8px', borderLeft: '2px solid var(--primary)', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12px' }}>
-                        <div>• Passenger Bid: INR {parseFloat(incomingRide.fare).toFixed(2)}</div>
-                        <div>• GST Tax (5%): +INR {(parseFloat(incomingRide.fare) * 0.05).toFixed(2)}</div>
-                        <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', paddingTop: '4px', fontWeight: 'bold', color: 'var(--text-main)' }}>
-                          • Collect Cash: INR {(parseFloat(incomingRide.fare) * 1.05).toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="req-price est-price" style={{ marginTop: '8px' }}>Offered Fare: INR {incomingRide.fare}</div>
-                  </div>
-
-                  {parseFloat(wallet.toBePaid || 0) > 1500 && incomingRide.paymentType === 'cash' ? (
-                    <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#ef4444', padding: '10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', marginTop: '10px' }}>
-                      🚫 Cannot accept cash trips until ₹1,500 pending dues are settled.
-                    </div>
-                  ) : (
-                    <div className="request-actions">
-                      <Button variant="outline" className="full-width" onClick={() => setIncomingRide(null)}>Decline</Button>
-                      <Button variant="primary" className="full-width" onClick={handleAcceptRide}>Accept</Button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Active ride in progress block */}
-              {isOnline && currentRide && !showRating && (
-                <div className="incoming-request animate-fade-in delay-100" style={{ background: 'rgba(59, 130, 246, 0.08)', borderColor: '#3b82f6' }}>
-                  {showEndTripSummary ? (
-                    <div>
+              {/* Active ride in-progress block — full screen modal for End Trip Summary */}
+              {isOnline && currentRide && !showRating && showEndTripSummary && (
+                  <div className="animate-fade-in delay-100" style={{ margin: '16px -8px', width: 'calc(100% + 16px)', background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', padding: '24px', maxHeight: '60vh', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                      <style>{`.end-trip-modal::-webkit-scrollbar { display: none; }`}</style>
+                      <div className="end-trip-modal">
                       <h3 style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 12px 0' }}>
-                        <DollarSign size={20} /> End Trip Summary
+                        <IndianRupee size={20} /> End Trip Summary
                       </h3>
                       
                       {(() => {
                         const baseTotal = parseFloat(currentRide.totalKm || 8.0);
-                        const liveDist = parseFloat(liveGpsDistance || 0);
-                        const finalDist = liveDist > 0 ? liveDist : baseTotal;
+                          const liveDist = parseFloat(liveGpsDistance || 0);
+                          const finalDist = liveDist > 0 ? liveDist : baseTotal;
+                          
+                          let tripFare = parseFloat(currentRide.fare || 0);
+                          
+                          if (liveDist > 0 && Math.abs(liveDist - baseTotal) > 0.5) {
+                            const rate = getRideRate(currentRide);
+                            let catBase = getRideBase(currentRide);
+                            let recalculatedMinFare = catBase + (liveDist * rate);
+                            let currentAllowance = liveDist > 100.0 ? 300 : (liveDist > 32.0 ? 250 : 0);
+                            recalculatedMinFare += currentAllowance;
+                            tripFare = recalculatedMinFare;
+                          }
+                          
+                          const tipAmount = parseFloat(currentRide.driverTip || 0);
                         
-                        const rate = parseFloat(driverDetails?.ratePerKm || 15.00);
-                        let originalMinFare = baseTotal * rate;
-                        if (currentRide.isIntercity) originalMinFare += 250;
-                        
-                        const originalOfferedFare = parseFloat(currentRide.fare || originalMinFare);
-                        const voluntaryExtraOffer = Math.max(0, originalOfferedFare - originalMinFare);
-                        
-                        let recalculatedMinFare = finalDist * rate;
-                        if (currentRide.isIntercity) recalculatedMinFare += 250;
-                        
-                        const baseF = recalculatedMinFare + voluntaryExtraOffer;
-                        const tax = baseF * 0.05;
-                        const total = baseF + tax;
+                        // Total to collect is Trip Fare + Tip
+                        const total = tripFare + tipAmount;
                         
                         const isLess = liveDist > 0 && liveDist < baseTotal;
                         const isMore = liveDist > baseTotal;
@@ -2150,36 +2525,24 @@ You can only accept prepaid trips until your balance is cleared.`);
                                 <span><strong>Final Distance:</strong></span>
                                 <span>{finalDist.toFixed(2)} KM</span>
                               </div>
-                              {isMore && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444', fontSize: '11px' }}>
-                                  <span>Extra Distance Travelled:</span>
-                                  <span>+{(finalDist - baseTotal).toFixed(2)} KM</span>
-                                </div>
-                              )}
+                              
                               {isLess && (
                                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981', fontSize: '11px' }}>
                                   <span>Stopped Early:</span>
                                   <span>-{(baseTotal - finalDist).toFixed(2)} KM</span>
                                 </div>
                               )}
-                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span><strong>Rate per KM:</strong></span>
-                                <span>₹{rate.toFixed(2)}</span>
-                              </div>
-                              {voluntaryExtraOffer > 0 && (
+
+                              {tipAmount > 0 && (
                                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--primary)', fontSize: '12px', fontWeight: 'bold' }}>
-                                  <span>Passenger Voluntary Extra Tip:</span>
-                                  <span>+₹{voluntaryExtraOffer.toFixed(2)}</span>
+                                  <span>Passenger Tip:</span>
+                                  <span>+₹{tipAmount.toFixed(2)}</span>
                                 </div>
                               )}
                               <div style={{ borderTop: '1px dashed rgba(59, 130, 246, 0.2)', margin: '4px 0' }} />
                               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span>Subtotal (KM Fare):</span>
-                                <span>₹{baseF.toFixed(2)}</span>
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f59e0b' }}>
-                                <span>GST Tax (5%):</span>
-                                <span>₹{tax.toFixed(2)}</span>
+                                <span>Trip Fare:</span>
+                                <span>₹{tripFare.toFixed(2)}</span>
                               </div>
                               <div style={{ borderTop: '1px solid rgba(59, 130, 246, 0.3)', margin: '6px 0', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '15px' }}>
                                 <span>Total Collected:</span>
@@ -2211,158 +2574,14 @@ You can only accept prepaid trips until your balance is cleared.`);
                         </Button>
                         <Button variant="primary" className="full-width" onClick={() => handleCompleteRide(collectCash)} style={{ background: '#10b981', color: 'white' }}>
                           Confirm & Complete
-                        </Button>
-                      </div>
-                    </div>
-                  ) : currentRide.status === 'Accepted' ? (
-                    <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                      <h3 style={{ color: '#3b82f6', marginBottom: '16px' }}>Verify Passenger to Start Trip</h3>
-                      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                        Ask the passenger ({currentRide.passengerName || 'Passenger'}) for their 6-digit Ride PIN to verify their identity and start the trip.
-                      </p>
-                      <input 
-                        type="text" 
-                        value={ridePin} 
-                        onChange={(e) => setRidePin(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="Enter 6-digit PIN" 
-                        style={{ fontSize: '20px', letterSpacing: '4px', textAlign: 'center', width: '100%', padding: '12px', borderRadius: '8px', border: '2px solid #3b82f6', background: 'transparent', color: 'var(--text-main)', marginBottom: '16px' }}
-                      />
-                      <Button variant="primary" className="full-width" onClick={handleVerifyPin} style={{ background: '#3b82f6', color: 'white' }} disabled={ridePin.length !== 6}>
-                        Verify & Start Trip
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <h3 style={{ color: '#3b82f6' }}>Trip in Progress</h3>
-                      {currentRide.isIntercity && (
-                        <div style={{ background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px' }}>
-                          Intercity Route Active (+₹250 Base)
-                        </div>
-                      )}
-                      {/* LIVE RUNNING GPS TAXIMETER CARD */}
-                      <div style={{
-                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.12))',
-                        border: '1.5px solid #10b981',
-                        borderRadius: '14px',
-                        padding: '14px',
-                        marginBottom: '14px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                        boxShadow: '0 4px 16px rgba(16, 185, 129, 0.12)'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '11px', fontWeight: '900', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-                            LIVE GPS TRIP METER ACTIVE
-                          </span>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '700' }}>
-                            Rate: ₹{parseFloat(driverDetails?.ratePerKm || 15.00).toFixed(2)}/KM
-                          </span>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', alignItems: 'center', paddingTop: '4px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Est. Distance</span>
-                            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
-                              {(liveGpsDistance > 0 ? liveGpsDistance : parseFloat(currentRide.totalKm || 8.0)).toFixed(2)} <span style={{ fontSize: '12px', color: '#10b981' }}>KM</span>
-                            </div>
-                          </div>
-                          <div style={{ width: '1px', background: 'rgba(59, 130, 246, 0.2)', margin: '0 8px' }} />
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Est. Fare</span>
-                            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
-                              ₹{((liveGpsDistance > 0 ? liveGpsDistance : parseFloat(currentRide.totalKm || 8.0)) * parseFloat(driverDetails?.ratePerKm || 15.00) + (currentRide.isIntercity ? 250 : 0)).toFixed(2)}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', borderTop: '1px dashed var(--border)', paddingTop: '6px', marginTop: '2px' }}>
-                          ⚡ GPS tracks precise vehicle motion while riding with passenger.
+                          </Button>
                         </div>
                       </div>
-
-                      <div className="request-details">
-                        <div className="req-row"><MapPin size={16}/> <strong>Pickup:</strong> {currentRide.pickup}</div>
-                        <div className="req-row"><Navigation size={16}/> <strong>Drop-off:</strong> {currentRide.dropoff}</div>
-                        
-                        <div style={{ borderTop: '1px solid rgba(59, 130, 246, 0.2)', marginTop: '8px', paddingTop: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <div><strong>Estimated Distance:</strong> {currentRide.totalKm || 8.0} KM</div>
-                          <div style={{ paddingLeft: '8px', borderLeft: '2px solid #3b82f6', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12px' }}>
-                            <div>• Offered Price: INR {parseFloat(currentRide.fare).toFixed(2)}</div>
-                            <div>• GST Tax (5%): +INR {(parseFloat(currentRide.fare) * 0.05).toFixed(2)}</div>
-                            <div style={{ borderTop: '1px solid rgba(59, 130, 246, 0.3)', marginTop: '4px', paddingTop: '4px', fontWeight: 'bold', color: 'var(--text-main)' }}>
-                              • Collect Cash: INR {(parseFloat(currentRide.fare) * 1.05).toFixed(2)}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="req-price est-price" style={{ color: '#3b82f6', marginTop: '8px' }}>Fare: INR {currentRide.fare}</div>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => { setShowDriverTripChat(true); fetchDriverTripChatMessages(); }}
-                        style={{ width: '100%', marginBottom: '10px', borderColor: '#3b82f6', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                      >
-                        <MessageSquare size={16} /> 💬 Chat with Passenger ({currentRide.passengerName || 'Passenger'})
-                      </Button>
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <Button variant="outline" className="full-width" onClick={handleCancelRide} style={{ borderColor: '#ef4444', color: '#ef4444' }}>
-                          Cancel Ride
-                        </Button>
-                        <Button variant="primary" className="full-width" onClick={() => setShowEndTripSummary(true)} style={{ background: '#3b82f6', color: 'white' }}>
-                          Complete Ride
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Idle online status screen — Simple Clean Trip Searching Indicator */}
-              {isOnline && !incomingRide && !currentRide && !showRating && !isPaused && (
-                <div style={{
-                  border: '1px dashed #10b981',
-                  borderRadius: '16px',
-                  padding: '24px 20px',
-                  textAlign: 'center',
-                  background: 'rgba(16, 185, 129, 0.03)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '12px'
-                }} className="animate-fade-in">
-                  
-                  {/* Simple Pulsing Beacon Ring */}
-                  <div style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '50%',
-                    background: 'rgba(16, 185, 129, 0.15)',
-                    border: '1.5px solid #10b981',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#10b981',
-                    boxShadow: '0 0 12px rgba(16, 185, 129, 0.2)',
-                    animation: 'pulse 2s infinite'
-                  }}>
-                    <Car size={24} />
                   </div>
+                )}
 
-                  <div>
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#10b981', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-                      Searching for Nearby Trips...
-                    </h4>
-                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
-                      Scanning nearby Kerala passengers within 8 KM radius. Requests will pop up automatically.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Offline status screen */}
+              
+{/* Offline status screen */}
               {!isOnline && (
                 <div style={{ border: '1px solid var(--border)', borderRadius: '14px', padding: '24px', textAlign: 'center', background: 'rgba(255,255,255,0.01)' }}>
                   <Power size={32} color="var(--text-muted)" style={{ marginBottom: '10px' }} />
@@ -2371,8 +2590,8 @@ You can only accept prepaid trips until your balance is cleared.`);
                 </div>
               )}
 
-              {/* Available Pre-booked Trips Section (Visible when Online and Idle) */}
-              {isOnline && !currentRide && !showRating && (
+              {/* Available Pre-booked Trips Section — only show when menu is open */}
+              {showMainMenu && isOnline && !currentRide && !showRating && (
                 <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     📅 Available Pre-booked Trips ({availablePreBooked.length})
@@ -2409,7 +2628,8 @@ You can only accept prepaid trips until your balance is cleared.`);
                 </div>
               )}
 
-              {/* My Scheduled Trips Section (Always Visible) */}
+              {/* My Scheduled Trips Section — only show when menu is open */}
+              {showMainMenu && (
               <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   💼 My Scheduled Trips ({myScheduledTrips.length})
@@ -2450,6 +2670,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                   </div>
                 )}
               </div>
+              )}
 
             </div>
           )}
@@ -2458,11 +2679,11 @@ You can only accept prepaid trips until your balance is cleared.`);
           {activeMenu === 'wallet' && (
             <div className="tab-pane animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div className="stats-grid">
-                <div className="stat-card">
+                <div className="stat-card" style={{ alignItems: 'center', textAlign: 'center' }}>
                   <span className="stat-label">Today's Earnings</span>
                   <span className="stat-value text-gradient">₹{homeEarnings?.daily?.net ?? '0.00'}</span>
                 </div>
-                <div className="stat-card">
+                <div className="stat-card" style={{ alignItems: 'center', textAlign: 'center' }}>
                   <span className="stat-label">System Status</span>
                   <span className={`stat-value status-${isOnline ? 'online' : 'offline'}`} style={{ color: isOnline ? 'var(--primary)' : 'var(--text-muted)' }}>
                     {isOnline ? 'ONLINE' : 'OFFLINE'}
@@ -2473,75 +2694,17 @@ You can only accept prepaid trips until your balance is cleared.`);
               {/* Driver Wallet Overview Widget */}
               <div style={{ border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', background: 'rgba(255, 255, 255, 0.01)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '800' }}>
-                  <Wallet size={18} color="var(--primary)" /> Driver Financial Ledger & Wallet
+                  <Wallet size={18} color="var(--primary)" /> My Earnings
                 </span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                   <div style={{ padding: '10px', border: '1px solid var(--border)', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.02)', textAlign: 'center' }}>
                     <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Cash Collected</span>
                     <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-main)' }}>₹{parseFloat(wallet.cashCollected || 0).toFixed(2)}</span>
                   </div>
-                  <div style={{ padding: '10px', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.04)', textAlign: 'center' }}>
-                    <span style={{ fontSize: '10px', color: 'var(--primary)', display: 'block', marginBottom: '4px' }}>GST Collected</span>
-                    <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--primary)' }}>₹{parseFloat(wallet.gstCollected || 0).toFixed(2)}</span>
-                  </div>
-                  <div style={{ padding: '10px', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.04)', textAlign: 'center' }}>
-                    <span style={{ fontSize: '10px', color: '#ef4444', display: 'block', marginBottom: '4px' }}>Platform Dues</span>
-                    <span style={{ fontSize: '14px', fontWeight: '800', color: '#ef4444' }}>-₹{parseFloat(wallet.toBePaid || 0).toFixed(2)}</span>
-                  </div>
                 </div>
-
-                {/* Dues Breakdown */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', background: 'rgba(255,255,255,0.01)' }}>
-                  <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-main)' }}>📋 Platform Commission Breakdown</span>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Base Commission (5%):</span>
-                    <strong style={{ color: '#ef4444' }}>-₹{(parseFloat(wallet.toBePaid || 0) * 0.5).toFixed(2)}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Government GST (5%):</span>
-                    <strong style={{ color: '#ef4444' }}>-₹{(parseFloat(wallet.toBePaid || 0) * 0.5).toFixed(2)}</strong>
-                  </div>
-                  <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '800' }}>
-                    <span style={{ color: '#ef4444' }}>Total Commission Dues:</span>
-                    <strong style={{ color: '#ef4444' }}>-₹{parseFloat(wallet.toBePaid || 0).toFixed(2)}</strong>
-                  </div>
-                </div>
-
-                {parseFloat(wallet.toBePaid || 0) > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-                    <Button 
-                      variant="primary" 
-                      onClick={() => setShowPayDuesModal(true)}
-                      style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', fontWeight: '800' }}
-                    >
-                      <CreditCard size={16} /> Pay Commission via Payment Gateway
-                    </Button>
-                    <a 
-                      href={`https://api.whatsapp.com/send?phone=918848347290&text=${encodeURIComponent(`Hello Admin, I am driver ${driverInfo?.name || 'Partner'} (${driverInfo?.phone || ''}). My pending platform commission & GST dues have reached ₹${parseFloat(wallet.toBePaid || 0).toFixed(2)}. I would like to clear my dues.`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        textDecoration: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        background: '#25D366',
-                        color: '#ffffff',
-                        fontWeight: '800',
-                        fontSize: '12px',
-                        padding: '10px',
-                        borderRadius: '10px'
-                      }}
-                    >
-                      💬 Chat Admin on WhatsApp (+91 8848347290)
-                    </a>
-                  </div>
-                )}
 
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '10px', lineHeight: '1.5' }}>
-                  💡 <strong>Commission Policy:</strong> 5% HUM Fleet Commission + 5% GST is deducted per completed ride. Dues must be paid through the gateway before pending balance crosses ₹1,500.
+                  💡 <strong>Note:</strong> HUM Fleet is not currently collecting any platform commission. You keep 100% of your collected fares.
                 </div>
               </div>
             </div>
@@ -2562,27 +2725,8 @@ You can only accept prepaid trips until your balance is cleared.`);
                 border: '1px solid var(--border)',
                 borderRadius: '12px'
               }}>
-                <button
-                  onClick={() => setSettingsSubTab('documents')}
-                  style={{
-                    flex: 1,
-                    padding: '6px 10px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: settingsSubTab === 'documents' ? 'var(--primary)' : 'transparent',
-                    color: settingsSubTab === 'documents' ? '#000' : 'var(--text-muted)',
-                    fontWeight: '800',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <FileText size={13} /> Docs & Photos
-                </button>
+
+
 
                 <button
                   onClick={() => setSettingsSubTab('profile')}
@@ -2790,9 +2934,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
                           {[
                             { id: 'rc', label: 'Registration (RC)' },
-                            { id: 'pollution', label: 'Pollution (PUC)' },
-                            { id: 'insurance', label: 'Insurance Policy' },
-                            { id: 'fitness', label: 'Fitness Certificate' }
+                            { id: 'insurance', label: 'Insurance Policy' }
                           ].map((doc) => (
                             <div key={doc.id} style={{ border: '1px dashed var(--border)', borderRadius: '10px', padding: '8px', textAlign: 'center', position: 'relative' }}>
                               <span style={{ fontSize: '10px', fontWeight: '700', display: 'block', marginBottom: '4px' }}>{doc.label} *</span>
@@ -2966,9 +3108,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {[
                         { id: 'rc', label: 'Registration (RC)' },
-                        { id: 'pollution', label: 'Pollution (PUC)' },
                         { id: 'insurance', label: 'Insurance Policy' },
-                        { id: 'fitness', label: 'Fitness Certificate' },
                         { id: 'licenseFront', label: 'Licence (Front Side)' },
                         { id: 'licenseBack', label: 'Licence (Back Side)' }
                       ].map((doc) => {
@@ -3143,63 +3283,10 @@ You can only accept prepaid trips until your balance is cleared.`);
                   </div>
 
 
-                  {/* --- RIDE PREFERENCES --- */}
-                  <div style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', padding: '16px', marginBottom: '10px' }}>
-                    <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: '800', color: '#10b981' }}>Ride Preferences</h3>
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '14px' }}>Select the vehicle categories you are willing to accept rides for, and whether you want intercity trips. Note: You can only select categories equal to or cheaper than your assigned vehicle.</p>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                      {(() => {
-                        const driverRate = parseFloat(driverDetails?.ratePerKm || 0);
-                        let eligible = availableCategories;
-                        if (driverRate > 0) {
-                          eligible = availableCategories.filter(cat => {
-                             const catRate = parseFloat(cat.ratePerKm || 0);
-                             return catRate <= driverRate;
-                          });
-                          if (eligible.length === 0) eligible = availableCategories;
-                        }
-                        
-                        return eligible.map(cat => (
-                          <label key={cat.id || cat.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={acceptedCategories.includes(cat.name)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setAcceptedCategories([...acceptedCategories, cat.name]);
-                                } else {
-                                  setAcceptedCategories(acceptedCategories.filter(c => c !== cat.name));
-                                }
-                              }}
-                              style={{ width: '18px', height: '18px' }}
-                            />
-                            {cat.name}
-                          </label>
-                        ));
-                      })()}
-                      
-                      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-                      
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer', color: '#f59e0b', fontWeight: 'bold' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={acceptsIntercity}
-                          onChange={(e) => setAcceptsIntercity(e.target.checked)}
-                          style={{ width: '18px', height: '18px' }}
-                        />
-                        Ready to take Intercity Trips (&gt;35 KM)
-                      </label>
-                    </div>
-                    
-                    <Button variant="primary" onClick={handleSaveRidePreferences} className="full-width" style={{ background: '#10b981', color: '#000', border: 'none' }}>
-                      Save Ride Preferences
-                    </Button>
-                  </div>
 
                   {/* Current read-only info */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '10px' }}>
-                    {[['Email', driverDetails?.email || '—'], ['Rating', `★ ${driverDetails?.rating || '5.0'}`], ['Status', driverDetails?.status || 'Approved']].map(([label, val]) => (
+                    {[['Email', driverDetails?.email || '—'], ['Rating', '★ ' + (driverDetails?.rating || '5.0')], ['Status', driverDetails?.status || 'Approved']].map(([label, val]) => (
                       <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
                         <span style={{ color: 'var(--text-muted)' }}>{label}</span>
                         <strong style={{ color: 'var(--text-main)' }}>{val}</strong>
@@ -3585,39 +3672,9 @@ You can only accept prepaid trips until your balance is cleared.`);
               </div>
             </div>
           )}
-
         </div>
         
         <div className="dashboard-map animate-fade-in delay-100" style={{ padding: 0, overflow: 'hidden', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
-          <iframe 
-            id="map-iframe"
-            src="/map.html" 
-            style={{ width: '100%', height: '100%', border: 'none' }}
-            title="Interactive Map"
-          />
-          {(isOnline) && (
-            <div style={{
-              position: 'absolute',
-              bottom: '16px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 1000,
-              background: 'rgba(24, 24, 27, 0.9)',
-              border: '1px solid var(--border)',
-              borderRadius: '12px',
-              padding: '12px 24px',
-              color: 'white',
-              fontSize: '14px',
-              fontWeight: '600',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-              backdropFilter: 'blur(8px)',
-              pointerEvents: 'none',
-              textAlign: 'center',
-              whiteSpace: 'nowrap'
-            }}>
-              {currentRide ? `Destination: ${currentRide.dropoff.split(',')[0]}` : 'Waiting for Incoming Rides under 8.0 KM...'}
-            </div>
-          )}
         </div>
       </div>
 
@@ -3871,7 +3928,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800' }}>Earnings History</h3>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Your net earnings after 10% commission</span>
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Your net earnings</span>
                 </div>
               </div>
               <button onClick={() => setShowEarningsHistory(false)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -3902,13 +3959,12 @@ You can only accept prepaid trips until your balance is cleared.`);
               const periodLabel = earningsHistoryPeriod === 'daily' ? 'Today' : earningsHistoryPeriod === 'weekly' ? 'This Week' : 'This Month';
               return (
                 <>
-                  {/* Summary 4-Card Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  {/* Summary 3-Card Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                     {[
                       { label: 'Trips', value: period.count, color: '#3b82f6', suffix: 'rides' },
                       { label: 'Gross', value: `₹${period.gross}`, color: '#f59e0b' },
-                      { label: 'Commission (10%)', value: `₹${period.commission}`, color: '#ef4444' },
-                      { label: 'Net Earnings', value: `₹${period.net}`, color: '#10b981' },
+                      { label: 'Net Earned', value: `₹${period.gross}`, color: '#10b981' },
                     ].map(({ label, value, color }) => (
                       <div key={label} style={{ padding: '14px', borderRadius: '12px', border: `1px solid ${color}25`, background: `${color}08` }}>
                         <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: '700' }}>{label}</div>
@@ -3939,13 +3995,8 @@ You can only accept prepaid trips until your balance is cleared.`);
                               </div>
                             </div>
                             <div style={{ textAlign: 'right', marginLeft: '12px' }}>
-                              <div style={{ fontWeight: '800', fontSize: '14px', color: '#10b981' }}>₹{(parseFloat(ride.fare) * 0.9).toFixed(2)}</div>
-                              <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>of ₹{ride.fare}</div>
-                              {ride.driverBalance !== undefined && ride.driverBalance !== null && (
-                                <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold', marginTop: '2px' }}>
-                                  Bal: {parseFloat(ride.driverBalance) < 0 ? '-' : ''}₹{Math.abs(parseFloat(ride.driverBalance)).toFixed(2)}
-                                </div>
-                              )}
+                              <div style={{ fontWeight: '800', fontSize: '14px', color: '#10b981' }}>₹{parseFloat(ride.fare || 0).toFixed(2)}</div>
+                              <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Earned</div>
                             </div>
                           </div>
                         ))}
@@ -3964,7 +4015,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                           <td>${r.pickup ?? '—'}</td>
                           <td>${r.dropoff ?? '—'}</td>
                           <td style="text-align:right">₹${r.fare ?? '0'}</td>
-                          <td style="text-align:right;color:#059669">₹${(parseFloat(r.fare||0)*0.9).toFixed(2)}</td>
+                          <td style="text-align:right;color:#059669">₹${parseFloat(r.fare||0).toFixed(2)}</td>
                           <td>${r.completedAt ? new Date(r.completedAt).toLocaleDateString('en-IN') : '—'}</td>
                         </tr>`).join('');
                       const win = window.open('', '_blank');
@@ -3972,7 +4023,7 @@ You can only accept prepaid trips until your balance is cleared.`);
                         <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#fff;padding:32px;color:#111}
                         .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #10b981}
                         .logo{font-size:24px;font-weight:900;color:#10b981}h2{font-size:16px;font-weight:700;color:#333;margin-bottom:4px}
-                        .meta{font-size:12px;color:#666}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+                        .meta{font-size:12px;color:#666}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
                         .card{padding:14px;border-radius:10px;border:1px solid #e5e7eb}
                         .card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#666;margin-bottom:4px}
                         .card-val{font-size:20px;font-weight:800}table{width:100%;border-collapse:collapse;font-size:12px}
@@ -3987,13 +4038,12 @@ You can only accept prepaid trips until your balance is cleared.`);
                         <div class="summary">
                           <div class="card"><div class="card-label">Trips</div><div class="card-val" style="color:#3b82f6">${period.count}</div></div>
                           <div class="card"><div class="card-label">Gross Earnings</div><div class="card-val" style="color:#f59e0b">₹${period.gross}</div></div>
-                          <div class="card"><div class="card-label">Commission (10%)</div><div class="card-val" style="color:#ef4444">₹${period.commission}</div></div>
-                          <div class="card"><div class="card-label">Net Earned</div><div class="card-val" style="color:#10b981">₹${period.net}</div></div>
+                          <div class="card"><div class="card-label">Net Earned</div><div class="card-val" style="color:#10b981">₹${period.gross}</div></div>
                         </div>
                         <table><thead><tr><th>#</th><th>Passenger</th><th>Pickup</th><th>Drop-off</th><th>Gross (₹)</th><th>Net (₹)</th><th>Date</th></tr></thead>
                         <tbody>${rows || '<tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:24px">No rides for this period</td></tr>'}</tbody></table>
                         <div class="footer">HUM Fleet Partner Earnings · System-generated statement · For disputes contact admin support</div>
-                        <script>window.onload=()=>{window.print();}<\/script></body></html>`);
+                        <script>window.onload=()=>{window.print();}</script></body></html>`);
                       win.document.close();
                     }}
                     style={{ padding: '13px', width: '100%', borderRadius: '12px', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
@@ -4008,247 +4058,171 @@ You can only accept prepaid trips until your balance is cleared.`);
           </div>
         </div>
       )}
-      {/* ========== PAYMENT GATEWAY MODAL ========== */}
-      {showPayDuesModal && systemSettings && (
-        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '440px', padding: '20px', borderRadius: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CreditCard size={20} color="var(--primary)" />
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Settle Platform Dues</h3>
-              </div>
-              <button onClick={() => { setShowPayDuesModal(false); setPayDuesSuccess(false); setPayDuesError(null); setPayAmount(''); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
+      {/* ========== INVOICE MODAL ========== */}
+      {invoiceHtml && (
+        <div onClick={() => setInvoiceHtml(null)} style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '600px', height: '85vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: '800', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}><FileText size={18} color="var(--primary)" /> Trip Invoice</span>
+              <button onClick={() => setInvoiceHtml(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={22} /></button>
             </div>
-
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
-              Pay your pending commission dues directly to the administrator's account details below.
-            </p>
-
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Admin Payment Method: {systemSettings.gatewayType === 'upi' ? 'UPI / QR Scan' : 'Bank Transfer'}
-              </div>
-
-              {systemSettings.gatewayType === 'upi' ? (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>UPI ID:</span>
-                    <strong style={{ color: 'var(--primary)' }}>{systemSettings.upiId || 'humfleet@okaxis'}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Beneficiary:</span>
-                    <strong style={{ color: 'var(--text-main)' }}>{systemSettings.accountHolder || 'HUM Fleet'}</strong>
-                  </div>
-                  {systemSettings.qrCodeUrl && (
-                    <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                      <img src={systemSettings.qrCodeUrl} alt="UPI QR Code" style={{ maxWidth: '160px', borderRadius: '10px', border: '3px solid #fff' }} />
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>Scan with GPay, PhonePe, Paytm, etc.</div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Bank Name:</span>
-                    <strong style={{ color: 'var(--text-main)' }}>{systemSettings.bankName}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Account Holder:</span>
-                    <strong style={{ color: 'var(--text-main)' }}>{systemSettings.accountHolder}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Account Number:</span>
-                    <strong style={{ color: 'var(--text-main)' }}>{systemSettings.accountNo}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>IFSC Code:</span>
-                    <strong style={{ color: 'var(--text-main)' }}>{systemSettings.ifscCode}</strong>
-                  </div>
-                </>
-              )}
+            <div style={{ flex: 1, overflow: 'hidden', background: '#fff' }}>
+              <iframe title="Invoice" srcDoc={invoiceHtml} style={{ width: '100%', height: '100%', border: 'none' }} id="driver-invoice-iframe" />
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '700' }}>Enter Payment Amount (INR)</label>
-              <input 
-                type="number" 
-                className="input-field" 
-                placeholder={`e.g. ${parseFloat(wallet.toBePaid || 0).toFixed(2)}`}
-                value={payAmount}
-                onChange={(e) => setPayAmount(e.target.value)}
-                style={{ width: '100%', fontSize: '14px', padding: '10px 12px' }}
-              />
-            </div>
-
-            {payDuesSuccess && (
-              <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#10b981', fontWeight: '700', textAlign: 'center' }}>
-                ✓ Payment confirmed! Platform commission dues updated.
-              </div>
-            )}
-
-            {payDuesError && (
-              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#ef4444', fontWeight: '700', textAlign: 'center' }}>
-                ✕ {payDuesError}
-              </div>
-            )}
-
-            <Button 
-              variant="primary" 
-              className="full-width"
-              disabled={isPayingDues}
-              onClick={async () => {
-                const amt = parseFloat(payAmount);
-                if (isNaN(amt) || amt <= 0) {
-                  alert('Please enter a valid payment amount.');
-                  return;
-                }
-                setIsPayingDues(true);
-                setPayDuesError(null);
-                setPayDuesSuccess(false);
-                const email = localStorage.getItem('driverEmail');
-                try {
-                  const res = await fetch(`${API_BASE}/api/drivers/pay-dues`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, amount: amt })
-                  });
-                  if (res.ok) {
-                    const data = await res.json();
-                    setWallet(data.wallet);
-                    setPayDuesSuccess(true);
-                    setPayAmount('');
-                    setTimeout(() => {
-                      setShowPayDuesModal(false);
-                      setPayDuesSuccess(false);
-                    }, 2000);
-                  } else {
-                    setPayDuesError('Failed to settle dues. Please try again.');
-                  }
-                } catch {
-                  setPayDuesError('Server communication error.');
-                } finally {
-                  setIsPayingDues(false);
-                }
-              }}
-            >
-              {isPayingDues ? 'Processing Settlement...' : 'Confirm Payment & Settle'}
-            </Button>
-
-            <div style={{ textAlign: 'center', marginTop: '6px' }}>
-              <a 
-                href={`https://api.whatsapp.com/send?phone=918848347290&text=${encodeURIComponent(`Hello Admin, I am driver ${driverInfo?.name || 'Partner'} (${driverInfo?.phone || ''}). My pending platform commission & GST dues have reached ₹${parseFloat(wallet.toBePaid || 0).toFixed(2)}. I would like to clear my dues.`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  color: '#25D366',
-                  fontWeight: '700',
-                  fontSize: '12px'
-                }}
-              >
-                💬 Need help? Chat Admin on WhatsApp (+91 8848347290)
-              </a>
+            <div style={{ padding: '12px 16px', display: 'flex', gap: '10px', background: 'var(--bg-card)', borderTop: '1px solid var(--border)' }}>
+              <button onClick={() => setInvoiceHtml(null)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-main)', fontWeight: '700', cursor: 'pointer' }}>Back</button>
+              <button onClick={() => { const f = document.getElementById('driver-invoice-iframe'); if (f) f.contentWindow.print(); }} style={{ flex: 2, padding: '10px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', fontWeight: '800', cursor: 'pointer' }}>📄 Download / Print PDF</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ========== INR 700 COMMISSION & GST DUES NOTIFICATION POPUP MODAL ========== */}
-      {showDuesNoticeModal && parseFloat(wallet.toBePaid || 0) >= 700 && (
+      {/* Modal removed as platform dues no longer apply */}
+      {/* ========== RIDE PREFERENCES MODAL ========== */}
+      {showRidePreferencesModal && (
         <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(5px)', position: 'fixed', inset: 0, zIndex: 1150, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '440px', padding: '24px', borderRadius: '20px', background: 'var(--bg-card)', border: '1.5px solid rgba(245, 158, 11, 0.6)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '440px', padding: '24px', borderRadius: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <AlertTriangle size={24} color="#f59e0b" />
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#f59e0b' }}>Commission & GST Dues Alert</h3>
-              </div>
-              <button onClick={() => { setShowDuesNoticeModal(false); setHasDismissedDuesModal(true); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--text-main)' }}>Ride Preferences</h3>
+              <button onClick={() => setShowRidePreferencesModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
-
-            <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Accumulated Dues (≥ ₹700)</span>
-              <div style={{ fontSize: '28px', fontWeight: '900', color: '#ef4444' }}>
-                ₹{parseFloat(wallet.toBePaid || 0).toFixed(2)}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                (10% Platform Commission & GST Dues)
-              </div>
+            
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Select the vehicle categories you are willing to accept rides for, and whether you want intercity trips. Note: You can only select categories equal to or cheaper than your assigned vehicle.</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', margin: '8px 0' }}>
+              {(() => {
+                const driverCat = availableCategories.find(c => c.name === driverDetails?.vehicleCategory);
+                const driverRate = parseFloat(driverCat?.ratePerKm || driverDetails?.ratePerKm || 0);
+                let eligible = availableCategories;
+                if (driverRate > 0) {
+                  eligible = availableCategories.filter(cat => {
+                     const catRate = parseFloat(cat.ratePerKm || 0);
+                     return catRate <= driverRate;
+                  });
+                  if (eligible.length === 0) eligible = availableCategories;
+                }
+                
+                return eligible.map(cat => (
+                  <label key={cat.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={acceptedCategories.includes(cat.name)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setAcceptedCategories([...acceptedCategories, cat.name]);
+                        } else {
+                          setAcceptedCategories(acceptedCategories.filter(c => c !== cat.name));
+                        }
+                      }}
+                      style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
+                    />
+                    {cat.name} (₹{parseFloat(cat.ratePerKm || 0).toFixed(2)}/KM)
+                  </label>
+                ));
+              })()}
+              
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '8px 0' }} />
+              
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer', color: '#f59e0b', fontWeight: 'bold' }}>
+                <input 
+                  type="checkbox" 
+                  checked={acceptsIntercity}
+                  onChange={(e) => setAcceptsIntercity(e.target.checked)}
+                  style={{ width: '18px', height: '18px', accentColor: '#f59e0b' }}
+                />
+                Intercity Trips (&gt;32 KM)
+              </label>
             </div>
-
-            <p style={{ fontSize: '13px', color: 'var(--text-main)', margin: 0, lineHeight: '1.5', textAlign: 'center' }}>
-              Your accumulated platform commission & GST dues have reached <strong>₹700</strong> or above. Please clear your dues or communicate with the Admin via WhatsApp to settle your dues.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
-              <a 
-                href={`https://api.whatsapp.com/send?phone=918848347290&text=${encodeURIComponent(`Hello Admin, I am driver ${driverInfo?.name || 'Partner'} (${driverInfo?.phone || ''}). My pending platform commission & GST dues have reached ₹${parseFloat(wallet.toBePaid || 0).toFixed(2)}. I would like to clear my dues.`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  background: '#25D366',
-                  color: '#ffffff',
-                  fontWeight: '800',
-                  fontSize: '13px',
-                  padding: '12px',
-                  borderRadius: '12px',
-                  boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)'
-                }}
-              >
-                💬 Chat Admin on WhatsApp (+91 8848347290)
-              </a>
-
-              <button
-                onClick={() => {
-                  setShowDuesNoticeModal(false);
-                  setShowPayDuesModal(true);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
-                  color: '#ffffff',
-                  fontWeight: '800',
-                  fontSize: '13px',
-                  padding: '12px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                <CreditCard size={16} /> Pay Dues Online
-              </button>
-
-              <button
-                onClick={() => {
-                  setShowDuesNoticeModal(false);
-                  setHasDismissedDuesModal(true);
-                }}
-                style={{
-                  background: 'transparent',
-                  color: 'var(--text-muted)',
-                  fontWeight: '600',
-                  fontSize: '12px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '6px'
-                }}
-              >
-                Dismiss Notice
-              </button>
-            </div>
+            
+            <Button variant="primary" onClick={() => {
+              handleSaveRidePreferences();
+              setShowRidePreferencesModal(false);
+            }} className="full-width" style={{ background: 'var(--primary)', color: '#000', border: 'none' }}>
+              Save Ride Preferences
+            </Button>
           </div>
+        </div>
+      )}
+
+      {/* ========== CHOOSE FROM MAP MODAL ========== */}
+      {showMapModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 2000,
+            background: 'rgba(0,0,0,0.92)',
+            display: 'flex', flexDirection: 'column',
+          }}
+        >
+          {/* Map iframe fills remaining space */}
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <iframe
+              id="map-modal-iframe"
+              src="/map.html"
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              title="Choose from Map"
+            />
+          </div>
+
+          {/* Confirm button */}
+          <div style={{
+            padding: '14px 18px',
+            background: 'var(--bg-card)',
+            borderTop: '1px solid var(--border)',
+            flexShrink: 0,
+          }}>
+            <button
+              onClick={() => setShowMapModal(false)}
+              style={{
+                width: '100%', padding: '14px', borderRadius: '12px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                color: '#fff', fontWeight: '800', fontSize: '15px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              }}
+            >
+              📍 Confirm Location
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING YOU ARE ONLINE BANNER */}
+      {isOnline && !currentRide && !isPaused && (
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: 'var(--bg-card)',
+          borderTop: '2px solid rgba(16, 185, 129, 0.4)',
+          padding: '10px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.15), inset 0 10px 10px -10px rgba(16, 185, 129, 0.1)',
+          zIndex: 1000
+        }}>
+          {/* GOOGLE STYLE LINEAR SEARCH ANIMATION */}
+          <style>
+            {`
+              @keyframes google-line-scroll {
+                0% { background-position: 200% 0; }
+                100% { background-position: 0% 0; }
+              }
+            `}
+          </style>
+          <div style={{
+            width: '80%', height: '4px', borderRadius: '2px',
+            background: 'linear-gradient(90deg, #4285F4, #EA4335, #FBBC05, #34A853, #4285F4, #EA4335)',
+            backgroundSize: '200% 100%',
+            animation: 'google-line-scroll 2s linear infinite'
+          }}></div>
+
+          <span style={{ fontSize: '10px', fontWeight: '800', color: theme === 'dark' ? '#ffffff' : '#000000', letterSpacing: '1px' }}>YOU ARE ONLINE</span>
         </div>
       )}
 

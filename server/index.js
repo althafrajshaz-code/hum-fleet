@@ -27,7 +27,13 @@ const sendPushNotification = async (fcmToken, title, body, data = {}) => {
     await admin.messaging().send({
       token: fcmToken,
       notification: { title, body },
-      data
+      data,
+      android: {
+        notification: {
+          channelId: 'ride_requests_3',
+          sound: 'ride_alert_voice.wav'
+        }
+      }
     });
   } catch (err) {
     console.error('Push Error:', err);
@@ -163,7 +169,9 @@ let drivers = [
     docs: { rc: 'rc_rajesh.pdf', pollution: 'puc_rajesh.pdf', insurance: 'insurance_rajesh.pdf', fitness: 'fitness_rajesh.pdf', license: 'license_rajesh.pdf' },
     wallet: { cashCollected: 0, toBePaid: 0, gstCollected: 0 },
     rating: 5.0,
-    ratings: []
+    ratings: [],
+    gender: 'Female',
+    isOnline: true
   },
   {
     id: 2,
@@ -214,6 +222,8 @@ let settings = {
   ratePerKm: '15.00',       // Platform Min Rate/KM for drivers
   minRatePerHour: '100.00', // Platform Min Rate/Hour for drivers
   surgeMultiplier: '1.0',
+  platformCommissionPercentage: '0', // e.g. '5' for 5%
+  platformCommissionFlat: '0',       // e.g. '5' for ₹5 flat fee
   systemStatus: 'online',
   gatewayType: 'upi', // 'upi' or 'bank'
   upiId: 'humfleet@okaxis',
@@ -221,10 +231,17 @@ let settings = {
   accountNo: '50100481293845',
   ifscCode: 'HDFC0000123',
   accountHolder: 'HUM FLEET PLATFORMS PVT LTD',
-  qrCodeUrl: '' // Base64 QR code image
+  qrCodeUrl: 'https://humfleet.xyz/admin_qr.jpg' // Base64 QR code image
 };
 
 // Default Vehicle Categories List with Separate Base Fares and Rates/KM
+const getPlatformFee = (fare) => {
+  const f = parseFloat(fare || 0);
+  if (f >= 500) return 15;
+  if (f >= 200) return 10;
+  return 5;
+};
+
 let vehicleCategories = [
   { id: 'auto', name: '🛺 Auto Rickshaw', maxPassengers: 3, baseFare: 0.00, ratePerKm: 0.00, icon: '🛺' },
   { id: 'mini', name: '🚙 Mini', maxPassengers: 4, baseFare: 0.00, ratePerKm: 0.00, icon: '🚙' },
@@ -246,83 +263,64 @@ let employees = [];
 let analyticsResetDate = null; // ISO string — analytics only count rides after this date
 let activeEmergencies = []; // SOS system state
 
-mongoose.set('bufferCommands', false); // Fail fast instead of buffering in serverless
+app.get('/api/debug-sizes', (req, res) => {
+  const sizes = {
+    drivers: Buffer.byteLength(JSON.stringify(drivers)),
+    passengers: Buffer.byteLength(JSON.stringify(passengers)),
+    activeRides: Buffer.byteLength(JSON.stringify(activeRides)),
+    settings: Buffer.byteLength(JSON.stringify(settings)),
+    vehicleCategories: Buffer.byteLength(JSON.stringify(vehicleCategories)),
+    driverMessages: Buffer.byteLength(JSON.stringify(driverMessages)),
+    passengerMessages: Buffer.byteLength(JSON.stringify(passengerMessages)),
+    rideMessages: Buffer.byteLength(JSON.stringify(rideMessages)),
+    dynamicLocations: Buffer.byteLength(JSON.stringify(dynamicLocations)),
+    walletRequests: Buffer.byteLength(JSON.stringify(walletRequests)),
+    promotions: Buffer.byteLength(JSON.stringify(promotions))
+  };
+  res.json(sizes);
+});
 
-// Helper to safely save to DB without hanging if disconnected
-async function saveToMongoDB(isRetry = false) {
-  if (mongoose.connection.readyState !== 1 && !isRetry) {
-    console.warn("MongoDB not connected. Skipping DB save (data is in memory).");
-    return;
-  }
-  try {
-    await AppState.updateOne(
-      { _id: 'humFleetState' },
-      {
-        $set: {
-          drivers,
-          passengers,
-          activeRides,
-          settings,
-          vehicleCategories,
-          adminCredentials,
-          driverMessages,
-          passengerMessages,
-          rideMessages,
-          dynamicLocations,
-          promotions,
-          employees,
-          walletRequests,
-          analyticsResetDate,
-          activeEmergencies
-        }
-      },
-      { upsert: true }
-    );
-  } catch (err) {
-    console.error("Failed to save to MongoDB:", err);
-    // If it's a serverless dropped connection, force a reconnect and retry once
-    if (!isRetry) {
-      console.log("Attempting to recover MongoDB connection and retry save...");
-      try {
-        await mongoose.disconnect();
-        await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000, maxPoolSize: 1 });
-        await saveToMongoDB(true);
-      } catch (retryErr) {
-        console.error("Retry failed:", retryErr);
-      }
-    }
-  }
-}
 
-// Persistence Helpers — Serverless compatible
+const DB_FILE = require('path').join(__dirname, 'humFleetState.json');
 let pendingSavePromise = null;
-function saveData() {
-  if (mongoose.connection.readyState !== 1) return;
-  pendingSavePromise = saveToMongoDB();
+
+// Helper to safely save to local DB without hanging
+async function saveToLocalDB() {
+  const state = {
+    drivers,
+    passengers,
+    activeRides,
+    settings,
+    vehicleCategories,
+    adminCredentials,
+    driverMessages,
+    passengerMessages,
+    rideMessages,
+    dynamicLocations,
+    promotions,
+    employees,
+    walletRequests,
+    analyticsResetDate,
+    activeEmergencies
+  };
+  try {
+    await require('fs').promises.writeFile(DB_FILE, JSON.stringify(state));
+  } catch (err) {
+    console.error("Failed to save to local DB:", err);
+  }
 }
 
-mongoose.set('bufferCommands', false); // Fail fast instead of buffering in serverless
-
-async function saveFieldToMongoDB(fieldName, value) {
-  if (mongoose.connection.readyState !== 1) return;
-  try {
-    await AppState.updateOne({ _id: 'humFleetState' }, { $set: { [fieldName]: value } });
-  } catch (err) {
-    console.log(`Recovering connection for ${fieldName}...`);
-    try {
-      await mongoose.disconnect();
-      await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000, maxPoolSize: 1 });
-      await AppState.updateOne({ _id: 'humFleetState' }, { $set: { [fieldName]: value } });
-    } catch (retryErr) {
-      console.error(`Retry failed for ${fieldName}:`, retryErr);
-    }
-  }
+function saveData() {
+  pendingSavePromise = saveToLocalDB();
 }
 
 async function loadData() {
   try {
-    const doc = await AppState.findById('humFleetState').lean();
-    if (doc) {
+    if (require('fs').existsSync(DB_FILE)) {
+      console.log("Loading HUM Fleet database state from local file...");
+      const data = require('fs').readFileSync(DB_FILE, 'utf8');
+      const doc = JSON.parse(data);
+      
       let needsSave = false;
 
       if (doc.drivers) {
@@ -420,65 +418,27 @@ async function loadData() {
         analyticsResetDate = doc.analyticsResetDate;
       }
 
-      console.log('Successfully restored HUM Fleet database state from MongoDB');
+      console.log('Successfully restored HUM Fleet database state from local JSON');
       if (needsSave) {
         saveData();
-        console.log('Synchronized missing keys back to MongoDB');
       }
     } else {
       saveData();
-      console.log('Created fresh MongoDB state with default initial data.');
+      console.log('Created fresh local JSON state with default initial data.');
     }
   } catch (err) {
-    console.error('Failed to load data from MongoDB:', err);
+    console.error('Failed to load data from local JSON:', err);
   }
 }
+
+// Initialize database on boot
+loadData();
 
 let dbConnectionError = null;
 
-// ── Serverless-compatible MongoDB connection ──────────────────────────────────
-// Vercel runs each request in a serverless function — app.listen() is not used.
-// We connect lazily on first request and reuse the connection across warm invocations.
-async function connectDB() {
-  if (mongoose.connection.readyState === 1) return;
-  
-  if (mongoose.connection.readyState === 2) {
-    // Currently connecting, wait a bit but don't establish a new one
-    let retries = 10;
-    while (mongoose.connection.readyState === 2 && retries > 0) {
-      await new Promise(r => setTimeout(r, 100));
-      retries--;
-    }
-    if (mongoose.connection.readyState === 1) return;
-  }
-
-  try {
-    await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      maxPoolSize: 1 // Optimize for serverless environments
-    });
-    console.log('Connected to MongoDB');
-    await loadData();
-  } catch (err) {
-    console.error('MongoDB connection failed:', err);
-    dbConnectionError = err.toString();
-    loadData(); // Fallback to in-memory
-  }
-}
-
 // Middleware: Serverless compatibility wrapper
 app.use(async (req, res, next) => {
-  // 1. Ensure DB is connected
-  await connectDB();
-  
-  // 2. Always reload memory from DB to sync Vercel's stateless instances
-  // NOTE: Removed for VPS deployment to prevent race conditions and memory overwrites
-  // if (mongoose.connection.readyState === 1 && req.path !== '/api/debug/db') {
-  //   await loadData();
-  // }
-  
-  // 3. Intercept response to wait for any pending saveData() calls to finish 
-  // before Vercel freezes the execution context
+  // Persistence ensures state is saved before responding
   const originalJson = res.json;
   const originalSend = res.send;
   
@@ -496,12 +456,9 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// Local development: start HTTP server normally
-if (process.env.NODE_ENV !== 'production' || process.env.LOCAL_DEV === '1') {
-  connectDB().then(() => {
-    app.listen(PORT, () => {
-      console.log(`HUM Fleet API Server running on port ${PORT}`);
-    });
+if (process.env.NODE_ENV !== 'production' || process.env.LOCAL_DEV === '1' || true) {
+  app.listen(PORT, () => {
+    console.log(`HUM Fleet API Server running on port ${PORT}`);
   });
 }
 
@@ -653,15 +610,41 @@ app.post('/api/passengers/google-auth', async (req, res) => {
 // Passenger login (supports email or phone number)
 app.post('/api/passengers/login', (req, res) => {
   const { loginId, password } = req.body;
-  const user = passengers.find(p => 
-    (p.email === loginId || p.phone === loginId) && p.password === password
-  );
+  
+  const cleanPhoneInput = loginId ? loginId.replace(/[^0-9]/g, '') : '';
+  // Check if it's purely digits/spaces/plus to treat as phone, or an email
+  const isPhoneAttempt = /^[\+\d\s\-]+$/.test(loginId) && cleanPhoneInput.length >= 10;
+  
+  const user = passengers.find(p => {
+    let matchLogin = false;
+    if (p.email && p.email.toLowerCase() === loginId.toLowerCase()) {
+      matchLogin = true;
+    } else if (isPhoneAttempt && p.phone) {
+      const cleanDbPhone = p.phone.replace(/[^0-9]/g, '');
+      // If user typed '9876543210', match last 10 digits
+      if (cleanDbPhone.slice(-10) === cleanPhoneInput.slice(-10)) {
+        matchLogin = true;
+      }
+    } else if (p.phone === loginId) {
+      matchLogin = true;
+    }
+    return matchLogin && p.password === password;
+  });
+
   if (user) {
     if (!user.verificationCode) {
       user.verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
       saveData();
     }
-    res.json({ success: true, name: user.name, email: user.email, phone: user.phone, verificationCode: user.verificationCode });
+    res.json({ 
+      success: true, 
+      name: user.name, 
+      email: user.email, 
+      phone: user.phone, 
+      verificationCode: user.verificationCode,
+      home: user.home || '',
+      work: user.work || ''
+    });
   } else {
     res.status(401).json({ error: 'Invalid email/phone number or password.' });
   }
@@ -672,10 +655,24 @@ app.post('/api/drivers/login', (req, res) => {
   const { loginId, password } = req.body;
   console.log(`Driver login attempt: loginId="${loginId}", password="${password}"`);
   
-  const user = drivers.find(d => 
-    (d.email && d.email.toLowerCase() === loginId.toLowerCase() || d.phone === loginId) && 
-    (d.password === password || (!d.password && password === 'driver123'))
-  );
+  const cleanPhoneInput = loginId ? loginId.replace(/[^0-9]/g, '') : '';
+  const isPhoneAttempt = /^[\+\d\s\-]+$/.test(loginId) && cleanPhoneInput.length >= 10;
+
+  const user = drivers.find(d => {
+    let matchLogin = false;
+    if (d.email && d.email.toLowerCase() === loginId.toLowerCase()) {
+      matchLogin = true;
+    } else if (isPhoneAttempt && d.phone) {
+      const cleanDbPhone = d.phone.replace(/[^0-9]/g, '');
+      if (cleanDbPhone.slice(-10) === cleanPhoneInput.slice(-10)) {
+        matchLogin = true;
+      }
+    } else if (d.phone === loginId) {
+      matchLogin = true;
+    }
+    return matchLogin && (d.password === password || (!d.password && password === 'driver123'));
+  });
+
   if (user) {
     if (user.status === 'Pending') {
       return res.status(403).json({ error: 'Your application is pending approval. Please wait for an admin to verify your documents.' });
@@ -820,8 +817,25 @@ app.get('/api/passengers/status', (req, res) => {
       email: passenger.email,
       phone: passenger.phone,
       rating: passenger.rating || 5.0,
-      profilePic: passenger.profilePic || null
+      walletBalance: passenger.walletBalance || 0,
+      profilePic: passenger.profilePic || null,
+      home: passenger.home || '',
+      work: passenger.work || ''
     });
+  } else {
+    res.status(404).json({ error: 'Passenger not found' });
+  }
+});
+
+// Update Passenger Locations
+app.post('/api/passengers/locations', (req, res) => {
+  const { email, home, work } = req.body;
+  const passenger = passengers.find(p => p.email === email);
+  if (passenger) {
+    if (home !== undefined) passenger.home = home;
+    if (work !== undefined) passenger.work = work;
+    saveData();
+    res.json({ success: true, home: passenger.home, work: passenger.work });
   } else {
     res.status(404).json({ error: 'Passenger not found' });
   }
@@ -1119,7 +1133,7 @@ app.post('/api/drivers/preferences', (req, res) => {
   if (!driver) return res.status(404).json({ error: 'Driver not found' });
   if (acceptedCategories) driver.acceptedCategories = acceptedCategories;
   if (acceptsIntercity !== undefined) driver.acceptsIntercity = acceptsIntercity;
-  saveFieldToMongoDB('drivers', drivers);
+  saveData();
   res.json(driver);
 });
 
@@ -1163,11 +1177,14 @@ app.post('/api/drivers/location', (req, res) => {
     if (isPaused !== undefined) driver.isPaused = Boolean(isPaused);
     driver.lastActiveAt = new Date().toISOString();
     
-    // Broadcast real-time location and status update to admin
-    if (typeof broadcastDriverUpdate === 'function') {
-      broadcastDriverUpdate(driver.id, driver.lat, driver.lng, driver.isOnline, driver.currentRide);
+    // Sync driver location to their active ride if they have one
+    const activeRide = activeRides.find(r => r.driverEmail === driver.email && (r.status === 'Accepted' || r.status === 'Arrived' || r.status === 'In Progress'));
+    if (activeRide) {
+      if (lat !== undefined) activeRide.driverLat = parseFloat(lat);
+      if (lng !== undefined) activeRide.driverLng = parseFloat(lng);
     }
     
+    // Broadcast real-time location and status update to admin
     // NOTE: saveData() was removed here to save IO and data costs. Locations are held in memory.
     res.json({ 
       success: true, 
@@ -1180,6 +1197,18 @@ app.post('/api/drivers/location', (req, res) => {
     });
   } else {
     res.status(404).json({ error: 'Driver not found' });
+  }
+});
+
+app.post('/api/rides/:id/wait', (req, res) => {
+  const id = parseInt(req.params.id);
+  const ride = activeRides.find(r => r.id === id);
+  if (ride) {
+    ride.waitRequested = true;
+    saveData();
+    res.json(ride);
+  } else {
+    res.status(404).json({ error: 'Ride not found' });
   }
 });
 
@@ -1570,19 +1599,30 @@ app.post('/api/settings', async (req, res) => {
 
 // Passenger requests a ride
 app.post('/api/rides', (req, res) => {
-  const { pickup, dropoff, fare, passengerName, passengerEmail, pickupCoords, dropoffCoords, paymentType, isPreBooked, preBookDate, preBookTime, withPet } = req.body;
+  const { pickup, dropoff, fare, driverTip, passengerName, passengerEmail, pickupCoords, dropoffCoords, paymentType, isPreBooked, preBookDate, preBookTime, withPet, waypoints } = req.body;
   
   // Calculate total ride distance in kilometers
-  const totalKm = pickupCoords && dropoffCoords
-    ? parseFloat(getDistance(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng).toFixed(1))
-    : 8.0;
+  let totalKm = 8.0;
+  if (pickupCoords && dropoffCoords) {
+    let dist = 0;
+    const allStops = [pickupCoords, ...(waypoints || []), dropoffCoords].filter(Boolean);
+    for (let i = 0; i < allStops.length - 1; i++) {
+      if (allStops[i].lat && allStops[i+1].lat) {
+        dist += getDistance(parseFloat(allStops[i].lat), parseFloat(allStops[i].lng), parseFloat(allStops[i+1].lat), parseFloat(allStops[i+1].lng));
+      }
+    }
+    totalKm = parseFloat(dist.toFixed(1));
+    if (totalKm < 0.1) totalKm = 8.0;
+  }
 
-  const isIntercity = totalKm > 35.0;
+  const isIntercity = totalKm > 32.0;
 
   const passenger = passengers.find(p => p.email === passengerEmail);
   const passengerRating = passenger ? passenger.rating : 5.0;
 
   // Dynamic Surge Pricing & Geofencing
+  // NOTE: Surge is already applied by the passenger frontend via calculateCategoryFare().
+  // We store it for reference but do NOT multiply again.
   let surgeMultiplier = 1.0;
   let appliedSurgeReason = null;
   const currentHour = new Date().getHours();
@@ -1602,7 +1642,16 @@ app.post('/api/rides', (req, res) => {
     }
   }
 
-  const finalFare = Math.round(parseFloat(fare || 0) * surgeMultiplier);
+  // Use the fare exactly as sent from the frontend (surge already applied there)
+  const finalFare = Math.round(parseFloat(fare || 0));
+
+  // Calculate per-trip platform fee based on fare tiers
+  let platformFee = 10;
+  if (finalFare >= 1500) {
+    platformFee = 20;
+  } else if (finalFare > 500) {
+    platformFee = 15;
+  }
 
   const newRide = {
     id: (activeRides.length > 0 ? Math.max(...activeRides.map(x => Number(x.id) || 0)) : 0) + 1,
@@ -1610,6 +1659,7 @@ app.post('/api/rides', (req, res) => {
     dropoff,
     originalFare: fare,
     fare: finalFare,
+    driverTip: parseFloat(driverTip || 0),
     surgeMultiplier,
     surgeReason: appliedSurgeReason,
     passengerName: passengerName || 'Customer',
@@ -1619,8 +1669,10 @@ app.post('/api/rides', (req, res) => {
     paymentType: paymentType || 'cash', // 'cash' or 'prepaid'
     pickupCoords,
     dropoffCoords,
+    waypoints: waypoints || [],
     totalKm,
     isIntercity,
+    platformFee,
     driverName: null,
     driverPhone: null,
     driverEmail: null,
@@ -1894,7 +1946,7 @@ app.get('/api/rides/passenger/active', (req, res) => {
   const { email } = req.query;
   const active = activeRides.find(r => 
     r.passengerEmail === email && 
-    (r.status === 'Searching' || r.status === 'Accepted' || r.status === 'Arrived') && 
+    (r.status === 'Searching' || r.status === 'Accepted' || r.status === 'Arrived' || r.status === 'In Progress' || (r.status === 'Completed' && !r.passengerRated)) && 
     (!r.isPreBooked || r.isActivated)
   );
   res.json(active || null);
@@ -1938,15 +1990,43 @@ app.post('/api/rides/:id/verify-pin', (req, res) => {
     return res.status(404).json({ error: 'Passenger not found' });
   }
   
-  if (passenger.verificationCode !== pin) {
-    return res.status(400).json({ error: 'Invalid PIN. Please ask the passenger for their 6-digit ID.' });
+  if (passenger.id.toString() !== pin) {
+    return res.status(400).json({ error: 'Invalid PIN. Please ask the passenger for their Customer ID.' });
   }
   
   ride.status = 'In Progress';
   ride.startedAt = new Date().toISOString();
+  
+  if (ride.arrivedAt) {
+    const arrivedTime = new Date(ride.arrivedAt).getTime();
+    const now = new Date(ride.startedAt).getTime();
+    const waitMinutes = Math.floor((now - arrivedTime) / 60000);
+    
+    // 5 minutes free
+    if (waitMinutes > 5) {
+      const chargeableMinutes = waitMinutes - 5;
+      ride.waitingCharge = (chargeableMinutes * 1.5).toFixed(2);
+      ride.waitingMinutes = chargeableMinutes;
+    } else {
+      ride.waitingCharge = '0.00';
+      ride.waitingMinutes = 0;
+    }
+  }
+  
   saveData();
   
   res.json(ride);
+});
+
+// Get a single ride by ID (used by driver to check if passenger cancelled)
+app.get('/api/rides/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const ride = activeRides.find(r => r.id === id);
+  if (ride) {
+    res.json(ride);
+  } else {
+    res.status(404).json({ error: 'Ride not found' });
+  }
 });
 
 // Passenger cancels a ride completely
@@ -1954,7 +2034,41 @@ app.post('/api/rides/:id/passenger-cancel', (req, res) => {
   const id = parseInt(req.params.id);
   const ride = activeRides.find(r => r.id === id);
   if (ride) {
+    if (ride.status === 'In Progress') {
+      return res.status(403).json({ error: 'Cannot cancel a trip that is already in progress.' });
+    }
+
+    if (ride.status === 'Arrived' && ride.arrivedAt) {
+      const arrivedTime = new Date(ride.arrivedAt).getTime();
+      const now = new Date().getTime();
+      const waitMinutes = Math.floor((now - arrivedTime) / 60000);
+      
+      let waitingCharge = 0;
+      if (waitMinutes > 5) {
+        waitingCharge = (waitMinutes - 5) * 1.5;
+      }
+      
+      let travelDistance = 0;
+      if (ride.acceptedLat && ride.acceptedLng && ride.pickupCoords) {
+        travelDistance = getDistance(ride.acceptedLat, ride.acceptedLng, parseFloat(ride.pickupCoords.lat), parseFloat(ride.pickupCoords.lng));
+      }
+      const runningCharge = travelDistance * 7.0;
+      const totalPenalty = waitingCharge + runningCharge;
+      
+      if (totalPenalty > 0) {
+        const passenger = passengers.find(p => p.email === ride.passengerEmail);
+        if (passenger) {
+          passenger.cancellationDebt = parseFloat(((passenger.cancellationDebt || 0) + totalPenalty).toFixed(2));
+        }
+        const driver = drivers.find(d => d.email === ride.driverEmail);
+        if (driver) {
+          driver.pendingCompensation = parseFloat(((driver.pendingCompensation || 0) + totalPenalty).toFixed(2));
+        }
+      }
+    }
+
     ride.status = 'Cancelled';
+    delete ride.vehiclePhotos;
     saveData();
     res.json(ride);
   } else {
@@ -1995,6 +2109,12 @@ app.post('/api/rides/:id/accept', (req, res) => {
     ride.vehicleModel = vehicleModel;
     ride.vehiclePlate = vehiclePlate;
     ride.driverRating = dRating;
+    
+    if (driver && driver.lat && driver.lng) {
+      ride.acceptedLat = parseFloat(driver.lat);
+      ride.acceptedLng = parseFloat(driver.lng);
+    }
+    
     if (driver && driver.photos) {
       ride.vehiclePhotos = driver.photos;
     }
@@ -2011,6 +2131,7 @@ app.post('/api/rides/:id/arrive', (req, res) => {
   const ride = activeRides.find(r => r.id === id);
   if (ride) {
     ride.status = 'Arrived';
+    ride.arrivedAt = new Date().toISOString();
     saveData();
     res.json(ride);
   } else {
@@ -2037,7 +2158,7 @@ app.post('/api/rides/:id/update-destination', (req, res) => {
   if (ride.pickupCoords && ride.dropoffCoords) {
     const updatedKm = parseFloat(getDistance(ride.pickupCoords.lat, ride.pickupCoords.lng, ride.dropoffCoords.lat, ride.dropoffCoords.lng).toFixed(1));
     ride.totalKm = updatedKm;
-    ride.isIntercity = updatedKm > 35.0;
+    ride.isIntercity = updatedKm > 32.0;
 
     const driver = drivers.find(d => d.email === ride.driverEmail);
     const catObj = vehicleCategories.find(c => c.name === ride.vehicleCategory) || {};
@@ -2049,12 +2170,11 @@ app.post('/api/rides/:id/update-destination', (req, res) => {
     let catBase = parseFloat(catObj.baseFare !== undefined ? catObj.baseFare : settings.baseFare);
     if (parseFloat(settings.baseFare) > catBase) catBase = parseFloat(settings.baseFare);
     
-    const surge = parseFloat(settings.surgeMultiplier || 1);
+    const surge = parseFloat(ride.surgeMultiplier || settings.surgeMultiplier || 1);
     
     let updatedFareVal = (catBase + finalRatePerKm * updatedKm) * surge;
-    if (ride.isIntercity) {
-      updatedFareVal += 250;
-    }
+    // Intercity 275 premium (invisible to passenger frontend UI)
+    updatedFareVal += (updatedKm > 100.0 ? 300 : (updatedKm > 32.0 ? 250 : 0));
     ride.fare = updatedFareVal.toFixed(2);
   }
 
@@ -2114,6 +2234,8 @@ app.post('/api/rides/:id/cancel', (req, res) => {
     ride.driverEmail = null;
     ride.vehicleModel = null;
     ride.vehiclePlate = null;
+    delete ride.vehiclePhotos;
+    saveData();
     res.json(ride);
   } else {
     res.status(404).json({ error: 'Ride request not found' });
@@ -2127,6 +2249,7 @@ app.post('/api/rides/:id/complete', (req, res) => {
   if (ride) {
     ride.status = 'Completed';
     ride.completedAt = new Date().toISOString();
+    delete ride.vehiclePhotos; // Prevent state bloating
 
     // Dynamically calculate fare based on actual traveled distance and Category ratePerKm
     const catObj = vehicleCategories.find(c => c.name === ride.vehicleCategory) || {};
@@ -2138,7 +2261,7 @@ app.post('/api/rides/:id/complete', (req, res) => {
     
     // Calculate what the original minimum fare SHOULD have been
     let originalMinFare = baseTotal * rate;
-    if (ride.isIntercity) originalMinFare += 250;
+    originalMinFare += (baseTotal > 100.0 ? 300 : (baseTotal > 32.0 ? 250 : 0));
     
     // Check if the passenger offered more than the minimum
     const originalOfferedFare = parseFloat(ride.fare || originalMinFare);
@@ -2149,20 +2272,29 @@ app.post('/api/rides/:id/complete', (req, res) => {
     
     // Recalculate based on final distance
     let recalculatedMinFare = distance * rate;
-    if (ride.isIntercity) recalculatedMinFare += 250;
+    recalculatedMinFare += (distance > 100.0 ? 300 : (distance > 32.0 ? 250 : 0));
+    
+    // Calculate GST on the base minimum fare
+    const gst = 0; // No GST anymore
     
     // Final fare preserves any voluntary extra tip they offered
-    const finalFare = recalculatedMinFare + voluntaryExtraOffer;
+    const waitingCharge = ride.waitingCharge ? parseFloat(ride.waitingCharge) : 0;
+    const finalFare = recalculatedMinFare + voluntaryExtraOffer + waitingCharge;
+
+    // Calculate Platform Fee (Commission) dynamically from settings
+    const commissionPct = parseFloat(settings.platformCommissionPercentage) || 0;
+    let commission = (finalFare * (commissionPct / 100)); 
     
-    const gst = finalFare * 0.05; // 5% GST
-    const commission = finalFare * 0.05; // 5% Commission
-    const totalCollected = finalFare + gst; // Passenger pays distance fare + 5% GST
+    const driverTripFee = parseFloat(settings.platformCommissionFlat) || 0; 
+    
+    const totalCollected = finalFare + gst; // Passenger pays distance fare + Tip on distance fare
 
     // Update ride data
     ride.finalDistance = distance.toFixed(2);
     ride.fare = finalFare.toFixed(2);
-    ride.gst = gst.toFixed(2);
-    ride.commission = commission.toFixed(2);
+    ride.gst = '0.00';
+    ride.commission = '0.00';
+    ride.driverTripFee = '0.00';
     ride.totalCollected = totalCollected.toFixed(2);
 
     const { collectCash } = req.body;
@@ -2170,8 +2302,8 @@ app.post('/api/rides/:id/complete', (req, res) => {
       ride.paymentType = 'cash';
     }
 
-    // Update driver's wallet
-    // (driver already found above)
+    // Update driver's wallet (no longer deducting commission/fees, so toBePaid stays stable)
+    const driver = drivers.find(d => d.email === ride.driverEmail);
     if (driver) {
       if (!driver.wallet) driver.wallet = { cashCollected: 0, toBePaid: 0, gstCollected: 0 };
       if (driver.wallet.gstCollected === undefined) driver.wallet.gstCollected = 0;
@@ -2179,7 +2311,8 @@ app.post('/api/rides/:id/complete', (req, res) => {
         driver.wallet.pendingSince = new Date().toISOString();
       }
       driver.wallet.cashCollected += totalCollected;
-      driver.wallet.toBePaid += (gst + commission);
+      // Dues are now 0 per trip since gst, commission, and trip fee are all 0
+      driver.wallet.toBePaid += (gst + commission + driverTripFee); 
       driver.wallet.gstCollected += gst;
       ride.driverBalance = -driver.wallet.toBePaid;
     }
@@ -2216,6 +2349,7 @@ app.post('/api/rides/:id/rate-driver', (req, res) => {
       const total = driver.ratings.reduce((sum, r) => sum + r.rating, 0);
       driver.rating = parseFloat((total / driver.ratings.length).toFixed(1));
     }
+    ride.passengerRated = true;
     saveData();
     res.json({ success: true });
   } else {
@@ -2277,7 +2411,7 @@ app.get('/api/admin/financials', (req, res) => {
   activeRides.filter(r => r.status === 'Completed').forEach(r => {
     const fare = parseFloat(r.fare);
     totalCommission += fare * 0.05;
-    totalGST += fare * 0.05;
+    totalGST += 0;
     toBeCollected += fare * 0.10;
   });
 
@@ -2389,22 +2523,26 @@ app.get('/api/drivers/earnings', (req, res) => {
   const daily = completed.filter(r => new Date(r.completedAt || r.createdAt || now).toDateString() === todayStr);
   const weekly = completed.filter(r => new Date(r.completedAt || r.createdAt || now) >= weekAgo);
   const monthly = completed.filter(r => new Date(r.completedAt || r.createdAt || now) >= monthAgo);
-
-  const summarise = (rides) => ({
-    count: rides.length,
-    gross: rides.reduce((s, r) => s + parseFloat(r.fare || 0), 0).toFixed(2),
-    commission: (rides.reduce((s, r) => s + parseFloat(r.fare || 0), 0) * 0.10).toFixed(2),
-    net: (rides.reduce((s, r) => s + parseFloat(r.fare || 0), 0) * 0.90).toFixed(2),
-    rides: rides.map(r => ({
-      id: r.id,
-      pickup: r.pickup,
-      dropoff: r.dropoff,
-      fare: r.fare,
-      passengerName: r.passengerName,
-      completedAt: r.completedAt || r.createdAt || null,
-      driverBalance: r.driverBalance
-    }))
-  });
+  
+    const summarise = (rides) => {
+      const gross = rides.reduce((s, r) => s + parseFloat(r.fare || 0), 0);
+      const commission = rides.reduce((s, r) => s + parseFloat(r.commission || getPlatformFee(r.fare)), 0);
+      return {
+        count: rides.length,
+        gross: gross.toFixed(2),
+        commission: commission.toFixed(2),
+        net: (gross - commission).toFixed(2),
+        rides: rides.map(r => ({
+          id: r.id,
+          pickup: r.pickup,
+          dropoff: r.dropoff,
+          fare: r.fare,
+          passengerName: r.passengerName,
+          completedAt: r.completedAt || r.createdAt || null,
+          driverBalance: r.driverBalance
+        }))
+      };
+    };
 
   res.json({ daily: summarise(daily), weekly: summarise(weekly), monthly: summarise(monthly) });
 });
@@ -2668,7 +2806,7 @@ app.post('/api/rides/messages/send', (req, res) => {
   const ride = activeRides.find(r => String(r.id) === String(rideId));
   
   // STRICT RULE 2: Chat ONLY active during ride duration (Accepted by passenger & driver, or In Progress)
-  if (!ride || (ride.status !== 'Accepted' && ride.status !== 'In Progress')) {
+  if (!ride || (ride.status !== 'Accepted' && ride.status !== 'Arrived' && ride.status !== 'In Progress')) {
     return res.status(403).json({ 
       error: 'Chat disabled. Messaging is strictly allowed only while the passenger and driver are on an active trip.' 
     });
@@ -2826,18 +2964,35 @@ app.get('/api/geocode', async (req, res) => {
     // 2. Query Nominatim Proxy
     let externalMatches = [];
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Kerala, India')}&format=json&addressdetails=1&limit=50&countrycodes=in`;
+      // Use Photon for better typo tolerance and local area coverage in India
+      const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=20&bbox=74.0,8.0,82.0,18.0`;
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'Hum-Taxi-App-Backend/1.0 (Contact: admin@hum.local)',
+          'User-Agent': 'Hum-Taxi-App-Backend/1.0',
           'Accept': 'application/json'
         }
       });
       if (response.ok) {
-        externalMatches = await response.json();
+        const data = await response.json();
+        externalMatches = data.features.map(f => {
+          let disp = f.properties.name || '';
+          if (f.properties.street && disp.indexOf(f.properties.street) === -1) disp += ', ' + f.properties.street;
+          if (f.properties.district && disp.indexOf(f.properties.district) === -1) disp += ', ' + f.properties.district;
+          if (f.properties.city && disp.indexOf(f.properties.city) === -1) disp += ', ' + f.properties.city;
+          if (f.properties.state) disp += ', ' + f.properties.state;
+          
+          return {
+            place_id: f.properties.osm_id || Math.random().toString(),
+            name: f.properties.name || disp.split(',')[0],
+            display_name: disp,
+            lat: f.geometry.coordinates[1].toString(),
+            lon: f.geometry.coordinates[0].toString(),
+            address: f.properties
+          };
+        });
       }
     } catch (err) {
-      console.error('Nominatim error', err);
+      console.error('Photon error', err);
     }
 
     // Combine & Return (Local first)
@@ -3237,4 +3392,6 @@ app.post('/api/admin/wallet/reject/:id', (req, res) => {
 
 // Vercel serverless export — must be last, after all routes are registered
 module.exports = app;
+
+
 

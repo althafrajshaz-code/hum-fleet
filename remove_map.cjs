@@ -1,0 +1,1 @@
+const fs = require('fs'); let code = fs.readFileSync('src/pages/DriverDashboard.jsx', 'utf8'); code = code.replace(/<div className=.dashboard-map[^>]*>[\s\S]*?<\/div>/g, ''); fs.writeFileSync('src/pages/DriverDashboard.jsx', code); console.log('Removed map');

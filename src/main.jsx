@@ -17,6 +17,59 @@ window.fetch = async function () {
   
   return originalFetch(resource, config);
 };
+
+import { Geolocation } from '@capacitor/geolocation';
+import { Capacitor } from '@capacitor/core';
+
+
+
+
+
+// CAPACITOR GEOLOCATION SHIM
+if (Capacitor.isNativePlatform() && window.navigator && window.navigator.geolocation) {
+  window.navigator.geolocation.getCurrentPosition = async (success, error, options) => {
+    try {
+      let hasPerm = await Geolocation.checkPermissions();
+      if (hasPerm.location !== 'granted' && hasPerm.location !== 'prompt') {
+         // It might be denied
+      }
+      
+      if (hasPerm.location !== 'granted') {
+        hasPerm = await Geolocation.requestPermissions();
+      }
+      
+      if (hasPerm.location !== 'granted') {
+          alert('System Location Permission Denied: ' + JSON.stringify(hasPerm));
+          if (error) error(new Error("Location access denied"));
+          return;
+      }
+      
+      try {
+        const pos = await Geolocation.getCurrentPosition(options || { enableHighAccuracy: true });
+        if (success) success(pos);
+      } catch (innerErr) {
+        alert('GPS Failed: ' + innerErr.message);
+        if (error) error(innerErr);
+      }
+      
+    } catch (err) {
+      alert('Capacitor Error: ' + err.message);
+      if (error) error(err);
+    }
+  };
+
+  window.navigator.geolocation.watchPosition = (success, error, options) => {
+    Geolocation.watchPosition(options || { enableHighAccuracy: true }, (pos, err) => {
+      if (err && error) {
+        error(err);
+      } else if (pos && success) {
+        success(pos);
+      }
+    });
+    return 1;
+  };
+}
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'

@@ -1,0 +1,29 @@
+{
+	"appId": "com.humfleet.passenger",
+	"appName": "Hum Passenger",
+	"webDir": "dist",
+	"server": {
+		"cleartext": true,
+		"url": " com.humfleet.main Hum Fleet"
+	},
+	"android": {
+		"backgroundColor": "#0b0f17",
+		"allowMixedContent": true,
+		"webContentsDebuggingEnabled": false,
+		"overScrollMode": "never"
+	},
+	"plugins": {
+		"Keyboard": {
+			"resize": "none",
+			"resizeOnFullScreen": false
+		},
+		"GoogleAuth": {
+			"scopes": [
+				"profile",
+				"email"
+			],
+			"serverClientId": "271720743741-tpaarbgmi2u1fjc326gh42kkh0aijb7u.apps.googleusercontent.com",
+			"forceCodeForRefreshToken": true
+		}
+	}
+}

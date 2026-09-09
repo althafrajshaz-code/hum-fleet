@@ -1,6 +1,15 @@
 <!doctype html>
 <html lang="en">
-  <head>
+  <head><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        alert("JS ERROR: " + message + "\n" + source + ":" + lineno);
+      };
+      window.addEventListener('unhandledrejection', function(event) {
+        alert("PROMISE REJECTION: " + (event.reason ? event.reason.message || event.reason : "Unknown"));
+      });
+    </script>
+
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/hum_fleet_logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

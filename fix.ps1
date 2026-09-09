@@ -1,0 +1,1 @@
+$lines = Get-Content 'D:\Althaf\hum\src\pages\DriverDashboard.jsx'; $idx = [array]::IndexOf($lines, ($lines -match 'dashboard-sidebar glass-card')[0]); $lines = $lines[0..$idx] + $lines[($idx+4)..($lines.Length-1)]; $lines | Set-Content 'D:\Althaf\hum\src\pages\DriverDashboard.jsx'

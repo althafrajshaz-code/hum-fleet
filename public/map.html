@@ -11,28 +11,106 @@
   <style>
     body { margin: 0; padding: 0; background: #09090b; }
     #map { width: 100vw; height: 100vh; }
-    .locate-btn {
-      position: absolute; top: 16px; right: 16px; z-index: 1000;
-      background: #10b981; color: white; border: none; padding: 10px 16px;
-      border-radius: 8px; cursor: pointer; font-weight: 700;
-      font-family: system-ui, -apple-system, sans-serif;
-      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
-      transition: background 0.2s ease, transform 0.1s ease;
-    }
-    .locate-btn:hover { background: #059669; }
-    .locate-btn:active { transform: scale(0.95); }
     
     /* Custom Leaflet Dark Theme Adjustments */
     .leaflet-tile-pane {
         filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
     }
+    
+    body.theme-light .leaflet-tile-pane {
+        filter: none !important;
+    }
+    
+    /* Professional GeoSearch Bar Styling */
+    .leaflet-control-geosearch.bar {
+      position: fixed !important;
+      top: 16px !important;
+      left: 16px !important;
+      right: 16px !important;
+      width: auto !important;
+      max-width: none !important;
+      margin: 0 !important;
+      z-index: 1000;
+    }
+    .leaflet-control-geosearch.bar form {
+      width: 100% !important;
+      box-sizing: border-box !important;
+      background: #18181b !important;
+      border: 3px solid #3b82f6 !important; /* Prominent Blue Border */
+      border-radius: 16px !important;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8) !important;
+      padding: 8px !important;
+      display: flex;
+    }
+    .leaflet-control-geosearch.bar form input {
+      color: #fff !important;
+      background: transparent !important;
+      border: none !important;
+      font-size: 16px !important;
+      font-weight: 700 !important;
+      padding: 12px 18px !important;
+      outline: none !important;
+      width: 100% !important;
+    }
+    .leaflet-control-geosearch.bar form input::placeholder {
+      color: #a1a1aa !important;
+      font-weight: 600 !important;
+    }
+    .leaflet-control-geosearch.bar form button {
+      display: none !important;
+    }
+    .leaflet-control-geosearch .results {
+      width: 100% !important;
+      box-sizing: border-box !important;
+      background: #18181b !important;
+      border: 3px solid #3b82f6 !important;
+      border-radius: 16px !important;
+      margin-top: 12px !important;
+      color: #fff !important;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8) !important;
+      max-height: 350px !important;
+      overflow-y: auto !important;
+    }
+    .leaflet-control-geosearch .results > * {
+      padding: 10px 14px !important;
+      border-bottom: 1px solid #27272a !important;
+      font-size: 13px !important;
+      font-weight: 600 !important;
+      line-height: 1.4 !important;
+      white-space: normal !important;
+      word-wrap: break-word !important;
+    }
+    .leaflet-control-geosearch .results > *:hover,
+    .leaflet-control-geosearch .results > .active {
+      background: rgba(59, 130, 246, 0.15) !important;
+      color: #3b82f6 !important;
+    }
+
+    /* Light Theme Overrides for GeoSearch */
+    body.theme-light .leaflet-control-geosearch.bar form,
+    body.theme-light .leaflet-control-geosearch .results {
+      background: #ffffff !important;
+      border: 3px solid #2563eb !important;
+      box-shadow: 0 12px 40px rgba(37, 99, 235, 0.2) !important;
+    }
+    body.theme-light .leaflet-control-geosearch.bar form input,
+    body.theme-light .leaflet-control-geosearch .results > * {
+      color: #000 !important;
+    }
+    body.theme-light .leaflet-control-geosearch.bar form input::placeholder {
+      color: #52525b !important;
+    }
+    body.theme-light .leaflet-control-geosearch .results > * {
+      border-bottom: 1px solid #e4e4e7 !important;
+    }
   </style>
   
   <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@latest/dist/geosearch.css" />
+  <script src="https://unpkg.com/leaflet-geosearch@latest/dist/bundle.min.js"></script>
 </head>
 <body>
-  <button class="locate-btn" onclick="locateUser()">Locate Me</button>
   <div id="map"></div>
   <script>
     let map;
@@ -75,6 +153,25 @@
       iconAnchor: [10, 10]
     });
 
+    // Custom Provider that uses our backend to get local areas + photon
+    class CustomProvider extends window.GeoSearch.JsonProvider {
+      endpoint({ query }) {
+        return `/api/geocode?q=${encodeURIComponent(query)}`;
+      }
+      parse({ data }) {
+        if (!Array.isArray(data)) return [];
+        return data.map(item => ({
+          x: parseFloat(item.lon),
+          y: parseFloat(item.lat),
+          label: item.display_name.replace(/, India$/i, ''),
+          bounds: [
+            [parseFloat(item.lat) - 0.005, parseFloat(item.lon) - 0.005],
+            [parseFloat(item.lat) + 0.005, parseFloat(item.lon) + 0.005]
+          ]
+        }));
+      }
+    }
+
     function initMap() {
       const defaultLoc = [9.9777, 76.2758]; // Kochi
       
@@ -92,6 +189,28 @@
 
       // Initialize Pickup Marker
       pickupMarker = L.marker(defaultLoc, { icon: greenIcon, draggable: true }).addTo(map);
+
+      // Add GeoSearch inside map
+      const searchControl = new window.GeoSearch.GeoSearchControl({
+        provider: new CustomProvider(),
+        style: 'bar',
+        showMarker: false,
+        showPopup: false,
+        autoClose: true,
+        retainZoomLevel: false,
+        animateZoom: true,
+        keepResult: true,
+        searchLabel: 'Search local areas...'
+      });
+      map.addControl(searchControl);
+
+      map.on('geosearch/showlocation', function (e) {
+        if (e && e.location) {
+          const latlng = { lat: e.location.y, lng: e.location.x };
+          pickupMarker.setLatLng(latlng);
+          reverseGeocode(latlng);
+        }
+      });
 
       // Handle map clicks
       map.on('click', (e) => {
@@ -143,7 +262,8 @@
           },
           () => {
             if (!isSilent) alert("Location permission denied. Defaulting to Kochi.");
-          }
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
         );
       } else {
         if (!isSilent) alert("Geolocation is not supported by this browser.");
@@ -152,6 +272,24 @@
 
     window.addEventListener('message', async function(event) {
       if (!event.data) return;
+      
+      if (event.data.type === 'SET_THEME') {
+        if (event.data.theme === 'light') {
+          document.body.classList.add('theme-light');
+        } else {
+          document.body.classList.remove('theme-light');
+        }
+        return;
+      }
+
+      if (event.data.type === 'SEARCH_PIN') {
+        const { lat, lng } = event.data;
+        const pos = { lat: parseFloat(lat), lng: parseFloat(lng) };
+        pickupMarker.setLatLng(pos);
+        map.setView(pos, 16);
+        reverseGeocode(pos);
+        return;
+      }
 
       if (event.data.type === 'DRAW_ROUTE') {
         const pk = event.data.pickup;
@@ -236,9 +374,7 @@
         nearbyDriverMarkers.forEach(m => map.removeLayer(m));
         nearbyDriverMarkers = [];
         
-        const center = [28.6304, 77.2177];
-        pickupMarker.setLatLng(center);
-        map.setView(center, 13);
+        locateUser(true);
       }
 
       if (event.data.type === 'SHOW_NEARBY_DRIVERS') {

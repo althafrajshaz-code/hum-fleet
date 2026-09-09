@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
-import { auth, googleProvider } from '../firebase';
-import { signInWithEmailAndPassword, signInWithPopup, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
+import { Eye, EyeOff, Phone } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import Button from '../components/Button';
 import './Auth.css';
 
-const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
-  ? 'https://hum-fleet-backend.loca.lt'
-  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
-    ? 'http://localhost:5000'
-    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://humfleet.xyz';
 
 const getBackendUrl = () => { return API_BASE; };
 
@@ -24,7 +17,7 @@ const DriverLogin = () => {
       navigate('/driver');
     }
   }, [navigate]);
-  const [loginId, setLoginId] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -39,7 +32,7 @@ const DriverLogin = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ loginId, password })
+        body: JSON.stringify({ loginId: `+91 ${phone}`, password })
       });
 
       if (response.ok) {
@@ -81,17 +74,26 @@ const DriverLogin = () => {
         )}
 
         <form className="auth-form" onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="loginId">Email or Phone Number</label>
-            <input 
-              type="text" 
-              id="loginId" 
-              className="input-field" 
-              placeholder="driver@example.com or +91..." 
-              value={loginId}
-              onChange={(e) => setLoginId(e.target.value)}
-              required 
-            />
+          <div className="form-group" style={{ marginBottom: '16px' }}>
+            <label htmlFor="phone">Phone Number</label>
+            <div style={{ display: 'flex', gap: '8px', height: '48px', marginTop: '8px' }}>
+              <span className="input-field" style={{ width: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.05)', fontWeight: 'bold', padding: 0 }}>
+                +91
+              </span>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <div className="input-icon"><Phone size={18} /></div>
+                <input 
+                  type="tel" 
+                  id="phone" 
+                  className="input-field with-icon" 
+                  placeholder="98765 43210" 
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  pattern="[0-9]{10}"
+                  required 
+                />
+              </div>
+            </div>
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>

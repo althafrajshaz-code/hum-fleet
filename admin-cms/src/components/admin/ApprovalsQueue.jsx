@@ -183,9 +183,7 @@ const ApprovalsQueue = ({
                   <div className="admin-docs-grid">
                     {[
                       { id: 'rc', label: 'Registration (RC)' },
-                      { id: 'pollution', label: 'Pollution (PUC)' },
                       { id: 'insurance', label: 'Insurance' },
-                      { id: 'fitness', label: 'Fitness Cert.' },
                       { id: 'license', label: 'Driving Licence (DL)' },
                       { id: 'licenseFront', label: 'DL (Front)' },
                       { id: 'licenseBack', label: 'DL (Back)' }

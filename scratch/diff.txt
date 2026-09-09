@@ -1,0 +1,1235 @@
+﻿diff --git a/src/pages/DriverDashboard.jsx b/src/pages/DriverDashboard.jsx
+index 463374a..78bb222 100644
+--- a/src/pages/DriverDashboard.jsx
++++ b/src/pages/DriverDashboard.jsx
+@@ -1,22 +1,35 @@
+ import React, { useState, useEffect, useRef } from 'react';
+ import { useNavigate } from 'react-router-dom';
+-import { Power, MapPin, Navigation, Car, AlertTriangle, ShieldCheck, DollarSign, Wallet, FileText, CheckCircle, Camera, X, Coffee, Pause, Play, MessageSquare, Send, Flame, Zap, Award, TrendingUp, Gauge, Compass, Activity, Sparkles, Settings, CreditCard, User, ChevronRight, Eye, EyeOff } from 'lucide-react';
++import { Sun, Moon, Menu, Power, MapPin, Navigation, Car, AlertTriangle, ShieldCheck, DollarSign, Wallet, FileText, CheckCircle, Camera, X, Coffee, Pause, Play, MessageSquare, Send, Flame, Zap, Award, TrendingUp, Gauge, Compass, Activity, Sparkles, Settings, CreditCard, User, ChevronRight, Eye, EyeOff, Phone, Clock } from 'lucide-react';
+ import Button from '../components/Button';
+ import './Dashboard.css';
+ import { Capacitor } from '@capacitor/core';
+ import { PushNotifications } from '@capacitor/push-notifications';
+ 
+-const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
+-  ? 'https://hum-fleet-backend.loca.lt'
+-  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.protocol !== 'capacitor:')
+-    ? 'http://localhost:5000'
+-    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
++const API_BASE = 'http://187.127.165.79:5000';
+ 
+ 
++const getFrontendDistance = (lat1, lon1, lat2, lon2) => {
++  const R = 6371; // Radius of the earth in km
++  const dLat = (lat2 - lat1) * (Math.PI / 180);
++  const dLon = (lon2 - lon1) * (Math.PI / 180);
++  const a = 
++    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
++    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
++    Math.sin(dLon / 2) * Math.sin(dLon / 2); 
++  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
++  return R * c;
++};
++
+ const DriverDashboard = () => {
+   const navigate = useNavigate();
++  const [showMainMenu, setShowMainMenu] = useState(false);
++  const [declinedRideIds, setDeclinedRideIds] = useState([]);
++  const [hideEarningsAmount, setHideEarningsAmount] = useState(false);
++  const [showEarningsDetails, setShowEarningsDetails] = useState(false);
+   const [activeMenu, setActiveMenu] = useState('dispatches'); // 'dispatches' | 'wallet' | 'messages' | 'settings'
+-  const [settingsSubTab, setSettingsSubTab] = useState('profile'); // 'documents' | 'profile' | 'bank' | 'vehicles'
++  const [settingsSubTab, setSettingsSubTab] = useState('profile');
++  const [driverTripStage, setDriverTripStage] = useState('navigate_pickup'); // 'documents' | 'profile' | 'bank' | 'vehicles'
+   const [earningsPeriod, setEarningsPeriod] = useState('daily'); // 'daily' | 'weekly' | 'monthly'
+   const [homeEarnings, setHomeEarnings] = useState(null);
+   const [showEarningsHistory, setShowEarningsHistory] = useState(false);
+@@ -38,6 +51,8 @@ const DriverDashboard = () => {
+     return localStorage.getItem('driverTheme') || 'light';
+   });
+ 
++    
++
+   useEffect(() => {
+     document.documentElement.setAttribute('data-theme', theme);
+   }, [theme]);
+@@ -115,10 +130,30 @@ const DriverDashboard = () => {
+   // Real-time Active Ride States
+   const [incomingRide, setIncomingRide] = useState(null);
+   const [currentRide, setCurrentRide] = useState(null);
++  const [showMapSelection, setShowMapSelection] = useState(false);
++  const [mapSelectionTarget, setMapSelectionTarget] = useState(null);
++  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
++
++  useEffect(() => {
++    if (currentRide) {
++      if (currentRide.status === 'Accepted') {
++         if (!['navigate_pickup', 'arrived', 'enter_pin'].includes(driverTripStage)) {
++            setDriverTripStage('navigate_pickup');
++         }
++      } else {
++         setDriverTripStage('navigate_pickup');
++      }
++    }
++  }, [currentRide?.status]);
++
++  
++
++    
+ 
+   // Pre-booked / scheduled ride states
+   const [availablePreBooked, setAvailablePreBooked] = useState([]);
+   const [myScheduledTrips, setMyScheduledTrips] = useState([]);
++  const [driverHistory, setDriverHistory] = useState([]);
+ 
+   // Bidirectional rating states
+   const [showRating, setShowRating] = useState(false);
+@@ -135,7 +170,7 @@ const DriverDashboard = () => {
+   
+   // Real-time GPS Trip Meter State
+   const [liveGpsDistance, setLiveGpsDistance] = useState(0); // Accumulated live GPS trip kilometers
+-  const [lastGpsCoords, setLastGpsCoords] = useState(null);
++  const lastGpsCoords = useRef(null);
+   
+   // End Trip Summary & Cash Collection states
+   const [showEndTripSummary, setShowEndTripSummary] = useState(false);
+@@ -604,6 +639,20 @@ const DriverDashboard = () => {
+       console.error("Error fetching driver wallet:", err);
+     }
+   };
++  
++  const fetchDriverHistory = async () => {
++    const email = localStorage.getItem('driverEmail');
++    if (!email) return;
++    try {
++      const response = await fetch(`${API_BASE}/api/rides/driver?email=${encodeURIComponent(email)}`);
++      if (response.ok) {
++        const data = await response.json();
++        setDriverHistory(data);
++      }
++    } catch (err) {
++      console.error("Error fetching driver history:", err);
++    }
++  };
+ 
+   const fetchSystemSettings = async () => {
+     try {
+@@ -751,7 +800,7 @@ const DriverDashboard = () => {
+   useEffect(() => {
+     if (!currentRide) {
+       setLiveGpsDistance(0);
+-      setLastGpsCoords(null);
++      lastGpsCoords.current = null;
+       return;
+     }
+ 
+@@ -767,16 +816,15 @@ const DriverDashboard = () => {
+           const newLat = position.coords.latitude;
+           const newLng = position.coords.longitude;
+ 
+-          setLastGpsCoords((prevCoords) => {
+-            if (prevCoords) {
+-              const deltaKm = getFrontendDistance(prevCoords.lat, prevCoords.lng, newLat, newLng);
+-              // Only add valid motion delta (ignore tiny GPS drift under 15 meters)
+-              if (deltaKm > 0.015 && deltaKm < 3.0) {
+-                setLiveGpsDistance((prevDist) => parseFloat((prevDist + deltaKm).toFixed(2)));
+-              }
++          const prevCoords = lastGpsCoords.current;
++          if (prevCoords) {
++            const deltaKm = getFrontendDistance(prevCoords.lat, prevCoords.lng, newLat, newLng);
++            // Only add valid motion delta (ignore tiny GPS drift under 15 meters)
++            if (deltaKm > 0.015 && deltaKm < 3.0) {
++              setLiveGpsDistance((prevDist) => parseFloat((prevDist + deltaKm).toFixed(2)));
+             }
+-            return { lat: newLat, lng: newLng };
+-          });
++          }
++          lastGpsCoords.current = { lat: newLat, lng: newLng };
+         },
+         (err) => console.log('GPS Geolocation watch warning:', err.message),
+         { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
+@@ -917,7 +965,7 @@ const DriverDashboard = () => {
+       fetchAdminMessages();
+       fetchSystemSettings();
+       fetchTravelRoute();
+-    }, 3000);
++    }, 20000);
+     return () => clearInterval(interval);
+   }, []);
+ 
+@@ -953,7 +1001,7 @@ const DriverDashboard = () => {
+     const email = localStorage.getItem('driverEmail');
+     if (!email) return;
+     try {
+-      const response = await fetch(`${API_BASE}/api/rides/driver/active?email=${encodeURIComponent(email)}`);
++      const response = await fetch(`${API_BASE}/api/rides/driver/active?email=${encodeURIComponent(email)}&t=${Date.now()}`);
+       if (response.ok) {
+         const data = await response.json();
+         if (data) {
+@@ -993,8 +1041,8 @@ const DriverDashboard = () => {
+           driverName: driverDetails.name,
+           driverPhone: driverDetails.phone,
+           driverEmail: driverDetails.email,
+-          vehicleModel: driverDetails.activeVehicle?.model || 'Tata Nexon',
+-          vehiclePlate: driverDetails.activeVehicle?.plateNo || 'DL 3C AY 4567'
++          vehicleModel: driverDetails.model || 'Tata Nexon',
++          vehiclePlate: driverDetails.plate || 'DL 3C AY 4567'
+         })
+       });
+ 
+@@ -1076,12 +1124,16 @@ const DriverDashboard = () => {
+     const checkActiveRequests = async () => {
+       try {
+         const email = localStorage.getItem('driverEmail');
+-        const response = await fetch(`${API_BASE}/api/rides/active?email=${encodeURIComponent(email)}`);
++        const response = await fetch(`${API_BASE}/api/rides/active?email=${encodeURIComponent(email)}&t=${Date.now()}`);
+         if (response.ok) {
+           const data = await response.json();
+           if (data) {
+-            // New incoming ride detected!
+-            if (!incomingRide || incomingRide.id !== data.id) {
++            // Check if it's the same ride we already accepted
++            if (currentRide && currentRide.id === data.id) {
++              // Ignore to prevent repeated notifications for the same accepted ride
++            } else if (declinedRideIds.includes(data.id)) {
++              // Ignore if driver already declined this specific ride
++            } else if (!incomingRide || incomingRide.id !== data.id) {
+               setIncomingRide(data);
+               
+               // Voice synthesis "You have a ride"
+@@ -1129,22 +1181,40 @@ const DriverDashboard = () => {
+     };
+ 
+     const interval = setInterval(checkActiveRequests, 2000);
+-    return () => clearInterval(interval);
+-  }, [isOnline, currentRide, showRating]);
++    
++    const handleVisibilityChange = () => {
++      if (document.visibilityState === 'visible') {
++        checkActiveRequests();
++      }
++    };
++    document.addEventListener('visibilitychange', handleVisibilityChange);
++
++    return () => {
++      clearInterval(interval);
++      document.removeEventListener('visibilitychange', handleVisibilityChange);
++    };
++  }, [isOnline, currentRide, showRating, declinedRideIds]);
+ 
+   // Sync maps on driver coordinates change
+   useEffect(() => {
+     if (driverDetails && isOnline) {
+-      const mapIframe = document.getElementById('driver-map-iframe');
++      const mapIframe = document.getElementById('map-iframe');
+       if (mapIframe && mapIframe.contentWindow) {
+         mapIframe.contentWindow.postMessage({
+-          type: 'SET_DRIVER_LOCATION',
++          type: 'UPDATE_CAR_LOCATION',
+           lat: driverDetails.lat || 28.6304,
+-          lng: driverDetails.lng || 77.2177
++          lng: driverDetails.lng || 77.2177,
++          center: true
+         }, '*');
+       }
+     }
+   }, [driverDetails, isOnline]);
++  
++  useEffect(() => {
++    if (activeMenu === 'history') {
++      fetchDriverHistory();
++    }
++  }, [activeMenu]);
+ 
+ 
+ 
+@@ -1171,8 +1241,8 @@ You can only accept prepaid trips until your balance is cleared.`);
+           driverName: driverDetails.name,
+           driverPhone: driverDetails.phone,
+           driverEmail: driverDetails.email,
+-          vehicleModel: driverDetails.activeVehicle?.model || 'Tata Nexon',
+-          vehiclePlate: driverDetails.activeVehicle?.plateNo || driverDetails.activeVehicle?.plate || 'DL 3C AY 4567'
++          vehicleModel: driverDetails.model || 'Tata Nexon',
++          vehiclePlate: driverDetails.plate || 'DL 3C AY 4567'
+         })
+       });
+       const data = await response.json();
+@@ -1185,15 +1255,15 @@ You can only accept prepaid trips until your balance is cleared.`);
+           setCurrentRide(data);
+           alert("Trip accepted! You are now navigating to the passenger pickup point.");
+         }
+-        fetchData();
++        fetchDriverActiveRide();
+       } else if (response.status === 403) {
+-        const errData = await response.json();
+-        alert(`ΓÜá∩╕Å ${errData.message}`);
++        alert(`Γ¥î ${data.message || 'Balance Lock Active'}`);
+       } else {
+-        alert('Failed to accept ride request.');
++        alert(data.error || 'Failed to accept ride request.');
+       }
+     } catch (err) {
+       console.error("Error accepting ride request:", err);
++      alert("Error accepting ride request: " + err.message);
+     }
+   };
+ 
+@@ -1214,6 +1284,23 @@ You can only accept prepaid trips until your balance is cleared.`);
+     }
+   };
+ 
++  const handleArrive = async () => {
++    if (!currentRide) return;
++    try {
++      const response = await fetch(`${API_BASE}/api/rides/${currentRide.id}/arrive`, {
++        method: 'POST'
++      });
++      if (response.ok) {
++        setDriverTripStage('enter_pin');
++        setIsPinModalOpen(true);
++      } else {
++        alert('Failed to update arrival status.');
++      }
++    } catch (err) {
++      console.error("Error updating arrival status:", err);
++    }
++  };
++
+   const handleVerifyPin = async () => {
+     if (!ridePin || ridePin.length !== 6) {
+       alert("Please enter a valid 6-digit PIN.");
+@@ -1227,9 +1314,11 @@ You can only accept prepaid trips until your balance is cleared.`);
+       });
+       const data = await response.json();
+       if (response.ok) {
++        setCurrentRide(data);
+         alert("PIN verified successfully! Trip is now in progress.");
+-        fetchData();
++        fetchDriverActiveRide();
+         setRidePin('');
++        setIsPinModalOpen(false);
+       } else {
+         alert(data.error || "Invalid PIN. Please ask the passenger for their 6-digit ID.");
+       }
+@@ -1239,8 +1328,11 @@ You can only accept prepaid trips until your balance is cleared.`);
+     }
+   };
+ 
++  const [isCompletingRide, setIsCompletingRide] = useState(false);
++
+   const handleCompleteRide = async (collectCashVal = true) => {
+     if (!currentRide) return;
++    setIsCompletingRide(true);
+     try {
+       const response = await fetch(`${API_BASE}/api/rides/${currentRide.id}/complete`, {
+         method: 'POST',
+@@ -1257,6 +1349,8 @@ You can only accept prepaid trips until your balance is cleared.`);
+       }
+     } catch (err) {
+       console.error("Error completing ride:", err);
++    } finally {
++      setIsCompletingRide(false);
+     }
+   };
+ 
+@@ -1362,25 +1456,154 @@ You can only accept prepaid trips until your balance is cleared.`);
+ 
+   return (
+     <div className="dashboard-page">
++
++{/* Incoming request block */}
++              {isOnline && incomingRide && !showRating && (
++                <div className="incoming-request" style={{
++                  position: 'fixed',
++                  top: '24px',
++                  left: '50%',
++                  transform: 'translateX(-50%)',
++                  zIndex: 999999, background: "rgba(10, 13, 20, 0.65)", backdropFilter: "blur(12px)",
++                  width: '92%',
++                  maxWidth: '420px',
++                  boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
++                  border: '2px solid var(--primary)'
++                }}>
++                  <div className="request-pulse"></div>
++                  <h3>New Ride Request!</h3>
++                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
++                    {incomingRide.matchType === 'en-route' ? (
++                      <div style={{ background: '#3b82f6', color: '#fff', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
++                        <Navigation size={12} /> En-Route Match
++                      </div>
++                    ) : (
++                      <div style={{ background: '#10b981', color: '#fff', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
++                        <MapPin size={12} /> Nearby Pickup ({incomingRide.distance} KM)
++                      </div>
++                    )}
++                    {incomingRide.isIntercity && (
++                      <div style={{ background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>
++                        Intercity Ride (+Γé╣250 Base Included)
++                      </div>
++                    )}
++                  </div>
++
++
++                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
++                    <span style={{
++                      display: 'inline-flex',
++                      alignItems: 'center',
++                      gap: '4px',
++                      padding: '3px 10px',
++                      borderRadius: '20px',
++                      fontSize: '10px',
++                      fontWeight: '800',
++                      textTransform: 'uppercase',
++                      background: (incomingRide.paymentType === 'prepaid') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.12)',
++                      color: (incomingRide.paymentType === 'prepaid') ? '#10b981' : '#3b82f6',
++                      border: `1px solid ${(incomingRide.paymentType === 'prepaid') ? 'rgba(16,185,129,0.3)' : 'rgba(59,130,246,0.3)'}`
++                    }}>
++                      {(incomingRide.paymentType === 'prepaid') ? 'Γ£ô Prepaid Trip' : '≡ƒÆ╡ Cash Trip'}
++                    </span>
++                  </div>
++
++                  <div className="request-details">
++                    <div className="req-row"><MapPin size={16}/> <strong>From:</strong> {incomingRide.pickup}</div>
++                    <div className="req-row"><Navigation size={16}/> <strong>To:</strong> {incomingRide.dropoff}</div>
++                    
++                    <div style={{ borderTop: '1px solid var(--border)', marginTop: '8px', paddingTop: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
++                      <div><strong>Passenger Rating:</strong> <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>Γÿà {incomingRide.passengerRating || '5.0'}</span></div>
++                      <div><strong>Total Distance:</strong> {incomingRide.totalKm || 8.0} KM</div>
++                      <div style={{ paddingLeft: '8px', borderLeft: '2px solid var(--primary)', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12px' }}>
++                        <div>ΓÇó Passenger Bid: INR {parseFloat(incomingRide.fare).toFixed(2)}</div>
++                        <div>ΓÇó GST Tax (5%): +INR {(parseFloat(incomingRide.fare) * 0.05).toFixed(2)}</div>
++                        <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', paddingTop: '4px', fontWeight: 'bold', color: 'var(--text-main)' }}>
++                          ΓÇó Collect Cash: INR {(parseFloat(incomingRide.fare) * 1.05).toFixed(2)}
++                        </div>
++                      </div>
++                    </div>
++
++                    <div className="req-price est-price" style={{ marginTop: '8px' }}>Offered Fare: INR {incomingRide.fare}</div>
++                  </div>
++
++                  {parseFloat(wallet.toBePaid || 0) > 1500 && incomingRide.paymentType === 'cash' ? (
++                    <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#ef4444', padding: '10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', marginTop: '10px' }}>
++                      ≡ƒÜ½ Cannot accept cash trips until Γé╣1,500 pending dues are settled.
++                    </div>
++                  ) : (
++                    <div className="request-actions">
++                      <Button variant="outline" className="full-width" onClick={() => {
++                        setDeclinedRideIds(prev => [...prev, incomingRide.id]);
++                        setIncomingRide(null);
++                      }}>Decline</Button>
++                      <Button variant="primary" className="full-width" onClick={handleAcceptRide}>Accept</Button>
++                    </div>
++                  )}
++                </div>
++              )}
++
++              
++
+       <div className="dashboard-container container">
+-        <div className="dashboard-sidebar glass-card" style={{ zIndex: 10 }}>
++        <div className="dashboard-sidebar glass-card" style={{ zIndex: 10, order: 2 }}>
+           
+           {/* DRIVER PROFILE & ONLINE STATUS CARD */}
+           <div className="driver-header-card" style={{
++            position: 'relative',
+             display: 'flex',
+             flexDirection: 'column',
+             gap: '12px',
+             padding: '18px 14px',
+-            background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a5f 100%)',
+-            border: '1px solid rgba(99, 102, 241, 0.4)',
++            background: isOnline ? (theme === 'light' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(24, 24, 27, 0.7)') : 'var(--bg-card)',
++            backdropFilter: isOnline ? 'blur(10px)' : 'none',
++            border: '1px solid var(--border)',
+             borderRadius: '16px',
+             marginBottom: '16px',
+-            boxShadow: '0 8px 32px rgba(99, 102, 241, 0.2)'
++            boxShadow: 'var(--shadow-md)',
++            transition: 'all 0.3s ease'
+           }}>
++            <div style={{ position: 'absolute', top: '14px', right: '14px', display: 'flex', gap: '8px', zIndex: 20 }}>
++              {/* THEME TOGGLE BUTTON */}
++              <button 
++                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
++                style={{
++                  background: 'var(--bg-main)',
++                  border: '1px solid var(--border)',
++                  borderRadius: '8px',
++                  padding: '6px',
++                  color: 'var(--text-main)',
++                  cursor: 'pointer',
++                  display: 'flex',
++                  alignItems: 'center',
++                  justifyContent: 'center'
++                }}
++              >
++                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
++              </button>
++
++              {/* HAMBURGER MENU BUTTON */}
++              <button 
++                onClick={() => setShowMainMenu(!showMainMenu)}
++                style={{
++                  background: 'var(--bg-main)',
++                  border: '1px solid var(--border)',
++                  borderRadius: '8px',
++                  padding: '6px',
++                  color: 'var(--text-main)',
++                  cursor: 'pointer',
++                  display: 'flex',
++                  alignItems: 'center',
++                  justifyContent: 'center'
++                }}
++              >
++                {showMainMenu ? <X size={20} /> : <Menu size={20} />}
++              </button>
++            </div>
+             {/* 1. CENTERED DRIVER PROFILE SECTION */}
+             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '8px', padding: '6px 0' }}>
+               {/* Centered Profile Avatar */}
+-              <div style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', border: '3px solid rgba(255,255,255,0.7)', background: '#1e1b4b', boxShadow: '0 0 0 4px rgba(255,255,255,0.12)', margin: '0 auto' }}>
++              <div style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--primary)', background: 'var(--bg-main)', boxShadow: '0 0 0 4px var(--bg-card)', margin: '0 auto' }}>
+                 {driverProfilePic ? (
+                   <img src={driverProfilePic} alt="Driver Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                 ) : (
+@@ -1406,11 +1629,11 @@ You can only accept prepaid trips until your balance is cleared.`);
+ 
+               {/* Centered Driver Name & Rating Badge */}
+               <div>
+-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#ffffff' }}>
++                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--text-main)' }}>
+                   {driverDetails?.name || 'Partner Driver'}
+                 </h2>
+                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '4px' }}>
+-                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.55)' }}>HUM Fleet Partner</span>
++                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>HUM Fleet Partner</span>
+                   <span style={{ background: 'rgba(251, 191, 36, 0.2)', border: '1px solid rgba(251, 191, 36, 0.5)', color: '#fbbf24', fontSize: '11px', fontWeight: '800', borderRadius: '12px', padding: '1px 8px' }}>
+                     Γÿà {driverDetails?.rating || '5.0'} Rating
+                   </span>
+@@ -1429,34 +1652,57 @@ You can only accept prepaid trips until your balance is cleared.`);
+               </div>
+             </div>
+             
+-            {/* TODAY'S EARNINGS CARD ΓÇö ABOVE GO ONLINE */}
++            {/* TODAY'S EARNINGS COMPACT CARD */}
+             <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', padding: '12px 14px' }}>
+-              <div style={{ fontSize: '10px', fontWeight: '800', color: 'rgba(16,185,129,0.7)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '8px' }}>≡ƒôà Today's Earnings</div>
+-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0' }}>
+-                <div style={{ textAlign: 'center' }}>
+-                  <div style={{ fontSize: '18px', fontWeight: '800', color: '#10b981' }}>Γé╣{homeEarnings?.daily?.net ?? '0.00'}</div>
+-                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '1px' }}>Net Earned</div>
+-                </div>
+-                <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.08)', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
+-                  <div style={{ fontSize: '18px', fontWeight: '800', color: '#f59e0b' }}>Γé╣{homeEarnings?.daily?.gross ?? '0.00'}</div>
+-                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '1px' }}>Gross</div>
++              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
++                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
++                  <div style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(16,185,129,0.9)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>≡ƒôà Today's Earnings</div>
++                  <button onClick={() => setHideEarningsAmount(!hideEarningsAmount)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
++                    {hideEarningsAmount ? <EyeOff size={14} /> : <Eye size={14} />}
++                  </button>
+                 </div>
+-                <div style={{ textAlign: 'center' }}>
+-                  <div style={{ fontSize: '18px', fontWeight: '800', color: '#3b82f6' }}>{homeEarnings?.daily?.count ?? 0}</div>
+-                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '1px' }}>Trips</div>
++                <div style={{ fontSize: '18px', fontWeight: '800', color: '#10b981' }}>
++                  {hideEarningsAmount ? 'Γé╣****' : `Γé╣${homeEarnings?.daily?.net ?? '0.00'}`}
+                 </div>
+               </div>
+-            </div>
+ 
+-            {/* VIEW EARNINGS HISTORY BUTTON */}
+-            <button
+-              onClick={() => setShowEarningsHistory(true)}
+-              style={{ width: '100%', padding: '9px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.55)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.2s' }}
+-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+-            >
+-              <TrendingUp size={13} /> View Earnings History
+-            </button>
++              {/* Toggle details button */}
++              <button 
++                onClick={() => setShowEarningsDetails(!showEarningsDetails)}
++                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', marginTop: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'center', fontWeight: 'bold' }}
++              >
++                {showEarningsDetails ? 'Hide Details Γû▓' : 'View More Details Γû╝'}
++              </button>
++
++              {showEarningsDetails && (
++                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(16,185,129,0.1)' }}>
++                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', marginBottom: '12px' }}>
++                    <div style={{ textAlign: 'center', borderRight: '1px solid var(--border)' }}>
++                      <div style={{ fontSize: '16px', fontWeight: '800', color: '#f59e0b' }}>
++                        {hideEarningsAmount ? 'Γé╣****' : `Γé╣${homeEarnings?.daily?.gross ?? '0.00'}`}
++                      </div>
++                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '1px' }}>Gross</div>
++                    </div>
++                    <div style={{ textAlign: 'center' }}>
++                      <div style={{ fontSize: '16px', fontWeight: '800', color: '#3b82f6' }}>
++                        {hideEarningsAmount ? '****' : (homeEarnings?.daily?.count ?? 0)}
++                      </div>
++                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '1px' }}>Trips</div>
++                    </div>
++                  </div>
++                  
++                  {/* VIEW EARNINGS HISTORY BUTTON */}
++                  <button
++                    onClick={() => setShowEarningsHistory(true)}
++                    style={{ width: '100%', padding: '9px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.2s' }}
++                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card)'}
++                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-main)'}
++                  >
++                    <TrendingUp size={13} /> View Earnings History
++                  </button>
++                </div>
++              )}
++            </div>
+ 
+ 
+             {/* 2. GO ONLINE BUTTON (POSITIONED DIRECTLY DOWN / UNDER THE PROFILE) */}
+@@ -1518,32 +1764,26 @@ You can only accept prepaid trips until your balance is cleared.`);
+               </Button>
+             </div>
+             
+-            {isOnline && (
+-              <div style={{ marginTop: '10px' }}>
+-                <Button 
+-                  variant="outline" 
+-                  style={{ width: '100%', borderColor: '#f59e0b', color: '#f59e0b', fontSize: '13px' }}
+-                  onClick={async () => {
+-                    try {
+-                      const currentEmail = localStorage.getItem('driverEmail');
+-                      const res = await fetch(`${API_BASE}/api/rides/nearby?email=${encodeURIComponent(currentEmail)}`);
+-                      const rides = await res.json();
+-                      if (rides.length > 0) {
+-                        alert(`Found ${rides.length} passengers searching for a ride nearby!\nClosest passenger is ${rides[0].distance} KM away.\n(Incoming ride popup will trigger automatically for the nearest passenger)`);
+-                      } else {
+-                        alert("No passengers are currently searching for a ride nearby.");
+-                      }
+-                    } catch (e) {
+-                      alert("Error scanning for nearby passengers.");
+-                    }
+-                  }}
+-                >
+-                  <Sparkles size={16} style={{ marginRight: '6px' }} /> Scan Nearest Passengers
+-                </Button>
++            {isOnline && !currentRide && !isPaused && (
++              <div style={{ marginTop: '12px', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px', boxShadow: 'inset 0 0 20px rgba(16,185,129,0.05)' }}>
++                
++                {/* UBER STYLE CAR ANIMATION */}
++                <div className="uber-searching-box">
++                  <div className="uber-searching-car">
++                    <Car size={24} fill="#10b981" />
++                  </div>
++                </div>
++
++                
++
++                <span style={{ fontSize: '13px', fontWeight: '900', color: '#10b981', letterSpacing: '1px', textShadow: '0 0 10px rgba(16,185,129,0.3)' }}>SEARCHING FOR RIDES...</span>
+               </div>
+             )}
++
++
+           </div>
+ 
++          {showMainMenu && (<>
+           {/* DRIVER TRAVEL ROUTE / DESTINATION FILTER */}
+           <div className="glass-card" style={{ padding: '16px', background: travelRoute ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.02)', border: travelRoute ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)', marginBottom: '14px' }}>
+             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: travelRoute ? '0' : '10px' }}>
+@@ -1764,6 +2004,31 @@ You can only accept prepaid trips until your balance is cleared.`);
+               </div>
+               <ChevronRight size={16} style={{ opacity: activeMenu === 'settings' ? 1 : 0.4 }} />
+             </button>
++            
++            {/* 5. HISTORY */}
++            <button
++              onClick={() => setActiveMenu('history')}
++              style={{
++                padding: '12px 16px',
++                borderRadius: '12px',
++                border: activeMenu === 'history' ? '1px solid var(--primary)' : '1px solid var(--border)',
++                background: activeMenu === 'history' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.01)',
++                color: activeMenu === 'history' ? 'var(--primary)' : 'var(--text-main)',
++                fontWeight: '700',
++                fontSize: '13px',
++                cursor: 'pointer',
++                display: 'flex',
++                alignItems: 'center',
++                justifyContent: 'space-between',
++                transition: 'all 0.2s'
++              }}
++            >
++              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
++                <Clock size={18} color={activeMenu === 'history' ? 'var(--primary)' : 'var(--text-muted)'} />
++                <span>My Trips History</span>
++              </div>
++              <ChevronRight size={16} style={{ opacity: activeMenu === 'history' ? 1 : 0.4 }} />
++            </button>
+           </div>
+ 
+            {/* ================= TAB 1: TRIPS & DISPATCHES ================= */}
+@@ -1986,7 +2251,7 @@ You can only accept prepaid trips until your balance is cleared.`);
+ 
+               {/* Rating Panel Screen (Shows after driver completes ride) */}
+               {showRating && currentRide && (
+-                <div className="incoming-request animate-fade-in delay-100" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px' }}>
++                <div className="animate-fade-in delay-100" style={{ background: 'var(--bg-card)', border: '1px solid #f59e0b', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.1)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center', color: '#f59e0b' }}>
+                     <CheckCircle size={28} />
+                     <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>Ride Complete!</h3>
+@@ -2029,98 +2294,30 @@ You can only accept prepaid trips until your balance is cleared.`);
+                 </div>
+               )}
+ 
+-              {/* Incoming request block */}
+-              {isOnline && incomingRide && !currentRide && !showRating && (
+-                <div className="incoming-request animate-fade-in delay-100" style={{
+-                  position: 'fixed',
+-                  top: '24px',
+-                  left: '50%',
+-                  transform: 'translateX(-50%)',
+-                  zIndex: 10000,
+-                  width: '92%',
+-                  maxWidth: '420px',
+-                  boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+-                  border: '2px solid var(--primary)'
+-                }}>
+-                  <div className="request-pulse"></div>
+-                  <h3>New Ride Request!</h3>
+-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+-                    {incomingRide.matchType === 'en-route' ? (
+-                      <div style={{ background: '#3b82f6', color: '#fff', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+-                        <Navigation size={12} /> En-Route Match
+-                      </div>
+-                    ) : (
+-                      <div style={{ background: '#10b981', color: '#fff', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+-                        <MapPin size={12} /> Nearby Pickup ({incomingRide.distance} KM)
+-                      </div>
+-                    )}
+-                    {incomingRide.isIntercity && (
+-                      <div style={{ background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>
+-                        Intercity Ride (+Γé╣250 Base Included)
+-                      </div>
+-                    )}
+-                  </div>
+-
+-
+-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+-                    <span style={{
+-                      display: 'inline-flex',
+-                      alignItems: 'center',
+-                      gap: '4px',
+-                      padding: '3px 10px',
+-                      borderRadius: '20px',
+-                      fontSize: '10px',
+-                      fontWeight: '800',
+-                      textTransform: 'uppercase',
+-                      background: (incomingRide.paymentType === 'prepaid') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.12)',
+-                      color: (incomingRide.paymentType === 'prepaid') ? '#10b981' : '#3b82f6',
+-                      border: `1px solid ${(incomingRide.paymentType === 'prepaid') ? 'rgba(16,185,129,0.3)' : 'rgba(59,130,246,0.3)'}`
+-                    }}>
+-                      {(incomingRide.paymentType === 'prepaid') ? 'Γ£ô Prepaid Trip' : '≡ƒÆ╡ Cash Trip'}
+-                    </span>
+-                  </div>
+-
+-                  <div className="request-details">
+-                    <div className="req-row"><MapPin size={16}/> <strong>From:</strong> {incomingRide.pickup}</div>
+-                    <div className="req-row"><Navigation size={16}/> <strong>To:</strong> {incomingRide.dropoff}</div>
+-                    
+-                    <div style={{ borderTop: '1px solid var(--border)', marginTop: '8px', paddingTop: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+-                      <div><strong>Passenger Rating:</strong> <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>Γÿà {incomingRide.passengerRating || '5.0'}</span></div>
+-                      <div><strong>Total Distance:</strong> {incomingRide.totalKm || 8.0} KM</div>
+-                      <div style={{ paddingLeft: '8px', borderLeft: '2px solid var(--primary)', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12px' }}>
+-                        <div>ΓÇó Passenger Bid: INR {parseFloat(incomingRide.fare).toFixed(2)}</div>
+-                        <div>ΓÇó GST Tax (5%): +INR {(parseFloat(incomingRide.fare) * 0.05).toFixed(2)}</div>
+-                        <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', paddingTop: '4px', fontWeight: 'bold', color: 'var(--text-main)' }}>
+-                          ΓÇó Collect Cash: INR {(parseFloat(incomingRide.fare) * 1.05).toFixed(2)}
+-                        </div>
+-                      </div>
+-                    </div>
+-
+-                    <div className="req-price est-price" style={{ marginTop: '8px' }}>Offered Fare: INR {incomingRide.fare}</div>
+-                  </div>
+-
+-                  {parseFloat(wallet.toBePaid || 0) > 1500 && incomingRide.paymentType === 'cash' ? (
+-                    <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#ef4444', padding: '10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', marginTop: '10px' }}>
+-                      ≡ƒÜ½ Cannot accept cash trips until Γé╣1,500 pending dues are settled.
+-                    </div>
+-                  ) : (
+-                    <div className="request-actions">
+-                      <Button variant="outline" className="full-width" onClick={() => setIncomingRide(null)}>Decline</Button>
+-                      <Button variant="primary" className="full-width" onClick={handleAcceptRide}>Accept</Button>
+-                    </div>
+-                  )}
+-                </div>
+-              )}
+-
+               {/* Active ride in progress block */}
+               {isOnline && currentRide && !showRating && (
+-                <div className="incoming-request animate-fade-in delay-100" style={{ background: 'rgba(59, 130, 246, 0.08)', borderColor: '#3b82f6' }}>
++                <div className="animate-fade-in delay-100" style={{ background: 'var(--bg-card)', border: '1px solid #3b82f6', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1)', marginBottom: '20px' }}>
+                   {showEndTripSummary ? (
+                     <div>
+                       <h3 style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 12px 0' }}>
+                         <DollarSign size={20} /> End Trip Summary
+                       </h3>
+                       
++                      <div className="request-details" style={{ marginBottom: '12px' }}>
++                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
++                          <span style={{ color: 'var(--text-muted)' }}>Passenger:</span>
++                          <span style={{ fontWeight: 'bold' }}>{currentRide.passengerName || 'Passenger'}</span>
++                        </div>
++                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
++                          <span style={{ color: 'var(--text-muted)' }}>Contact:</span>
++                          <span>{currentRide.passengerPhone || 'ΓÇö'}</span>
++                        </div>
++                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
++                          <span style={{ color: 'var(--text-muted)' }}>Dropoff:</span>
++                          <span style={{ textAlign: 'right', maxWidth: '60%' }}>{currentRide.dropoff}</span>
++                        </div>
++                      </div>
++
+                       {(() => {
+                         const baseTotal = parseFloat(currentRide.totalKm || 8.0);
+                         const liveDist = parseFloat(liveGpsDistance || 0);
+@@ -2206,34 +2403,17 @@ You can only accept prepaid trips until your balance is cleared.`);
+                       })()}
+ 
+                       <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+-                        <Button variant="outline" className="full-width" onClick={() => setShowEndTripSummary(false)} style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)' }}>
++                        <Button variant="outline" className="full-width" onClick={() => setShowEndTripSummary(false)} style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)' }} disabled={isCompletingRide}>
+                           Back
+                         </Button>
+-                        <Button variant="primary" className="full-width" onClick={() => handleCompleteRide(collectCash)} style={{ background: '#10b981', color: 'white' }}>
+-                          Confirm & Complete
++                        <Button variant="primary" className="full-width" onClick={() => handleCompleteRide(collectCash)} style={{ background: '#10b981', color: 'white' }} disabled={isCompletingRide}>
++                          {isCompletingRide ? 'Completing...' : 'Confirm & Complete'}
+                         </Button>
+                       </div>
+                     </div>
+-                  ) : currentRide.status === 'Accepted' ? (
+-                    <div style={{ textAlign: 'center', padding: '20px 0' }}>
+-                      <h3 style={{ color: '#3b82f6', marginBottom: '16px' }}>Verify Passenger to Start Trip</h3>
+-                      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+-                        Ask the passenger ({currentRide.passengerName || 'Passenger'}) for their 6-digit Ride PIN to verify their identity and start the trip.
+-                      </p>
+-                      <input 
+-                        type="text" 
+-                        value={ridePin} 
+-                        onChange={(e) => setRidePin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+-                        placeholder="Enter 6-digit PIN" 
+-                        style={{ fontSize: '20px', letterSpacing: '4px', textAlign: 'center', width: '100%', padding: '12px', borderRadius: '8px', border: '2px solid #3b82f6', background: 'transparent', color: 'var(--text-main)', marginBottom: '16px' }}
+-                      />
+-                      <Button variant="primary" className="full-width" onClick={handleVerifyPin} style={{ background: '#3b82f6', color: 'white' }} disabled={ridePin.length !== 6}>
+-                        Verify & Start Trip
+-                      </Button>
+-                    </div>
+                   ) : (
+                     <>
+-                      <h3 style={{ color: '#3b82f6' }}>Trip in Progress</h3>
++                      <h3 style={{ color: '#3b82f6', marginBottom: '12px' }}>{currentRide.status === 'Accepted' ? 'Passenger Pickup' : 'Trip in Progress'}</h3>
+                       {currentRide.isIntercity && (
+                         <div style={{ background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '10px', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px' }}>
+                           Intercity Route Active (+Γé╣250 Base)
+@@ -2241,7 +2421,7 @@ You can only accept prepaid trips until your balance is cleared.`);
+                       )}
+                       {/* LIVE RUNNING GPS TAXIMETER CARD */}
+                       <div style={{
+-                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.12))',
++                        background: 'var(--bg-card)',
+                         border: '1.5px solid #10b981',
+                         borderRadius: '14px',
+                         padding: '14px',
+@@ -2284,7 +2464,7 @@ You can only accept prepaid trips until your balance is cleared.`);
+ 
+                       <div className="request-details">
+                         <div className="req-row"><MapPin size={16}/> <strong>Pickup:</strong> {currentRide.pickup}</div>
+-                        <div className="req-row"><Navigation size={16}/> <strong>Drop-off:</strong> {currentRide.dropoff}</div>
++                        <div className="req-row"><Navigation size={16}/> <strong>Drop-off:</strong> {currentRide.status === 'Accepted' ? <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Hidden until PIN Verified</span> : currentRide.dropoff}</div>
+                         
+                         <div style={{ borderTop: '1px solid rgba(59, 130, 246, 0.2)', marginTop: '8px', paddingTop: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                           <div><strong>Estimated Distance:</strong> {currentRide.totalKm || 8.0} KM</div>
+@@ -2299,20 +2479,53 @@ You can only accept prepaid trips until your balance is cleared.`);
+ 
+                         <div className="req-price est-price" style={{ color: '#3b82f6', marginTop: '8px' }}>Fare: INR {currentRide.fare}</div>
+                       </div>
+-                      <Button 
+-                        variant="outline" 
+-                        onClick={() => { setShowDriverTripChat(true); fetchDriverTripChatMessages(); }}
+-                        style={{ width: '100%', marginBottom: '10px', borderColor: '#3b82f6', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+-                      >
+-                        <MessageSquare size={16} /> ≡ƒÆ¼ Chat with Passenger ({currentRide.passengerName || 'Passenger'})
+-                      </Button>
+-                      <div style={{ display: 'flex', gap: '12px' }}>
+-                        <Button variant="outline" className="full-width" onClick={handleCancelRide} style={{ borderColor: '#ef4444', color: '#ef4444' }}>
+-                          Cancel Ride
+-                        </Button>
+-                        <Button variant="primary" className="full-width" onClick={() => setShowEndTripSummary(true)} style={{ background: '#3b82f6', color: 'white' }}>
+-                          Complete Ride
+-                        </Button>
++                      
++                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
++                        {currentRide.status === 'Accepted' && driverTripStage === 'navigate_pickup' && (
++                          <Button variant="primary" className="full-width" style={{ background: '#3b82f6', color: 'white', padding: '14px', fontSize: '14px', fontWeight: 'bold' }} onClick={() => {
++                            setMapSelectionTarget(currentRide.pickup);
++                            setShowMapSelection(true);
++                            setDriverTripStage('arrived');
++                          }}>
++                            <Navigation size={18} style={{ marginRight: '6px' }} /> NAVIGATE TO PASSENGER PICKUP LOCATION
++                          </Button>
++                        )}
++
++                        {currentRide.status === 'Accepted' && driverTripStage === 'arrived' && (
++                          <Button variant="primary" className="full-width" style={{ background: '#10b981', color: 'white', padding: '14px', fontSize: '14px', fontWeight: 'bold' }} onClick={() => {
++                            handleArrive();
++                          }}>
++                            <MapPin size={18} style={{ marginRight: '6px' }} /> ARRIVED AT PICKUP LOCATION
++                          </Button>
++                        )}
++
++                        {(currentRide.status === 'Accepted' || currentRide.status === 'Arrived') && driverTripStage === 'enter_pin' && (
++                          <Button variant="primary" className="full-width" style={{ background: '#3b82f6', color: 'white', padding: '14px', fontSize: '14px', fontWeight: 'bold' }} onClick={() => setIsPinModalOpen(true)}>
++                            <CheckCircle size={18} style={{ marginRight: '6px' }} /> ENTER RIDE PIN
++                          </Button>
++                        )}
++                        {currentRide.status === 'In Progress' && (
++                          <Button variant="primary" className="full-width" onClick={() => setShowEndTripSummary(true)} style={{ background: '#ef4444', color: 'white', padding: '14px', fontSize: '14px', fontWeight: 'bold' }}>
++                            <CheckCircle size={18} style={{ marginRight: '6px' }} /> END TRIP
++                          </Button>
++                        )}
++
++                        <div style={{ display: 'flex', gap: '10px' }}>
++                          <Button variant="outline" onClick={() => { setShowDriverTripChat(true); fetchDriverTripChatMessages(); }} style={{ flex: 1, borderColor: '#3b82f6', color: '#3b82f6' }}>
++                            <MessageSquare size={16} style={{ marginRight: '6px' }} /> Chat
++                          </Button>
++                          {currentRide.status === 'In Progress' && (
++                            <Button variant="outline" onClick={() => {
++                                setMapSelectionTarget(currentRide.dropoff);
++                                setShowMapSelection(true);
++                            }} style={{ flex: 1, borderColor: '#8b5cf6', color: '#8b5cf6' }}>
++                              <Navigation size={16} style={{ marginRight: '6px' }} /> Navigate
++                            </Button>
++                          )}
++                          <Button variant="outline" onClick={handleCancelRide} style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444' }}>
++                            Cancel
++                          </Button>
++                        </div>
+                       </div>
+                     </>
+                   )}
+@@ -3586,36 +3799,193 @@ You can only accept prepaid trips until your balance is cleared.`);
+             </div>
+           )}
+ 
++          {/* ================= TAB 6: HISTORY ================= */}
++          {activeMenu === 'history' && (
++            <div className="tab-pane animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
++              <div style={{ border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', background: 'rgba(255, 255, 255, 0.01)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
++                <span style={{ fontSize: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
++                  <Clock size={18} color="var(--primary)" /> Completed Ride History
++                </span>
++                
++                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
++                  {driverHistory.length === 0 ? (
++                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
++                      No completed rides found.
++                    </div>
++                  ) : (
++                    driverHistory.map((ride) => (
++                      <div key={ride.id} 
++                        style={{
++                          background: 'var(--bg-card)',
++                          border: '1px solid var(--border)',
++                          borderRadius: '10px',
++                          padding: '14px',
++                          display: 'flex',
++                          flexDirection: 'column',
++                          gap: '10px',
++                          cursor: 'pointer',
++                          transition: 'border-color 0.2s',
++                          boxShadow: 'var(--shadow-sm)'
++                        }}
++                        onClick={() => alert(`============ INVOICE: TRIP #${ride.id} ============\n\nPassenger: ${ride.passengerName}\nPayment: ${ride.paymentType?.toUpperCase() || 'CASH'}\nDate: ${new Date(ride.completedAt).toLocaleString()}\n\nFrom: ${ride.pickup}\nTo: ${ride.dropoff}\nDistance: ${ride.finalDistance || ride.totalKm} KM\n\nBase Fare: Γé╣${ride.fare}\nGST (5%): Γé╣${ride.gst}\nTotal Collected: Γé╣${ride.totalCollected}\n\nHUM Fleet Commission (5%): -Γé╣${ride.commission}\nDriver Payout: Γé╣${(parseFloat(ride.fare) - parseFloat(ride.commission || 0)).toFixed(2)}`)}
++                      >
++                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
++                          <span style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-main)' }}>
++                            Trip #{ride.id}
++                          </span>
++                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
++                            {new Date(ride.completedAt).toLocaleDateString()}
++                          </span>
++                        </div>
++                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: 'var(--text-main)' }}>
++                          <div style={{ display: 'flex', gap: '6px' }}><MapPin size={14} color="var(--primary)"/> <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ride.pickup}</span></div>
++                          <div style={{ display: 'flex', gap: '6px' }}><Navigation size={14} color="var(--primary)"/> <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ride.dropoff}</span></div>
++                        </div>
++                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '8px', fontSize: '13px', fontWeight: '700' }}>
++                          <span style={{ color: 'var(--text-muted)' }}>Total Fare</span>
++                          <span style={{ color: 'var(--primary)' }}>Γé╣{ride.totalCollected}</span>
++                        </div>
++                        <div style={{ fontSize: '10px', color: '#3b82f6', textAlign: 'center', fontWeight: '800', background: 'rgba(59, 130, 246, 0.1)', padding: '6px', borderRadius: '6px' }}>
++                          CLICK TO VIEW FULL INVOICE
++                        </div>
++                      </div>
++                    ))
++                  )}
++                </div>
++              </div>
++            </div>
++          )}
++
++        </>)}
++
+         </div>
+         
+-        <div className="dashboard-map animate-fade-in delay-100" style={{ padding: 0, overflow: 'hidden', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
+-          <iframe 
+-            id="map-iframe"
+-            src="/map.html" 
+-            style={{ width: '100%', height: '100%', border: 'none' }}
+-            title="Interactive Map"
+-          />
+-          {(isOnline) && (
++        <div className="dashboard-map animate-fade-in delay-100" style={{ padding: 0, overflow: 'hidden', position: 'relative', zIndex: 0, order: 1 }}>
++          {/* Map iframe removed for performance */}
++          {(isOnline && currentRide) && (
+             <div style={{
+               position: 'absolute',
+               bottom: '16px',
+               left: '50%',
+               transform: 'translateX(-50%)',
+               zIndex: 1000,
+-              background: 'rgba(24, 24, 27, 0.9)',
+-              border: '1px solid var(--border)',
+-              borderRadius: '12px',
+-              padding: '12px 24px',
+-              color: 'white',
+-              fontSize: '14px',
+-              fontWeight: '600',
+-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+-              backdropFilter: 'blur(8px)',
+-              pointerEvents: 'none',
+-              textAlign: 'center',
+-              whiteSpace: 'nowrap'
++              width: '90%',
++              maxWidth: '350px',
++              display: 'flex',
++              flexDirection: 'column',
++              gap: '10px'
+             }}>
+-              {currentRide ? `Destination: ${currentRide.dropoff.split(',')[0]}` : 'Waiting for Incoming Rides under 8.0 KM...'}
++              {currentRide.status === 'Accepted' && driverTripStage === 'navigate_pickup' && (
++                <Button 
++                  onClick={() => {
++                    setMapSelectionTarget(currentRide.pickup);
++                    setShowMapSelection(true);
++                    setDriverTripStage('arrived');
++                  }}
++                  style={{
++                    width: '100%',
++                    padding: '12px',
++                    fontSize: '14px',
++                    fontWeight: '800',
++                    display: 'flex',
++                    alignItems: 'center',
++                    justifyContent: 'center',
++                    gap: '8px',
++                    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
++                    color: '#ffffff',
++                    border: 'none',
++                    borderRadius: '12px',
++                    boxShadow: '0 4px 16px rgba(59, 130, 246, 0.35)',
++                    cursor: 'pointer'
++                  }}
++                >
++                  <Navigation size={18} /> Navigate to passenger pickup location
++                </Button>
++              )}
++              {currentRide.status === 'Accepted' && driverTripStage === 'arrived' && (
++                <Button 
++                  onClick={() => {
++                    handleArrive();
++                  }}
++                  style={{
++                    width: '100%',
++                    padding: '12px',
++                    fontSize: '14px',
++                    fontWeight: '800',
++                    display: 'flex',
++                    alignItems: 'center',
++                    justifyContent: 'center',
++                    gap: '8px',
++                    background: 'linear-gradient(135deg, #10b981, #059669)',
++                    color: '#ffffff',
++                    border: 'none',
++                    borderRadius: '12px',
++                    boxShadow: '0 4px 16px rgba(16, 185, 129, 0.35)',
++                    cursor: 'pointer'
++                  }}
++                >
++                  <MapPin size={18} /> I have arrived
++                </Button>
++              )}
++              {(currentRide.status === 'Accepted' || currentRide.status === 'Arrived') && driverTripStage === 'enter_pin' && (
++                <div onClick={() => setIsPinModalOpen(true)} style={{
++                  background: 'rgba(24, 24, 27, 0.9)',
++                  border: '1px solid #3b82f6',
++                  borderRadius: '12px',
++                  padding: '12px 24px',
++                  color: 'white',
++                  fontSize: '14px',
++                  fontWeight: '600',
++                  boxShadow: '0 4px 20px rgba(59, 130, 246, 0.4)',
++                  backdropFilter: 'blur(8px)',
++                  cursor: 'pointer',
++                  textAlign: 'center',
++                  whiteSpace: 'nowrap'
++                }}>
++                  Please enter PIN to start trip
++                </div>
++              )}
++              {currentRide.status === 'In Progress' && (
++                <Button 
++                  onClick={() => setShowEndTripSummary(true)}
++                  style={{
++                    width: '100%',
++                    padding: '12px',
++                    fontSize: '14px',
++                    fontWeight: '800',
++                    display: 'flex',
++                    alignItems: 'center',
++                    justifyContent: 'center',
++                    gap: '8px',
++                    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
++                    color: '#ffffff',
++                    border: 'none',
++                    borderRadius: '12px',
++                    boxShadow: '0 4px 16px rgba(239, 68, 68, 0.35)',
++                    cursor: 'pointer'
++                  }}
++                >
++                  <CheckCircle size={18} /> END TRIP
++                </Button>
++              )}
++              {currentRide.status !== 'Accepted' && currentRide.status !== 'In Progress' && (
++                <div style={{
++                  background: 'rgba(24, 24, 27, 0.9)',
++                  border: '1px solid var(--border)',
++                  borderRadius: '12px',
++                  padding: '12px 24px',
++                  color: 'white',
++                  fontSize: '14px',
++                  fontWeight: '600',
++                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
++                  backdropFilter: 'blur(8px)',
++                  pointerEvents: 'none',
++                  textAlign: 'center',
++                  whiteSpace: 'nowrap'
++                }}>
++                  {`Destination: ${currentRide.dropoff.split(',')[0]}`}
++                </div>
++              )}
+             </div>
+           )}
+         </div>
+@@ -3724,7 +4094,7 @@ You can only accept prepaid trips until your balance is cleared.`);
+       {/* ADMIN DIRECT MESSAGES MODAL (APPEARS ONLY IF THERE IS A MESSAGE FROM ADMIN) */}
+       {showAdminMessagesModal && adminMessages.length > 0 && (
+         <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+-          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '520px', height: '560px', display: 'flex', flexDirection: 'column', padding: '20px', borderRadius: '20px', background: 'var(--bg-card)' }}>
++          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '520px', height: '85vh', maxHeight: '560px', display: 'flex', flexDirection: 'column', padding: '20px', borderRadius: '20px', background: 'var(--bg-card)' }}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                 <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+@@ -3778,7 +4148,7 @@ You can only accept prepaid trips until your balance is cleared.`);
+       {/* IN-TRIP LIVE CHAT MODAL (DRIVER TO PASSENGER EXCLUSIVE) */}
+       {showDriverTripChat && currentRide && (
+         <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+-          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '520px', height: '560px', display: 'flex', flexDirection: 'column', padding: '20px', borderRadius: '20px', background: 'var(--bg-card)' }}>
++          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '520px', height: '85vh', maxHeight: '560px', display: 'flex', flexDirection: 'column', padding: '20px', borderRadius: '20px', background: 'var(--bg-card)' }}>
+             {/* Header */}
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+@@ -4156,6 +4526,81 @@ You can only accept prepaid trips until your balance is cleared.`);
+         </div>
+       )}
+ 
++      {/* ========== MAP SELECTION MODAL ========== */}
++      {showMapSelection && mapSelectionTarget && (
++        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(5px)', position: 'fixed', inset: 0, zIndex: 1150, display: 'flex', alignItems: 'flex-end', padding: '16px' }}>
++          <div className="glass-card animate-slide-up" style={{ width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
++            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
++              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--text-main)' }}>Open in Maps</h3>
++              <button onClick={() => { setShowMapSelection(false); setMapSelectionTarget(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
++                <X size={20} />
++              </button>
++            </div>
++            
++            <button
++              onClick={() => {
++                setShowMapSelection(false);
++                if (Capacitor.isNativePlatform()) {
++                  window.location.href = `google.navigation:q=${encodeURIComponent(mapSelectionTarget)}`;
++                } else {
++                  window.open(`https://maps.google.com/?q=${encodeURIComponent(mapSelectionTarget)}`, '_blank');
++                }
++                setMapSelectionTarget(null);
++              }}
++              style={{
++                width: '100%',
++                padding: '16px',
++                fontSize: '15px',
++                fontWeight: '700',
++                display: 'flex',
++                alignItems: 'center',
++                gap: '12px',
++                background: 'var(--bg-focus)',
++                border: '1px solid var(--border)',
++                borderRadius: '12px',
++                cursor: 'pointer'
++              }}
++            >
++              <MapPin size={24} color="#4285F4" />
++              <span style={{ color: 'var(--text-main)' }}>Google Maps</span>
++            </button>
++          </div>
++        </div>
++      )}
++
++      {/* ========== PIN ENTRY MODAL ========== */}
++      {isPinModalOpen && (currentRide?.status === 'Accepted' || currentRide?.status === 'Arrived') && driverTripStage === 'enter_pin' && (
++        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(5px)', position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
++          <div className="glass-card animate-slide-up" style={{ width: '100%', maxWidth: '360px', background: 'var(--bg-card)', border: '1px solid #3b82f6', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'center', boxShadow: '0 0 30px rgba(59, 130, 246, 0.3)' }}>
++            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '-20px' }}>
++              <button onClick={() => setIsPinModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
++                <X size={20} />
++              </button>
++            </div>
++            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
++              <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '16px', borderRadius: '50%' }}>
++                <CheckCircle size={32} color="#3b82f6" />
++              </div>
++            </div>
++            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#3b82f6' }}>Enter Ride PIN</h3>
++            <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-muted)' }}>Ask the passenger for their 6-digit PIN to start the trip.</p>
++            
++            <input 
++              type="text" 
++              value={ridePin} 
++              onChange={(e) => setRidePin(e.target.value.replace(/\D/g, '').slice(0, 6))}
++              placeholder="000000" 
++              style={{ fontSize: '32px', letterSpacing: '12px', textAlign: 'center', width: '100%', padding: '16px', borderRadius: '12px', border: '2px solid rgba(59, 130, 246, 0.5)', background: 'rgba(0,0,0,0.3)', color: 'white', fontWeight: '800', outline: 'none' }}
++              autoFocus
++            />
++            <Button variant="primary" className="full-width" onClick={handleVerifyPin} style={{ background: '#3b82f6', color: 'white', padding: '16px', fontSize: '16px', fontWeight: 'bold', marginTop: '8px' }} disabled={ridePin.length !== 6}>
++              Verify & Start Trip
++            </Button>
++          </div>
++        </div>
++      )}
++
++
+       {/* ========== INR 700 COMMISSION & GST DUES NOTIFICATION POPUP MODAL ========== */}
+       {showDuesNoticeModal && parseFloat(wallet.toBePaid || 0) >= 700 && (
+         <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(5px)', position: 'fixed', inset: 0, zIndex: 1150, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>

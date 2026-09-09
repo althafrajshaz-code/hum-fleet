@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import ErrorBoundary from './components/ErrorBoundary';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import Navbar from './components/Navbar';
@@ -26,15 +27,23 @@ const AdminRedirect = () => {
 };
 
 function App() {
-  // VITE_APP_MODE is baked in at build time:
-  //   'passenger' → Passenger APK (opens Passenger Login)
-  //   'driver'    → Driver APK (opens Driver Login)
-  //   undefined   → Web version (shows Landing Page with all routes)
-  const mode = import.meta.env.VITE_APP_MODE;
+  // Determine mode from env (local build) OR query param (capacitor live URL) OR localStorage
+  const urlParams = new URLSearchParams(window.location.search);
+  const queryMode = urlParams.get('app');
+  if (queryMode) {
+    localStorage.setItem('lockedAppMode', queryMode);
+  }
+  
+  const envMode = import.meta.env.VITE_APP_MODE;
+  const lockedMode = localStorage.getItem('lockedAppMode');
+  
+  const mode = envMode || lockedMode || undefined;
+
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE';
 
   return (
     <GoogleOAuthProvider clientId={googleClientId}>
+      <ErrorBoundary>
       <Router>
         <div className="app">
           <Navbar />
@@ -78,6 +87,7 @@ function App() {
                 <Route path="/passenger" element={<PassengerDashboard />} />
                 <Route path="/driver/login" element={<DriverLogin />} />
                 <Route path="/driver/signup" element={<DriverSignup />} />
+                <Route path="/join" element={<DriverSignup />} />
                 <Route path="/driver/terms" element={<TermsDriver />} />
                 <Route path="/driver" element={<DriverDashboard />} />
               </>
@@ -86,6 +96,7 @@ function App() {
           </Routes>
         </div>
       </Router>
+    </ErrorBoundary>
     </GoogleOAuthProvider>
   );
 }

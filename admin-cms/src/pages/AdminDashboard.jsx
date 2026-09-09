@@ -212,6 +212,8 @@ const AdminDashboard = () => {
   const [ratePerKm, setRatePerKm] = useState('15.00');
   const [minRatePerHour, setMinRatePerHour] = useState('100.00');
   const [surgeMultiplier, setSurgeMultiplier] = useState('1.0');
+  const [platformCommissionPercentage, setPlatformCommissionPercentage] = useState('0');
+  const [platformCommissionFlat, setPlatformCommissionFlat] = useState('0');
   const [systemStatus, setSystemStatus] = useState('online');
   const [systemSettings, setSystemSettings] = useState(null);
 
@@ -433,6 +435,8 @@ const AdminDashboard = () => {
         setRatePerKm(data.ratePerKm);
         setMinRatePerHour(data.minRatePerHour || '100.00');
         setSurgeMultiplier(data.surgeMultiplier);
+        setPlatformCommissionPercentage(data.platformCommissionPercentage || '0');
+        setPlatformCommissionFlat(data.platformCommissionFlat || '0');
         setSystemStatus(data.systemStatus);
         setGatewayType(data.gatewayType || 'upi');
         setUpiId(data.upiId || '');
@@ -801,6 +805,8 @@ const AdminDashboard = () => {
           ratePerKm,
           minRatePerHour,
           surgeMultiplier,
+          platformCommissionPercentage,
+          platformCommissionFlat,
           systemStatus,
           gatewayType,
           upiId,
@@ -1919,9 +1925,6 @@ const AdminDashboard = () => {
             <button className={`nav-btn ${activeTab === 'fleet' ? 'active' : ''}`} onClick={() => setActiveTab('fleet')}>
               <Radio size={18} /> Live Fleet Monitor
             </button>
-            <button className={`nav-btn ${activeTab === 'livemap' ? 'active' : ''}`} onClick={() => setActiveTab('livemap')}>
-              <Compass size={18} /> God's Eye Map
-            </button>
           </div>
 
           <div className="nav-section">
@@ -1950,9 +1953,6 @@ const AdminDashboard = () => {
             </button>
             <button className={`nav-btn ${activeTab === 'broadcasts' ? 'active' : ''}`} onClick={() => setActiveTab('broadcasts')}>
               <Send size={18} /> Global Broadcasts
-            </button>
-            <button className={`nav-btn ${activeTab === 'locations' ? 'active' : ''}`} onClick={() => setActiveTab('locations')}>
-              <MapPin size={18} /> Locations
             </button>
             <button className={`nav-btn ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => setActiveTab('categories')}>
               <Settings size={18} /> Vehicle Categories
@@ -2141,11 +2141,7 @@ const AdminDashboard = () => {
             )}
             
             {activeTab === 'analytics' && (
-              <AnalyticsDashboard />
-            )}
-            
-            {activeTab === 'livemap' && (
-              <LiveMap />
+              <Analytics activeTab={activeTab} API_BASE={API_BASE} />
             )}
             
             {activeTab === 'staff' && (
@@ -2171,16 +2167,14 @@ const AdminDashboard = () => {
               />
             )}
             
-            {activeTab === 'locations' && (
-              <LocationsManagement API_BASE={API_BASE} />
-            )}
-            
             {activeTab === 'settings' && (
               <SystemSettings 
                 baseFare={baseFare} setBaseFare={setBaseFare}
                 ratePerKm={ratePerKm} setRatePerKm={setRatePerKm}
                 minRatePerHour={minRatePerHour} setMinRatePerHour={setMinRatePerHour}
                 surgeMultiplier={surgeMultiplier} setSurgeMultiplier={setSurgeMultiplier}
+                platformCommissionPercentage={platformCommissionPercentage} setPlatformCommissionPercentage={setPlatformCommissionPercentage}
+                platformCommissionFlat={platformCommissionFlat} setPlatformCommissionFlat={setPlatformCommissionFlat}
                 systemStatus={systemStatus} setSystemStatus={setSystemStatus}
                 voipMasking={voipMasking} setVoipMasking={setVoipMasking}
                 gatewayType={gatewayType} setGatewayType={setGatewayType}

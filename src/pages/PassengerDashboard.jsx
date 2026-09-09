@@ -1,17 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Navigation, Car, AlertCircle, Phone, CheckCircle, DollarSign, Wallet, Map, Share2, Camera, User, MessageSquare, Send, X, Navigation2, LogOut, Compass } from 'lucide-react';
+import { MapPin, Clock, Navigation, Car, AlertCircle, AlertTriangle, Phone, CheckCircle, IndianRupee, Wallet, Map, Share2, Camera, User, MessageSquare, MessageCircle, Send, X, Navigation2, LogOut, Compass , Search, Menu, Settings, Home, Briefcase, Sun, Moon } from 'lucide-react';
 import Button from '../components/Button';
 import './Dashboard.css';
 
-const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
-  ? 'https://hum-fleet-backend.loca.lt'
-  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.protocol !== 'capacitor:')
-    ? 'http://localhost:5000'
-    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://humfleet.xyz';
 
 
 const KERALA_LOCATIONS = [
+  // --- 0. MAJOR SOUTH INDIA HUBS ---
+  { name: "Chennai Central Railway Station, Tamil Nadu", lat: 13.0827, lng: 80.2707 },
+  { name: "T. Nagar, Chennai, Tamil Nadu", lat: 13.0396, lng: 80.2335 },
+  { name: "Anna Nagar, Chennai, Tamil Nadu", lat: 13.0847, lng: 80.2185 },
+  { name: "Velachery, Chennai, Tamil Nadu", lat: 12.9806, lng: 80.2227 },
+  { name: "Kempegowda International Airport (BLR), Bengaluru, Karnataka", lat: 13.1986, lng: 77.7066 },
+  { name: "Koramangala, Bengaluru, Karnataka", lat: 12.9352, lng: 77.6245 },
+  { name: "Indiranagar, Bengaluru, Karnataka", lat: 12.9784, lng: 77.6408 },
+  { name: "Whitefield, Bengaluru, Karnataka", lat: 12.9698, lng: 77.7499 },
+  { name: "Majestic Bus Station, Bengaluru, Karnataka", lat: 12.9779, lng: 77.5738 },
+  { name: "Rajiv Gandhi International Airport (HYD), Hyderabad", lat: 17.2403, lng: 78.4294 },
+  { name: "Banjara Hills, Hyderabad, Telangana", lat: 17.4173, lng: 78.4395 },
+  { name: "HITECH City, Hyderabad, Telangana", lat: 17.4474, lng: 78.3762 },
+  { name: "Coimbatore Junction Railway Station, Tamil Nadu", lat: 10.9942, lng: 76.9657 },
+  { name: "Madurai Meenakshi Temple, Tamil Nadu", lat: 9.9195, lng: 78.1193 },
+  { name: "Mysuru Palace, Karnataka", lat: 12.3051, lng: 76.6551 },
+  { name: "Mangaluru Central Railway Station, Karnataka", lat: 12.8622, lng: 74.8427 },
+  { name: "Vijayawada Junction, Andhra Pradesh", lat: 16.5186, lng: 80.6200 },
+  { name: "Visakhapatnam Railway Station, Andhra Pradesh", lat: 17.7289, lng: 83.2952 },
+
   // --- 1. ERNAKULAM & KOCHI ---
   { name: "Cochin International Airport (COK), Nedumbassery", lat: 10.1520, lng: 76.4019 },
   { name: "Marine Drive & MG Road, Ernakulam", lat: 9.9777, lng: 76.2758 },
@@ -242,10 +258,62 @@ const PassengerDashboard = () => {
     }
   }, [navigate]);
 
+  const [bookingStep, setBookingStep] = useState(1);
+  const [language, setLanguage] = useState(localStorage.getItem('hum_lang') || 'en');
+
+  const t = (key) => {
+    const dict = {
+      'Where to?': { en: 'Where to?', ml: 'എവിടേക്ക് പോകണം?', hi: 'कहाँ जाना है?' },
+      'Select Vehicle': { en: 'Select Vehicle', ml: 'വാഹനം തിരഞ്ഞെടുക്കുക', hi: 'वाहन चुनें' },
+      'Book Ride': { en: 'Book Ride', ml: 'റൈഡ് ബുക്ക് ചെയ്യുക', hi: 'राइड बुक करें' },
+      'Cancel Trip': { en: 'Cancel Trip', ml: 'യാത്ര റദ്ദാക്കുക', hi: 'यात्रा रद्द करें' },
+      
+      'EMERGENCY SOS': { en: 'EMERGENCY SOS', ml: 'അടിയന്തര SOS', hi: 'आपातकालीन SOS' }
+    };
+    return dict[key] ? (dict[key][language] || dict[key]['en']) : key;
+  };
+  const [mapSearchQuery, setMapSearchQuery] = useState('');
+  const [mapSearchFocused, setMapSearchFocused] = useState(false);
   const [pickup, setPickup] = useState('');
   const [dropoff, setDropoff] = useState('');
   const [pickupCoords, setPickupCoords] = useState(null);
   const [dropoffCoords, setDropoffCoords] = useState(null);
+  const [waypoints, setWaypoints] = useState([]);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapModalTarget, setMapModalTarget] = useState(null); // 'pickup' | 'dropoff' | 'save_home' | 'save_work'
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  const [savedPlaces, setSavedPlaces] = useState(() => {
+    try {
+      const email = localStorage.getItem('passengerEmail');
+      const stored = localStorage.getItem(`savedPlaces_${email}`);
+      return stored ? JSON.parse(stored) : { home: null, work: null };
+    } catch(e) { return { home: null, work: null }; }
+  });
+  
+  const [currentName, setCurrentName] = useState(localStorage.getItem('passengerName') || 'Passenger');
+  const [editNameInput, setEditNameInput] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  
+  const [bgTheme, setBgTheme] = useState(localStorage.getItem('passengerBgTheme') || 'default');
+  const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('passengerDarkMode') === 'true');
+
+  // Apply dark mode to body and map
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.setAttribute('data-theme', 'dark');
+    } else {
+      document.body.removeAttribute('data-theme');
+    }
+    
+    // Notify map iframe if open
+    const mapIframe = document.getElementById('map-modal-iframe');
+    if (mapIframe && mapIframe.contentWindow) {
+      mapIframe.contentWindow.postMessage({ type: 'SET_THEME', theme: isDarkMode ? 'dark' : 'light' }, '*');
+    }
+  }, [isDarkMode, showMapModal]);
 
   const [dynamicLocations, setDynamicLocations] = useState([]);
 
@@ -254,6 +322,12 @@ const PassengerDashboard = () => {
       .then(r => r.ok ? r.json() : [])
       .then(data => setDynamicLocations(data || []))
       .catch(err => console.error('Failed to fetch dynamic locations:', err));
+  }, []);
+
+  useEffect(() => {
+    if (!pickup) {
+      handleUseCurrentLocation('pickup');
+    }
   }, []);
 
   const [pickupFocused, setPickupFocused] = useState(false);
@@ -304,6 +378,7 @@ const PassengerDashboard = () => {
 
   // In-Trip Chat States (Strictly enabled for matched driver & passenger on active ride)
   const [showInTripChat, setShowInTripChat] = useState(false);
+  const ratedRideIdRef = useRef(null);
   const [tripChatMessages, setTripChatMessages] = useState([]);
   const [tripChatText, setTripChatText] = useState('');
   const [tripChatError, setTripChatError] = useState(null);
@@ -351,6 +426,10 @@ const PassengerDashboard = () => {
   const [preBookTime, setPreBookTime] = useState('');
   const [preBookedRides, setPreBookedRides] = useState([]);
 
+  // Pink Driver (Female Driver) states
+  const [requireFemaleDriver, setRequireFemaleDriver] = useState(false);
+  const [femaleDriversOnline, setFemaleDriversOnline] = useState(0);
+
   // Bidirectional rating states
   const [showRating, setShowRating] = useState(false);
   const [ratingValue, setRatingValue] = useState(5);
@@ -382,6 +461,13 @@ const PassengerDashboard = () => {
           setPassengerProfilePic(data.profilePic);
           localStorage.setItem('passengerProfilePic', data.profilePic);
         }
+        if (data.home || data.work) {
+          setSavedPlaces(prev => ({
+            ...prev,
+            ...(data.home && { home: typeof data.home === 'string' ? JSON.parse(data.home) : data.home }),
+            ...(data.work && { work: typeof data.work === 'string' ? JSON.parse(data.work) : data.work })
+          }));
+        }
       }
     } catch (err) {
       console.error("Failed to fetch passenger status:", err);
@@ -407,9 +493,37 @@ const PassengerDashboard = () => {
       const response = await fetch(`${API_BASE}/api/vehicle-categories`);
       if (response.ok) {
         const data = await response.json();
+        
+        // Dynamically add "Pink Driver" option if female drivers are online
+        let femaleCount = 0;
+        try {
+          const femaleRes = await fetch(`${API_BASE}/api/drivers/online-female-count`);
+          if (femaleRes.ok) {
+            const femaleData = await femaleRes.json();
+            femaleCount = femaleData.count || 0;
+            setFemaleDriversOnline(femaleCount);
+          }
+        } catch(e) {}
+
+        if (femaleCount > 0) {
+          data.push({
+            id: 'pink',
+            name: 'Pink Driver 🌸',
+            maxPassengers: 4,
+            baseFare: 40,
+            ratePerKm: 15,
+            icon: '🌸',
+            eta: '4-6 mins'
+          });
+        }
+        
         setCategories(data);
         if (data.length > 0) {
-          setSelectedTier(prev => prev || data[0].name);
+          setSelectedTier(prev => {
+            // Check if currently selected tier still exists, else default to first
+            if (prev && data.some(d => d.name === prev)) return prev;
+            return data[0].name;
+          });
         }
       }
     } catch (err) {
@@ -425,15 +539,19 @@ const PassengerDashboard = () => {
       if (response.ok) {
         const data = await response.json();
         if (data) {
+          if (data.id === ratedRideIdRef.current) return;
           setActiveRide(data);
-          if (data.status === 'Accepted' || data.status === 'Arrived') {
+          if (data.status === 'Accepted' || data.status === 'Arrived' || data.status === 'In Progress') {
             setIsSearching(false);
             setRideAccepted(true);
           } else if (data.status === 'Searching') {
             setIsSearching(true);
             setRideAccepted(false);
           }
+        } else {
+          setActiveRide(null);
         }
+
       }
     } catch (err) {
       console.error("Failed to fetch passenger active ride:", err);
@@ -564,12 +682,12 @@ const PassengerDashboard = () => {
     fetchPreBookedRides();
   }, []);
 
-  // Poll vehicle categories & settings every 3 seconds to get live admin pricing updates
+  // Poll vehicle categories & settings every 1 second to get live admin pricing updates
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       fetchCategories();
       fetchPassengerActiveRide();
-    }, 3000);
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -635,7 +753,7 @@ const PassengerDashboard = () => {
   useEffect(() => {
     if (!showInTripChat || !activeRide) return;
     fetchTripChatMessages();
-    const interval = setInterval(fetchTripChatMessages, 2000);
+    const interval = setInterval(fetchTripChatMessages, 1000);
     return () => clearInterval(interval);
   }, [showInTripChat, activeRide]);
 
@@ -683,35 +801,97 @@ const PassengerDashboard = () => {
   useEffect(() => {
     const handleMapMessage = (event) => {
       if (event.data && event.data.type === 'MAP_LOCATION_SELECTED') {
-        setPickup(event.data.address);
-        setPickupCoords({ lat: event.data.lat, lng: event.data.lng });
+        // Only update fields — do NOT close the modal. User clicks Confirm to close.
+        if (mapModalTarget === 'dropoff') {
+          setDropoff(event.data.address);
+          setDropoffCoords({ lat: event.data.lat, lng: event.data.lng });
+        } else if (mapModalTarget === 'pickup') {
+          setPickup(event.data.address);
+          setPickupCoords({ lat: event.data.lat, lng: event.data.lng });
+        } else if (mapModalTarget === 'update_dest') {
+          setNewDestInput(event.data.address);
+          setNewDestCoords({ lat: event.data.lat, lng: event.data.lng });
+        } else if (mapModalTarget && mapModalTarget.startsWith('waypoint_')) {
+          const index = parseInt(mapModalTarget.split('_')[1]);
+          setWaypoints(prev => {
+            const newWp = [...prev];
+            newWp[index] = { address: event.data.address, lat: event.data.lat, lng: event.data.lng };
+            return newWp;
+          });
+        } else if (mapModalTarget === 'save_home') {
+          const newLoc = { address: event.data.address, lat: event.data.lat, lng: event.data.lng };
+          setSavedPlaces(prev => {
+            const updated = { ...prev, home: newLoc };
+            localStorage.setItem(`savedPlaces_${localStorage.getItem('passengerEmail')}`, JSON.stringify(updated));
+            fetch(`${API_BASE}/api/passengers/locations`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: localStorage.getItem('passengerEmail'), home: newLoc })
+            });
+            return updated;
+          });
+        } else if (mapModalTarget === 'save_work') {
+          const newLoc = { address: event.data.address, lat: event.data.lat, lng: event.data.lng };
+          setSavedPlaces(prev => {
+            const updated = { ...prev, work: newLoc };
+            localStorage.setItem(`savedPlaces_${localStorage.getItem('passengerEmail')}`, JSON.stringify(updated));
+            fetch(`${API_BASE}/api/passengers/locations`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: localStorage.getItem('passengerEmail'), work: newLoc })
+            });
+            return updated;
+          });
+        }
       }
     };
     window.addEventListener('message', handleMapMessage);
     return () => window.removeEventListener('message', handleMapMessage);
-  }, []);
+  }, [mapModalTarget]);
 
   // Distance calculation: actual Haversine distance, defaults to 8 KM if no dropoff chosen yet
   const tripDistance = pickupCoords && dropoffCoords
     ? parseFloat(getFrontendDistance(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng).toFixed(1))
     : 8;
 
-  const isIntercity = tripDistance > 35.0;
+  const isIntercity = tripDistance > 32.0;
+  const intercityAllowance = tripDistance > 100.0 ? 300 : (tripDistance > 32.0 ? 250 : 0);
 
-  const surge = parseFloat(settings.surgeMultiplier) || 1.0;
+  let dynamicSurge = parseFloat(settings.surgeMultiplier) || 1.0;
+  
+  // AIRPORT SURGE LOGIC (1.15x extra for airport pickups)
+  const AIRPORTS = [
+    { lat: 8.4821, lng: 76.9200 },  // TRV (Trivandrum)
+    { lat: 10.1520, lng: 76.4019 }, // COK (Cochin)
+    { lat: 11.1364, lng: 75.9553 }, // CCJ (Calicut)
+    { lat: 11.9184, lng: 75.5473 }  // CNN (Kannur)
+  ];
+  if (pickupCoords && pickupCoords.lat && pickupCoords.lng) {
+    for (let apt of AIRPORTS) {
+      if (getFrontendDistance(pickupCoords.lat, pickupCoords.lng, apt.lat, apt.lng) < 3.0) {
+        dynamicSurge = Math.max(dynamicSurge, 1.15); // Apply 15% extra
+        break;
+      }
+    }
+  }
+  
+  const surge = dynamicSurge;
+
+  const getPlatformFee = (fare) => {
+  const f = parseFloat(fare || 0);
+  if (f >= 500) return 15;
+  if (f >= 200) return 10;
+  return 5;
+};
 
   const calculateCategoryFare = (cat) => {
     if (!cat) return '0.00';
     let catBase = parseFloat(cat.baseFare !== undefined ? cat.baseFare : settings.baseFare);
     if (parseFloat(settings.baseFare) > catBase) catBase = parseFloat(settings.baseFare);
     
-    // Intercity pricing: add ₹250 extra to the driver base fare if distance is > 35 KM
-    if (isIntercity) {
-      catBase += 250.00;
-    }
+    catBase += intercityAllowance;
 
     let catPerKm = parseFloat(cat.ratePerKm !== undefined ? cat.ratePerKm : settings.ratePerKm);
-    if (parseFloat(settings.ratePerKm) > catPerKm) catPerKm = parseFloat(settings.ratePerKm);
 
     const rawFare = (catBase + catPerKm * tripDistance) * surge;
     return rawFare.toFixed(2);
@@ -722,17 +902,7 @@ const PassengerDashboard = () => {
     ? calculateCategoryFare(currentCategory) 
     : '0.00';
 
-  // Sync custom fare input when selected tier changes
-  useEffect(() => {
-    setCustomFare(prev => {
-      if (!prev || parseFloat(prev) < parseFloat(minFare)) {
-        return minFare;
-      }
-      return prev;
-    });
-    setFareWarning('');
-  }, [selectedTier, settings, categories, minFare]);
-
+  // Removed legacy effect that forced customFare (now tip) to minimum fare
   // Validate custom fare inputs
   const handleCustomFareChange = (val) => {
     setCustomFare(val);
@@ -793,12 +963,18 @@ const PassengerDashboard = () => {
   useEffect(() => {
     if (!activeRide) return;
 
+    let stopped = false;
+    let interval = null;
+
     const pollStatus = async () => {
+      if (stopped) return;
       try {
         const response = await fetch(`${API_BASE}/api/rides/${activeRide.id}/status`);
         if (response.ok) {
           const data = await response.json();
-          if (data.status === 'Accepted' || data.status === 'Arrived') {
+          if (stopped) return;
+          if (data && data.id === ratedRideIdRef.current) return;
+          if (data.status === 'Accepted' || data.status === 'Arrived' || data.status === 'In Progress') {
             setActiveRide(data);
             setIsSearching(false);
             setRideAccepted(true);
@@ -811,11 +987,13 @@ const PassengerDashboard = () => {
             setIsSearching(true);
             setRideAccepted(false);
           } else if (data.status === 'Completed') {
+            // Stop polling immediately — ride is done
+            stopped = true;
+            if (interval) clearInterval(interval);
             setActiveRide(data);
-            setShowRating(true);
+            setShowRating(prev => { if (!prev) fetchWallet(); return true; });
             setIsSearching(false);
             setRideAccepted(false);
-            fetchWallet();
           }
         }
       } catch (err) {
@@ -823,9 +1001,9 @@ const PassengerDashboard = () => {
       }
     };
 
-    const interval = setInterval(pollStatus, 2000);
-    return () => clearInterval(interval);
-  }, [activeRide, rideAccepted]);
+    interval = setInterval(pollStatus, 2000);
+    return () => { stopped = true; clearInterval(interval); };
+  }, [activeRide?.id, rideAccepted]);
 
   // --- Hybrid Location Search: Local list + OpenStreetMap Nominatim Geocoding ---
   const [nominatimResults, setNominatimResults] = useState([]);
@@ -896,7 +1074,7 @@ const PassengerDashboard = () => {
         if (setType === 'pickup') setPickup('');
         else setDropoff('');
         alert('Location access denied. Please type your location manually.');
-      });
+      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
     } else {
       alert('Geolocation is not supported by your browser.');
     }
@@ -909,7 +1087,7 @@ const PassengerDashboard = () => {
       
       const uniqueLocations = Array.from(new Map(allLocations.map(item => [item.name, item])).values());
       
-      if (!input) return uniqueLocations;
+      if (!input) return uniqueLocations.slice(0, 50);
       const lower = String(input).toLowerCase();
       
       const filtered = uniqueLocations.filter(loc =>
@@ -917,13 +1095,13 @@ const PassengerDashboard = () => {
       );
       
       if (filtered.length >= 3) {
-        return [...filtered, ...(Array.isArray(nominatimResults) ? nominatimResults : []).filter(nr => !filtered.some(f => Math.abs((f.lat || 0) - (nr.lat || 0)) < 0.005 && Math.abs((f.lng || 0) - (nr.lng || 0)) < 0.005))];
+        return [...filtered, ...(Array.isArray(nominatimResults) ? nominatimResults : []).filter(nr => !filtered.some(f => Math.abs((f.lat || 0) - (nr.lat || 0)) < 0.005 && Math.abs((f.lng || 0) - (nr.lng || 0)) < 0.005))].slice(0, 50);
       }
-      return [...filtered, ...(Array.isArray(nominatimResults) ? nominatimResults : [])];
+      return [...filtered, ...(Array.isArray(nominatimResults) ? nominatimResults : [])].slice(0, 50);
     } catch (err) {
       console.error("Error filtering locations:", err);
       const fallbackLower = String(input || '').toLowerCase();
-      return KERALA_LOCATIONS.filter(loc => loc.name && loc.name.toLowerCase().includes(fallbackLower));
+      return KERALA_LOCATIONS.filter(loc => loc.name && loc.name.toLowerCase().includes(fallbackLower)).slice(0, 50);
     }
   };
 
@@ -933,10 +1111,8 @@ const PassengerDashboard = () => {
       return;
     }
 
-    if (parseFloat(customFare) < parseFloat(minFare)) {
-      alert(`Your offered fare cannot be less than the minimum vehicle fare of ₹${minFare}!`);
-      return;
-    }
+    // Tip is completely optional
+    const tipAmount = customFare ? parseFloat(customFare) : 0;
 
     if (isPreBookToggle) {
       if (!preBookDate || !preBookTime) {
@@ -979,15 +1155,18 @@ const PassengerDashboard = () => {
         body: JSON.stringify({
           pickup,
           dropoff,
-          fare: parseFloat(customFare).toFixed(2),
+          fare: parseFloat(minFare).toFixed(2),
+          driverTip: parseFloat(tipAmount).toFixed(2),
           passengerName: localStorage.getItem('passengerName') || 'Passenger',
           passengerEmail: localStorage.getItem('passengerEmail'),
           pickupCoords,
           dropoffCoords,
+          waypoints,
           isPreBooked: isPreBookToggle,
           preBookDate: isPreBookToggle ? preBookDate : null,
           preBookTime: isPreBookToggle ? preBookTime : null,
           withPet,
+          requireFemaleDriver: selectedTier === 'Pink Driver 🌸',
           vehicleCategory: selectedTier
         })
       });
@@ -1001,6 +1180,7 @@ const PassengerDashboard = () => {
           setDropoff('');
           setPickupCoords(null);
           setDropoffCoords(null);
+          setWaypoints([]);
           setIsPreBookToggle(false);
           setPreBookDate('');
           setPreBookTime('');
@@ -1019,7 +1199,19 @@ const PassengerDashboard = () => {
     }
   };
 
+  const handleWaitForMe = async () => {
+    if (!activeRide) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/rides/${activeRide.id}/wait`, { method: 'POST' });
+      if (res.ok) {
+        alert('Driver notified to wait for you!');
+      }
+    } catch (err) { console.error('Error requesting wait:', err); }
+  };
+
   const handleCancelBooking = async () => {
+    if (!window.confirm("Are you sure you want to cancel the trip?")) return;
+
     if (activeRide && activeRide.id) {
       try {
         await fetch(`${API_BASE}/api/rides/${activeRide.id}/passenger-cancel`, {
@@ -1035,10 +1227,13 @@ const PassengerDashboard = () => {
     setActiveRide(null);
     setSosCountdown(null);
     setCustomFare('');
-    setPickup('');
     setDropoff('');
-    setPickupCoords(null);
     setDropoffCoords(null);
+    setWaypoints([]);
+    setBookingStep(1);
+    
+    // Automatically find their location again instead of leaving it blank
+    handleUseCurrentLocation('pickup');
 
     const mapIframe = document.getElementById('map-iframe');
     if (mapIframe && mapIframe.contentWindow) {
@@ -1061,30 +1256,40 @@ const PassengerDashboard = () => {
 
   const handleSubmitRating = async () => {
     if (!activeRide) return;
+    
+    // Save current values for fetch
+    const rideId = activeRide.id;
+    ratedRideIdRef.current = rideId;
+    const currentRating = ratingValue;
+    const currentComment = ratingComment;
+    const currentBadges = selectedBadges;
+
     try {
-      await fetch(`${API_BASE}/api/rides/${activeRide.id}/rate-driver`, {
+      await fetch(`${API_BASE}/api/rides/${rideId}/rate-driver`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          rating: ratingValue,
-          comment: ratingComment,
-          badges: selectedBadges
+          rating: currentRating,
+          comment: currentComment,
+          badges: currentBadges
         })
       });
     } catch (err) {
       console.error("Failed to submit driver rating:", err);
     }
-
-    alert('Thank you for rating your partner driver!');
+    // Clear UI AFTER server has processed it
     setActiveRide(null);
     setIsSearching(false);
     setRideAccepted(false);
-    setPickup('');
     setDropoff('');
-    setPickupCoords(null);
     setDropoffCoords(null);
+    setWaypoints([]);
+    setBookingStep(1);
+    
+    // Automatically find their location again instead of leaving it blank
+    handleUseCurrentLocation('pickup');
     setShowRating(false);
     setRatingValue(5);
     setRatingComment('');
@@ -1094,6 +1299,8 @@ const PassengerDashboard = () => {
     if (mapIframe && mapIframe.contentWindow) {
       mapIframe.contentWindow.postMessage({ type: 'RESET_MAP' }, '*');
     }
+
+
   };
 
   const handleTopupSubmit = async (e) => {
@@ -1170,95 +1377,228 @@ const PassengerDashboard = () => {
     navigate('/passenger/login');
   };
 
+  if (!localStorage.getItem('passengerEmail')) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-main)', color: 'var(--text-muted)', fontSize: '16px' }}>
+        Redirecting to login...
+      </div>
+    );
+  }
+
+  const shouldShowProfile = bookingStep === 1 || isProfileMenuOpen;
+  
+  const getBgStyle = () => {
+    switch(bgTheme) {
+      case 'deep_blue': return 'linear-gradient(135deg, #020617, #1e3a8a)';
+      case 'emerald': return 'linear-gradient(135deg, #022c22, #059669)';
+      case 'purple': return 'linear-gradient(135deg, #2e1065, #0f172a)';
+      case 'crimson': return 'linear-gradient(135deg, #4c0519, #0f172a)';
+      case 'dark_gray': return 'linear-gradient(135deg, #18181b, #27272a)';
+      default: return 'var(--bg-main)';
+    }
+  };
+
   return (
-    <div className="dashboard-page">
-      <div className="dashboard-container container">
+    <div className="dashboard-page" style={{ overflowY: "auto", minHeight: "100vh", background: getBgStyle() }}>
+      <div className="dashboard-container">
         <div className="dashboard-sidebar glass-card" style={{ zIndex: 10 }}>
           
           {/* Passenger Header & Profile Picture */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '14px', marginBottom: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {/* Passenger Avatar */}
-              <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0 }}>
-                <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--primary)', background: '#121624' }}>
-                  {passengerProfilePic ? (
-                    <img src={passengerProfilePic} alt="Passenger Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 'bold', fontSize: '18px' }}>
-                      <User size={22} />
+          <div style={{ position: 'relative', minHeight: '36px', display: 'flex', flexDirection: 'column', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '18px', marginBottom: '14px' }}>
+            
+            {/* Logo on Left */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              border: '2px solid var(--border)'
+            }}>
+              <img src="/hum_fleet_official_logo.jpg" alt="HUM Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+
+
+            
+            {/* Menu Toggle Button (Shows when profile is hidden) */}
+            {!shouldShowProfile && (
+              <button 
+                onClick={() => setIsProfileMenuOpen(true)}
+                title="Open Profile"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: '46px',
+                  width: '36px',
+                  height: '36px',
+                  background: 'transparent',
+                  color: 'var(--text-main)',
+                  border: '2px solid var(--border)',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <Menu size={16} />
+              </button>
+            )}
+
+            {shouldShowProfile && (
+              <button 
+                onClick={() => setIsProfileMenuOpen(false)}
+                title="Close Profile"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: '46px',
+                  width: '36px',
+                  height: '36px',
+                  background: 'transparent',
+                  color: 'var(--text-main)',
+                  border: '2px solid var(--border)',
+                  borderRadius: '8px',
+                  display: bookingStep > 1 ? 'flex' : 'none',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <X size={16} />
+              </button>
+            )}
+
+            {shouldShowProfile && (
+              <>
+                {/* Passenger Avatar */}
+                <div style={{ position: 'relative', width: '70px', height: '70px', flexShrink: 0, marginBottom: '12px' }}>
+                  <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--primary)', background: '#121624' }}>
+                    {passengerProfilePic ? (
+                      <img src={passengerProfilePic} alt="Passenger Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 'bold', fontSize: '24px' }}>
+                        <User size={28} />
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <h2 style={{ margin: 0, fontSize: '20px', textAlign: 'center' }}>{currentName}</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '13px', color: '#f59e0b', fontWeight: 'bold', marginTop: '6px' }}>
+                    <span>★ {passengerRating.toFixed(1)} Rating</span>
+                  </div>
+                  {passengerId && (
+                    <div style={{ marginTop: '10px', fontSize: '12px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#3b82f6', padding: '4px 12px', borderRadius: '6px', display: 'inline-block', fontWeight: 'bold', textAlign: 'center' }}>
+                      Customer ID: {passengerId}
                     </div>
                   )}
-                </div>
-                <label 
-                  title="Change Profile Picture"
-                  style={{ position: 'absolute', bottom: '-4px', right: '-4px', background: 'var(--primary)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', border: '2px solid var(--bg-card)', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
-                >
-                  <Camera size={10} />
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={(e) => handleUploadPassengerProfilePic(e.target.files[0])} 
-                    style={{ display: 'none' }} 
-                  />
-                </label>
-              </div>
 
-              <div>
-                <h2 style={{ margin: 0, fontSize: '18px' }}>{localStorage.getItem('passengerName') || 'Passenger'}</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#f59e0b', fontWeight: 'bold', marginTop: '2px' }}>
-                  <span>★ {passengerRating.toFixed(1)} Rating</span>
-                  <span style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>• HUM Customer Profile</span>
-                </div>
-                {passengerId && (
-                  <div style={{ marginTop: '4px', fontSize: '12px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#3b82f6', padding: '2px 8px', borderRadius: '4px', display: 'inline-block', fontWeight: 'bold' }}>
-                    Customer ID: {passengerId}
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    {/* Settings Button */}
+                    <button 
+                      onClick={() => setShowSettingsModal(true)}
+                      title="Settings"
+                      style={{
+                        width: '42px', height: '42px',
+                        background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border)', color: 'var(--text-main)',
+                        borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; }}
+                    >
+                      <Settings size={20} />
+                    </button>
+
+                    {/* Ride History Button */}
+                    <button 
+                      onClick={() => {
+                        handleFetchRideHistory();
+                        setShowRideHistory(true);
+                      }}
+                      title="Ride History"
+                      style={{
+                        width: '42px', height: '42px',
+                        background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8',
+                        borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)'; }}
+                    >
+                      <Clock size={20} />
+                    </button>
+
+                    {/* WhatsApp Button */}
+                    <button 
+                      onClick={() => window.open('https://api.whatsapp.com/send?phone=918848347290', '_blank')}
+                      title="Customer Care (WhatsApp)"
+                      style={{
+                        width: '42px', height: '42px',
+                        background: 'rgba(37, 211, 102, 0.1)', border: '1px solid rgba(37, 211, 102, 0.3)', color: '#25D366',
+                        borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(37, 211, 102, 0.2)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(37, 211, 102, 0.1)'; }}
+                    >
+                      <MessageCircle size={20} />
+                    </button>
+
+                    {/* Theme Toggle Button */}
+                    <button 
+                      onClick={() => {
+                        const newMode = !isDarkMode;
+                        setIsDarkMode(newMode);
+                        localStorage.setItem('passengerDarkMode', newMode);
+                      }}
+                      title="Toggle Dark/Light Mode"
+                      style={{
+                        width: '42px', height: '42px',
+                        background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border)', color: 'var(--text-main)',
+                        borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; }}
+                    >
+                      {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                    </button>
+
+                    {/* Logout Button */}
+                    <button 
+                      onClick={handleLogout}
+                      title="Logout"
+                      style={{
+                        width: '42px', height: '42px',
+                        background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444',
+                        borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                    >
+                      <LogOut size={20} />
+                    </button>
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              </>
+            )}
             
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={handleFetchRideHistory}
-                style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', flexShrink: 0 }}
-                title="Ride History"
-              >
-                <Clock size={16} /> <span className="hide-on-mobile">History</span>
-              </button>
-              <button 
-                onClick={handleLogout}
-                style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', flexShrink: 0 }}
-                title="Logout"
-              >
-                <LogOut size={16} /> <span className="hide-on-mobile">Logout</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Passenger Wallet Overview Widget */}
-          <div className="driver-status" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '14px', marginBottom: '14px' }}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', margin: 0 }}>
-              <Wallet size={18} color="var(--primary)" /> Passenger Wallet
-            </h2>
-            <div className="stats-grid" style={{ marginTop: '8px', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', width: '100%' }}>
-              <div className="stat-card" style={{ padding: '10px' }}>
-                <span className="stat-label" style={{ fontSize: '10px' }}>Total Cash Spent</span>
-                <span className="stat-value" style={{ fontSize: '15px' }}>₹{parseFloat(wallet.totalSpent || 0).toFixed(2)}</span>
-              </div>
-              <div className="stat-card" style={{ padding: '10px' }}>
-                <span className="stat-label" style={{ fontSize: '10px' }}>Wallet Balance</span>
-                <span className="stat-value" style={{ fontSize: '15px', color: '#10b981' }}>₹{parseFloat(wallet.balance || 0).toFixed(2)}</span>
-              </div>
-              <div className="stat-card" style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Button variant="outline" style={{ width: '100%', fontSize: '12px' }} onClick={() => setShowWalletModal(true)}>
-                  + Top-Up
-                </Button>
-              </div>
-            </div>
           </div>
 
           {/* Scheduled / Pre-booked Rides Section */}
-          {preBookedRides.length > 0 && (
+          {shouldShowProfile && preBookedRides.length > 0 && (
             <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '14px', marginBottom: '14px' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', margin: '0 0 10px 0', color: 'var(--primary)' }}>
                 📅 Scheduled Rides ({preBookedRides.length})
@@ -1323,22 +1663,15 @@ const PassengerDashboard = () => {
                   Trip Fare Receipt
                 </h3>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Distance Travelled:</span>
-                  <span style={{ fontWeight: 'bold' }}>{activeRide.totalKm || 8.0} KM</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Rate per KM:</span>
-                  <span>₹15.00</span>
-                </div>
-                <div style={{ borderTop: '1px dashed var(--border)', margin: '4px 0' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Kilometers Fare:</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Trip Fare:</span>
                   <span>₹{parseFloat(activeRide.fare || 0).toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#f59e0b' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>GST Tax (5%):</span>
-                  <span>+₹{parseFloat(activeRide.gst || 0).toFixed(2)}</span>
-                </div>
+                {parseFloat(activeRide.driverTip || 0) > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Tip:</span>
+                    <span>+₹{parseFloat(activeRide.driverTip || 0).toFixed(2)}</span>
+                  </div>
+                )}
                 <div style={{ borderTop: '1px solid rgba(59, 130, 246, 0.3)', margin: '4px 0', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px', color: 'var(--text-main)' }}>
                   <span>Total Paid ({activeRide.paymentType === 'cash' ? '💵 Cash' : '💳 Prepaid'}):</span>
                   <span>₹{parseFloat(activeRide.totalCollected || 0).toFixed(2)}</span>
@@ -1348,7 +1681,7 @@ const PassengerDashboard = () => {
               <div style={{ padding: '16px', border: '1px solid var(--border)', borderRadius: '14px', background: 'rgba(245, 158, 11, 0.03)', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', margin: 0 }}>Rate your driver's behaviour</h3>
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
-                  How was your trip with **{activeRide.driverName || 'Rajesh Kumar'}**?
+                  How was your trip with **{activeRide.driverName || 'Not provided'}**?
                 </p>
 
                 {/* Star Rating Selectors */}
@@ -1386,455 +1719,253 @@ const PassengerDashboard = () => {
           )}
 
           {/* STATE 1: Booking Input & Tier Selection */}
-          {!isSearching && !rideAccepted && !showRating && (
-            <>
-              <h2>Book a Ride</h2>
-
-              {/* Pickup Field */}
-              <div className="input-group" style={{ position: 'relative' }}>
-                <div className="input-icon"><MapPin size={18} /></div>
-                <input 
-                  type="text" 
-                  className="input-field with-icon" 
-                  placeholder="Enter pickup location" 
-                  value={pickup}
-                  onChange={(e) => { setPickup(e.target.value); searchNominatim(e.target.value); }}
-                  onFocus={() => setPickupFocused(true)}
-                  onBlur={() => setTimeout(() => setPickupFocused(false), 250)}
-                />
-                {pickupFocused && (
-                  <div className="autocomplete-dropdown glass-card">
-                    {/* USE CURRENT LOCATION BUTTON */}
-                    <div 
-                      onMouseDown={() => handleUseCurrentLocation('pickup')}
-                      className="dropdown-item" 
-                      style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-                    >
-                      <Navigation2 size={16} style={{ marginRight: '8px' }} />
-                      📍 Use My Current Location
-                    </div>
-
-                    {isGeoSearching && (
-                      <div className="dropdown-item" style={{ color: 'var(--text-muted)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ width: '14px', height: '14px', border: '2px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
-                        Searching all Kerala locations...
-                      </div>
-                    )}
-                    {getFilteredLocations(pickup).map((loc, idx) => (
-                      <div 
-                        onMouseDown={() => {
-                          setPickup(loc.name);
-                          setPickupCoords({ lat: loc.lat, lng: loc.lng });
-                        }}
-                        key={idx} 
-                        className="dropdown-item" 
-                      >
-                        {loc.isGeoResult ? (
-                          <span style={{ marginRight: '8px', fontSize: '14px' }}>🌐</span>
-                        ) : (
-                          <MapPin size={14} style={{ marginRight: '8px', color: 'var(--primary)' }} />
-                        )}
-                        {loc.name}
-                      </div>
-                    ))}
-                    {!isGeoSearching && pickup.trim().length >= 3 && getFilteredLocations(pickup).length === 0 && (
-                      <div className="dropdown-item" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-                        No locations found. Try a different spelling.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Dropoff Field */}
-              <div className="input-group" style={{ position: 'relative' }}>
-                <div className="input-icon"><Navigation size={18} /></div>
-                <input 
-                  type="text" 
-                  className="input-field with-icon" 
-                  placeholder="Enter drop-off destination" 
-                  value={dropoff}
-                  onChange={(e) => { setDropoff(e.target.value); searchNominatim(e.target.value); }}
-                  onFocus={() => setDropoffFocused(true)}
-                  onBlur={() => setTimeout(() => setDropoffFocused(false), 250)}
-                />
-                {dropoffFocused && (
-                  <div className="autocomplete-dropdown glass-card">
-                    {/* USE CURRENT LOCATION BUTTON */}
-                    <div 
-                      onMouseDown={() => handleUseCurrentLocation('dropoff')}
-                      className="dropdown-item" 
-                      style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-                    >
-                      <Navigation2 size={16} style={{ marginRight: '8px' }} />
-                      📍 Use My Current Location
-                    </div>
-
-                    {isGeoSearching && (
-                      <div className="dropdown-item" style={{ color: 'var(--text-muted)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ width: '14px', height: '14px', border: '2px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
-                        Searching all Kerala locations...
-                      </div>
-                    )}
-                    {getFilteredLocations(dropoff).map((loc, idx) => (
-                      <div 
-                        onMouseDown={() => {
-                          setDropoff(loc.name);
-                          setDropoffCoords({ lat: loc.lat, lng: loc.lng });
-                        }}
-                        key={idx} 
-                        className="dropdown-item" 
-                      >
-                        {loc.isGeoResult ? (
-                          <span style={{ marginRight: '8px', fontSize: '14px' }}>🌐</span>
-                        ) : (
-                          <Navigation size={14} style={{ marginRight: '8px', color: 'var(--secondary)' }} />
-                        )}
-                        {loc.name}
-                      </div>
-                    ))}
-                    {!isGeoSearching && dropoff.trim().length >= 3 && getFilteredLocations(dropoff).length === 0 && (
-                      <div className="dropdown-item" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-                        No locations found. Try a different spelling.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Calculated Route Distance & Estimated Duration Card */}
-              {pickup && dropoff && (
-                <div style={{
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.1))',
-                  border: '1.5px solid rgba(16, 185, 129, 0.4)',
-                  borderRadius: '14px',
-                  padding: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '14px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
-                }} className="animate-fade-in">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
-                      background: 'rgba(16, 185, 129, 0.2)',
-                      color: '#10b981',
+          {!isSearching && !rideAccepted && !activeRide && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              {/* Progress Indicator Removed per user request */}
+              {/* STEP 1: PICKUP & DROPOFF */}
+              {bookingStep === 1 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0 }} className="animate-fade-in">
+                  
+                  {/* PICKUP */}
+                  <div 
+                    onClick={() => {
+                      setMapModalTarget('pickup');
+                      setShowMapModal(true);
+                    }}
+                    style={{
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <Navigation2 size={22} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Calculated Route Distance
-                      </div>
-                      <div style={{ fontSize: '20px', fontWeight: '900', color: '#10b981', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                        {tripDistance} <span style={{ fontSize: '12px', color: 'var(--text-main)', fontWeight: '700' }}>Kilometers (KM)</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-muted)' }}>Estimated Travel Time</div>
-                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#38bdf8' }}>
-                      ~{(Math.max(5, Math.round(tripDistance * 2.2)) / 60).toFixed(1)} Hours
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Intercity Ride Badge Notice */}
-              {isIntercity && (
-                <div style={{
-                  background: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid rgba(245, 158, 11, 0.25)',
-                  borderRadius: '12px',
-                  padding: '12px 14px',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px',
-                  marginBottom: '14px'
-                }} className="animate-fade-in">
-                  <Map size={20} color="#d97706" style={{ marginTop: '2px', flexShrink: 0 }} />
-                  <div>
-                    <h4 style={{ margin: '0 0 2px 0', fontSize: '13px', color: '#d97706', fontWeight: '800' }}>Intercity Long-Distance Trip ({tripDistance} KM)</h4>
-                    <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                      Rides greater than 35 KM are processed as intercity. A **₹250.00 driver premium** has been added to the base rate.
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {/* Dynamic Tier Options */}
-              <div className="ride-options">
-                {categories.map((cat) => (
-                  <div 
-                    key={cat.id}
-                    className={`ride-option ${selectedTier === cat.name ? 'active' : ''}`}
-                    onClick={() => setSelectedTier(cat.name)}
-                  >
-                    <Car size={24} />
-                    <div className="ride-details">
-                      <span className="ride-type">{cat.name}</span>
-                      <span className="ride-eta">Max: {cat.maxPassengers} Pass · ₹{cat.ratePerKm || 15}/KM</span>
-                    </div>
-                    <span className="ride-price">₹{calculateCategoryFare(cat)}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Custom Bidding Offer Fare Input */}
-              <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-main)' }}>Your Offered Price (INR)</label>
-                <div className="input-group">
-                  <div className="input-icon" style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>INR</div>
-                  <input 
-                    type="number" 
-                    className="input-field with-icon" 
-                    placeholder="Enter your price" 
-                    value={customFare}
-                    onChange={(e) => handleCustomFareChange(e.target.value)}
-                    style={{ fontSize: '15px', fontWeight: '700', color: 'var(--primary)' }}
-                  />
-                </div>
-
-                {/* GST Itemized Breakdown Receipt */}
-                <div style={{ marginTop: '6px', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.01)', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Your Offered Price:</span>
-                    <strong>INR {parseFloat(customFare || 0).toFixed(2)}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f59e0b' }}>
-                    <span>GST Tax Surcharge (5%):</span>
-                    <strong>+INR {(parseFloat(customFare || 0) * 0.05).toFixed(2)}</strong>
-                  </div>
-                  <hr style={{ border: 0, borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                    <span>Total Cash Payable:</span>
-                    <strong style={{ color: 'var(--primary)' }}>INR {(parseFloat(customFare || 0) * 1.05).toFixed(2)}</strong>
-                  </div>
-                </div>
-
-                {fareWarning ? (
-                  <span style={{ fontSize: '11px', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                    <AlertCircle size={12} /> {fareWarning}
-                  </span>
-                ) : (
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    Minimum suggested vehicle price: <strong>INR {minFare}</strong>
-                  </span>
-                )}
-              </div>
-
-              {/* Pre-booking toggle and date/time selector */}
-              <div style={{
-                marginTop: '12px',
-                padding: '12px',
-                border: '1px dashed var(--primary)',
-                borderRadius: '12px',
-                background: 'rgba(16, 185, 129, 0.02)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input 
-                    type="checkbox" 
-                    id="prebook-toggle" 
-                    checked={isPreBookToggle} 
-                    onChange={(e) => setIsPreBookToggle(e.target.checked)} 
-                    style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--primary)' }}
-                  />
-                  <label htmlFor="prebook-toggle" style={{ fontSize: '13px', fontWeight: '700', cursor: 'pointer', color: 'var(--text-main)' }}>
-                    📅 Pre-book for another date
-                  </label>
-                </div>
-                
-                {isPreBookToggle && (
-                  <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
-                    
-                    {/* Modern Calendar Date Selector */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          📅 Select Departure Date
-                        </span>
-                        {preBookDate && (
-                          <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700' }}>
-                            Selected: {new Date(preBookDate).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Quick Date Cards Carousel / Grid */}
-                      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                        {[0, 1, 2, 3, 4, 5, 6].map((dayOffset) => {
-                          const d = new Date();
-                          d.setDate(d.getDate() + dayOffset);
-                          const isoDate = d.toISOString().split('T')[0];
-                          const dayName = dayOffset === 0 ? 'Today' : dayOffset === 1 ? 'Tomorrow' : d.toLocaleDateString('en-IN', { weekday: 'short' });
-                          const dateNum = d.getDate();
-                          const monthName = d.toLocaleDateString('en-IN', { month: 'short' });
-                          const isSelected = preBookDate === isoDate;
-
-                          return (
-                            <button
-                              key={isoDate}
-                              type="button"
-                              onClick={() => setPreBookDate(isoDate)}
-                              style={{
-                                flex: '0 0 auto',
-                                width: '68px',
-                                padding: '8px 4px',
-                                borderRadius: '12px',
-                                border: isSelected ? '2px solid #10b981' : '1px solid var(--border)',
-                                background: isSelected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                                color: isSelected ? '#10b981' : 'var(--text-main)',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: '2px',
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              <span style={{ fontSize: '10px', fontWeight: '700', opacity: 0.8 }}>{dayName}</span>
-                              <span style={{ fontSize: '16px', fontWeight: '900' }}>{dateNum}</span>
-                              <span style={{ fontSize: '9px', opacity: 0.7 }}>{monthName}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Fallback Custom Date Picker Input */}
-                      <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Or pick custom date:</span>
-                        <input 
-                          type="date" 
-                          value={preBookDate} 
-                          onChange={(e) => setPreBookDate(e.target.value)} 
-                          min={new Date().toISOString().split('T')[0]}
-                          style={{ padding: '4px 8px', border: '1px solid var(--border)', borderRadius: '6px', background: '#121624', color: 'white', fontSize: '11px' }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Modern Time Slot Picker Selector */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          ⏰ Select Departure Time
-                        </span>
-                        {preBookTime && (
-                          <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '700' }}>
-                            Time: {preBookTime}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Quick Time Slots Grid */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', maxHeight: '120px', overflowY: 'auto', paddingRight: '2px' }}>
-                        {[
-                          '06:00', '07:00', '08:00', '08:30',
-                          '09:00', '09:30', '10:00', '10:30',
-                          '11:00', '12:00', '13:00', '14:00',
-                          '15:00', '16:00', '17:00', '17:30',
-                          '18:00', '18:30', '19:00', '19:30',
-                          '20:00', '21:00', '22:00', '23:00'
-                        ].map((slot) => {
-                          const isSelected = preBookTime === slot;
-                          // format 12 hour string
-                          const [h, m] = slot.split(':');
-                          const hourNum = parseInt(h);
-                          const ampm = hourNum >= 12 ? 'PM' : 'AM';
-                          const displayHour = hourNum % 12 || 12;
-                          const label = `${displayHour}:${m} ${ampm}`;
-
-                          return (
-                            <button
-                              key={slot}
-                              type="button"
-                              onClick={() => setPreBookTime(slot)}
-                              style={{
-                                padding: '6px 2px',
-                                borderRadius: '8px',
-                                border: isSelected ? '1.5px solid #38bdf8' : '1px solid var(--border)',
-                                background: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.02)',
-                                color: isSelected ? '#38bdf8' : 'var(--text-main)',
-                                fontSize: '10.5px',
-                                fontWeight: isSelected ? '800' : '600',
-                                cursor: 'pointer',
-                                textAlign: 'center',
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Precise Time Picker Input */}
-                      <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Or enter exact time:</span>
-                        <input 
-                          type="time" 
-                          value={preBookTime} 
-                          onChange={(e) => setPreBookTime(e.target.value)} 
-                          style={{ padding: '4px 8px', border: '1px solid var(--border)', borderRadius: '6px', background: '#121624', color: 'white', fontSize: '11px' }}
-                        />
-                      </div>
-                    </div>
-
-                  </div>
-                )}
-              </div>
-
-              {pickupCoords && (
-                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <Button 
-                    variant="outline" 
-                    className="full-width" 
-                    style={{ borderColor: '#38bdf8', color: '#38bdf8' }}
-                    onClick={async () => {
-                      try {
-                        const res = await fetch(`${API_BASE}/api/drivers/nearby?lat=${pickupCoords.lat}&lng=${pickupCoords.lng}`);
-                        const drivers = await res.json();
-                        if (drivers.length > 0) {
-                          alert(`Found ${drivers.length} online drivers nearby!\nClosest is ${drivers[0].distance} KM away (${drivers[0].vehicleType}).`);
-                        } else {
-                          alert("No online drivers found nearby at the moment.");
-                        }
-                      } catch (e) {
-                        alert("Error scanning for drivers.");
-                      }
+                      gap: '12px',
+                      padding: '16px',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '12px',
+                      cursor: 'pointer'
                     }}
                   >
-                    <Compass size={16} style={{ marginRight: '6px' }} /> Scan for Nearest Drivers
-                  </Button>
+                    <MapPin size={22} color="var(--primary)" />
+                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Pickup Location</span>
+                      <span style={{ fontSize: '15px', fontWeight: 'bold', color: pickup ? 'var(--text-main)' : 'var(--text-muted)', marginTop: '4px' }}>
+                        {pickup ? pickup.split(',')[0] : 'Locating...'}
+                      </span>
+                    </div>
+                    <div style={{ padding: '6px 10px', background: 'rgba(56, 189, 248, 0.1)', color: 'var(--secondary)', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Map size={14} /> Map
+                    </div>
+                  </div>
+
+                  {/* WAYPOINTS */}
+                  {waypoints.map((wp, index) => (
+                    <div key={index} style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                      <div 
+                        onClick={() => { setMapModalTarget(`waypoint_${index}`); setShowMapModal(true); }}
+                        style={{ padding: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+                      >
+                        <MapPin size={22} color="#f59e0b" />
+                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Stop {index + 1}</span>
+                          <span style={{ fontSize: '15px', fontWeight: 'bold', color: wp.address ? 'var(--text-main)' : 'var(--text-muted)', marginTop: '4px' }}>
+                            {wp.address ? wp.address.split(',')[0] : 'Tap to add stop...'}
+                          </span>
+                        </div>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setWaypoints(prev => prev.filter((_, i) => i !== index)); }}
+                          style={{ padding: '6px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {waypoints.length < 3 && pickup && (
+                    <button 
+                      onClick={() => setWaypoints([...waypoints, { address: '', lat: null, lng: null }])}
+                      style={{ background: 'none', border: '1px dashed var(--border)', color: 'var(--text-muted)', padding: '10px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', fontSize: '13px' }}
+                    >
+                      <MapPin size={14} /> + Add Stop
+                    </button>
+                  )}
+
+                  {/* DROPOFF */}
+                  <div 
+                    onClick={() => { setMapModalTarget('dropoff'); setShowMapModal(true); }}
+                    style={{ 
+                      padding: '16px', 
+                      background: 'rgba(255,255,255,0.03)', 
+                      border: '1px solid var(--border)', 
+                      borderRadius: '12px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Navigation size={22} color="var(--secondary)" />
+                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Drop-off Location</span>
+                      <span style={{ fontSize: '15px', fontWeight: 'bold', color: dropoff ? 'var(--text-main)' : 'var(--text-muted)', marginTop: '4px' }}>
+                        {dropoff ? dropoff.split(',')[0] : 'Tap to choose from map...'}
+                      </span>
+                    </div>
+                    <div style={{ padding: '6px 10px', background: 'rgba(56, 189, 248, 0.1)', color: 'var(--secondary)', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Map size={14} /> Map
+                    </div>
+                  </div>
+
+                  {/* QUICK SAVED PLACES */}
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                    <button 
+                      onClick={() => {
+                        if (savedPlaces.home) {
+                           setDropoff(savedPlaces.home.address);
+                           setDropoffCoords({ lat: savedPlaces.home.lat, lng: savedPlaces.home.lng });
+                        } else {
+                           setShowSettingsModal(true);
+                        }
+                      }}
+                      style={{ flex: 1, padding: '10px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      <Home size={16} /> {savedPlaces.home ? 'Drop @ Home' : 'Add Home'}
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (savedPlaces.work) {
+                           setDropoff(savedPlaces.work.address);
+                           setDropoffCoords({ lat: savedPlaces.work.lat, lng: savedPlaces.work.lng });
+                        } else {
+                           setShowSettingsModal(true);
+                        }
+                      }}
+                      style={{ flex: 1, padding: '10px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '8px', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      <Briefcase size={16} /> {savedPlaces.work ? 'Drop @ Work' : 'Add Work'}
+                    </button>
+                  </div>
+
+                  {/* Next Step is now globally below */}
                 </div>
               )}
 
-              <div style={{ marginTop: '14px', background: 'var(--bg-card)', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <input 
-                  type="checkbox" 
-                  checked={withPet} 
-                  onChange={(e) => setWithPet(e.target.checked)}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
-                />
-                <label style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', color: 'var(--text-main)', margin: 0 }} onClick={() => setWithPet(!withPet)}>
-                  🐾 I am traveling with a pet
-                </label>
-              </div>
+              {/* STEP 2: CATEGORY & BOOKING */}
+              {bookingStep === 2 && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '14px', flexShrink: 0 }}>
+                  <div 
+                    onClick={() => setBookingStep(1)} 
+                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <MapPin size={18} color="var(--primary)" />
+                      <span style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--text-main)' }}>Change Location</span>
+                    </div>
+                    <span style={{ fontSize: '16px', color: 'var(--text-muted)' }}>&rarr;</span>
+                  </div>
 
-              <Button variant="primary" className="full-width" onClick={handleBookRide} style={{ marginTop: '14px' }}>
-                Confirm Booking offer
-              </Button>
-            </>
+                  <div className="ride-options">
+                    {categories.map((cat) => (
+                      <div 
+                        key={cat.id}
+                        className={`ride-option ${selectedTier === cat.name ? 'selected' : ''}`}
+                        onClick={() => setSelectedTier(cat.name)}
+                      >
+                        <Car size={24} />
+                        <div className="option-details" style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                          <span className="option-name">{cat.name}</span>
+                          <span className="option-meta">{cat.eta}</span>
+                        </div>
+                        <span className="option-price">₹{Math.round(calculateCategoryFare(cat))} - ₹{Math.round(calculateCategoryFare(cat) * 1.15)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="input-group" style={{ position: 'relative', marginTop: '16px', flexShrink: 0 }}>
+                    <div className="input-icon" style={{ display: 'flex', alignItems: 'center', fontSize: '18px', fontWeight: 'bold', color: 'var(--text-main)' }}>₹</div>
+                    <input 
+                      type="number" 
+                      className="input-field with-icon" 
+                      placeholder="Add Tip for Driver (Optional)"
+                      value={customFare}
+                      onChange={(e) => setCustomFare(e.target.value)}
+                    />
+                  </div>
+
+                  {/* PRE-BOOK TOGGLE */}
+                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', marginTop: '16px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Clock size={18} color="var(--primary)" />
+                        <span style={{ fontWeight: 'bold', fontSize: '14px' }}>Schedule for Later</span>
+                      </div>
+                      <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={isPreBookToggle} 
+                          onChange={(e) => setIsPreBookToggle(e.target.checked)} 
+                          style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
+                        />
+                      </label>
+                    </div>
+                    {isPreBookToggle && (
+                      <div className="animate-fade-in" style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+                        <input 
+                          type="date" 
+                          value={preBookDate}
+                          onChange={(e) => setPreBookDate(e.target.value)}
+                          className="input-field"
+                          style={{ flex: 1, padding: '10px', fontSize: '13px' }}
+                        />
+                        <input 
+                          type="time" 
+                          value={preBookTime}
+                          onChange={(e) => setPreBookTime(e.target.value)}
+                          className="input-field"
+                          style={{ flex: 1, padding: '10px', fontSize: '13px' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: '10px', flexShrink: 0 }}>
+                    <div style={{ textAlign: 'center', marginBottom: '12px', padding: '0 10px' }}>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0, lineHeight: '1.4' }}>
+                        <strong style={{color: '#f59e0b'}}>NOTE:</strong> The fare calculation is an estimate. The final amount will change as per the actual ride distance and waiting time.
+                      </p>
+                    </div>
+                    <Button 
+                      variant="primary" 
+                      style={{ width: '100%' }}
+                      disabled={!pickup || !dropoff || !selectedTier}
+                      onClick={handleBookRide}
+                    >
+                      {isPreBookToggle ? `Schedule ${selectedTier}` : `Book ${selectedTier}`}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      style={{ 
+                        width: '100%', 
+                        marginTop: '10px', 
+                        borderColor: '#25D366', 
+                        color: '#25D366',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        background: 'rgba(37, 211, 102, 0.05)'
+                      }}
+                      onClick={() => {
+                        const text = `Hello, I would like to book a ride.\n*Pickup*: ${pickup}\n*Dropoff*: ${dropoff}\n*Category*: ${selectedTier}`;
+                        window.open(`https://api.whatsapp.com/send?phone=918848347290&text=${encodeURIComponent(text)}`, '_blank');
+                      }}
+                    >
+                      <MessageCircle size={18} /> Book via WhatsApp
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+            </div>
           )}
 
           {/* STATE 2: Searching for Driver */}
@@ -1842,19 +1973,13 @@ const PassengerDashboard = () => {
             <div className="searching-panel text-center animate-fade-in" style={{ padding: '30px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
               <div className="request-pulse" style={{ margin: '0 auto' }}></div>
               <h2 style={{ fontSize: '20px', fontWeight: '800' }}>Searching for Nearby Drivers...</h2>
-              {isIntercity && (
-                <span style={{ background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '11px', padding: '4px 10px', borderRadius: '20px', textTransform: 'uppercase' }}>
-                  Intercity Trip Active
-                </span>
-              )}
               <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
                 Connecting with drivers near <strong>{pickup.split(',')[0]}</strong>. Please hold on.
               </p>
-              <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', width: '100%', background: 'rgba(0,0,0,0.01)', textAlign: 'left' }}>
-                <div style={{ fontSize: '13px', marginBottom: '6px' }}><strong>Your Offered Price:</strong> INR {parseFloat(customFare).toFixed(2)}</div>
-                <div style={{ fontSize: '13px', marginBottom: '6px', color: '#f59e0b' }}><strong>GST Surcharge (5%):</strong> INR {(parseFloat(customFare) * 0.05).toFixed(2)}</div>
-                <div style={{ fontSize: '13px', marginBottom: '6px', fontWeight: '700' }}><strong>Total Cash Due:</strong> INR {(parseFloat(customFare) * 1.05).toFixed(2)}</div>
-                <div style={{ fontSize: '13px' }}><strong>To:</strong> {dropoff.split(',')[0]}</div>
+              <div style={{ background: 'rgba(0,0,0,0.01)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', textAlign: 'center', marginBottom: '16px' }}>
+                <div style={{ fontSize: '16px', fontWeight: '800' }}>
+                  EST. FARE: ₹{Math.round(parseFloat(calculateCategoryFare(categories.find(c => c.name === selectedTier) || categories[0])) + (parseFloat(customFare) || 0))} - ₹{Math.round((parseFloat(calculateCategoryFare(categories.find(c => c.name === selectedTier) || categories[0]))) * 1.15 + (parseFloat(customFare) || 0))}
+                </div>
               </div>
               <Button variant="outline" className="full-width" onClick={handleCancelBooking} style={{ color: '#ef4444', borderColor: '#ef4444' }}>
                 Cancel Booking Request
@@ -1948,55 +2073,31 @@ const PassengerDashboard = () => {
                 )}
               </div>
 
-              {activeRide.isIntercity && (
-                <span style={{ alignSelf: 'flex-start', background: '#f59e0b', color: 'black', fontWeight: 'bold', fontSize: '11px', padding: '4px 10px', borderRadius: '20px', textTransform: 'uppercase' }}>
-                  Intercity Trip Approved
-                </span>
-              )}
+              {/* Intercity check removed */}
               
               {/* Driver and Vehicle Detail Card */}
               <div style={{ border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', background: 'rgba(16, 185, 129, 0.03)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 
-                {/* Vehicle Image Preview */}
-                <div style={{ position: 'relative', width: '100%', height: '140px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.1)' }}>
-                  <img 
-                    src={resolveVehiclePhoto(activeRide.vehiclePhotos?.front || activeRide.vehiclePhotos?.rear || null, 'front')} 
-                    alt="Vehicle view" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                  />
-                  <div style={{ position: 'absolute', bottom: '8px', left: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', fontSize: '10px', padding: '3px 10px', borderRadius: '20px', fontWeight: 'bold' }}>
-                    🚗 Vehicle Photo
-                  </div>
-                </div>
+                
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <h3 style={{ fontSize: '16px', fontWeight: '800' }}>{activeRide.driverName || 'Rajesh Kumar'} <span style={{ fontSize: '13px', color: '#f59e0b' }}>★ {activeRide.driverRating || '5.0'}</span></h3>
+                    <h3 style={{ fontSize: '16px', fontWeight: '800' }}>{activeRide.driverName || 'Not provided'} <span style={{ fontSize: '13px', color: '#f59e0b' }}>★ {activeRide.driverRating || '5.0'}</span></h3>
                     <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>HUM Partner</p>
                   </div>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '700' }}>
-                    {(activeRide.driverName || 'R').charAt(0)}
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--primary)' }}>
+                    <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(activeRide.driverName || 'R')}&background=10b981&color=fff`} alt="Driver Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
-                  <div><strong>Vehicle:</strong> {activeRide.vehicleModel || 'Tata Nexon'}</div>
-                  <div><strong>Plate No:</strong> <span style={{ fontFamily: 'monospace', fontWeight: '600' }}>{activeRide.vehiclePlate || 'DL 3C AY 4567'}</span></div>
-                  <div><strong>Phone:</strong> {activeRide.driverPhone || '+91 98765 43210'}</div>
+                  <div><strong>Vehicle:</strong> {activeRide.vehicleModel || 'Unknown Vehicle'}</div>
+                  <div><strong>Plate No:</strong> <span style={{ fontFamily: 'monospace', fontWeight: '600' }}>{activeRide.vehiclePlate || 'Not provided'}</span></div>
+                  <div><strong>Phone:</strong> {activeRide.driverPhone || 'Not provided'}</div>
                   
-                  <div style={{ borderTop: '1px dashed var(--border)', marginTop: '6px', paddingTop: '6px', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Fare Price:</span>
-                      <span>INR {parseFloat(activeRide.fare || 0).toFixed(2)}</span>
+                                      <div style={{ borderTop: '1px dashed var(--border)', marginTop: '8px', paddingTop: '8px', color: 'var(--text-main)', display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '15px' }}>
+                      <span>TRIP FARE:</span>
+                      <span>INR {parseFloat(activeRide.totalCollected || (parseFloat(activeRide.fare || 0) + parseFloat(activeRide.driverTip || 0))).toFixed(2)}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f59e0b' }}>
-                      <span>GST (5%):</span>
-                      <span>+INR {parseFloat(activeRide.gst || (parseFloat(activeRide.fare || 0) * 0.05)).toFixed(2)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', borderTop: '1px solid var(--border)', paddingTop: '4px' }}>
-                      <span>Pay Driver (Cash):</span>
-                      <span>INR {parseFloat(activeRide.totalCollected || (parseFloat(activeRide.fare || 0) * 1.05)).toFixed(2)}</span>
-                    </div>
-                  </div>
 
                 </div>
               </div>
@@ -2027,31 +2128,34 @@ const PassengerDashboard = () => {
               </button>
 
               <div style={{ display: 'flex', gap: '10px' }}>
-                <Button 
-                  variant="outline" 
-                  style={{ flex: 1, borderColor: '#3b82f6', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} 
-                  onClick={() => { setShowInTripChat(true); fetchTripChatMessages(); }}
-                >
-                  <MessageSquare size={16} /> 💬 Chat with Driver
-                </Button>
-                <Button variant="outline" style={{ flex: 1 }} onClick={() => alert(`Calling driver at ${activeRide.driverPhone}...`)}>
-                  <Phone size={16} /> Call Driver
-                </Button>
+                
+                {activeRide.status !== 'In Progress' && (
+                  <Button variant="primary" style={{ flex: 1, background: '#ef4444', borderColor: '#ef4444' }} onClick={handleCancelBooking}>
+                    {t('Cancel Trip')}
+                  </Button>
+                )}
               </div>
 
-              <Button variant="primary" style={{ width: '100%' }} onClick={handleCancelBooking}>
-                End Trip Simulation
-              </Button>
+
               
               <Button 
                 variant="primary" 
-                style={{ background: '#25D366', color: 'white', borderColor: '#25D366', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }} 
+                style={{ background: '#3b82f6', color: 'white', borderColor: '#3b82f6', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }} 
                 onClick={() => {
-                  const text = `Hey! I'm traveling with HUM. Here is my live trip update:\n\n📍 From: ${activeRide.pickup.split(',')[0]}\n🏁 To: ${activeRide.dropoff.split(',')[0]}\n🚗 Vehicle: ${activeRide.vehicleModel || 'Tata Nexon'} (${activeRide.vehiclePlate || 'DL 3C AY 4567'})\n👨 Partner Driver: ${activeRide.driverName || 'Rajesh Kumar'}\n💵 Cash Fare: INR ${(parseFloat(activeRide.fare) * 1.05).toFixed(2)}\n\nFollow my journey live!`;
-                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+                  const trackUrl = `${window.location.origin}/track.html?id=${activeRide.id}`;
+                  const text = `Hey! Track my HUM ride live: ${trackUrl}\n\n📍 From: ${activeRide.pickup.split(',')[0]}\n🚩 To: ${activeRide.dropoff.split(',')[0]}\n🚕 Vehicle: ${activeRide.vehiclePlate || 'N/A'}`;
+                  
+                  if (navigator.share) {
+                    navigator.share({
+                      title: 'Track My HUM Trip',
+                      text: text
+                    }).catch(err => console.error('Error sharing:', err));
+                  } else {
+                    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+                  }
                 }}
               >
-                <Share2 size={16} /> Share Trip on WhatsApp
+                <Share2 size={16} /> Share Live Status
               </Button>
 
               {sosCountdown !== null ? (
@@ -2060,7 +2164,7 @@ const PassengerDashboard = () => {
                   style={{ background: '#333', color: 'white', borderColor: '#333', width: '100%', marginTop: '10px' }} 
                   onClick={handleCancelSOS}
                 >
-                  Cancel SOS ({sosCountdown}s)
+                  {t('Cancel SOS')} ({sosCountdown}s)
                 </Button>
               ) : (
                 <Button 
@@ -2073,97 +2177,69 @@ const PassengerDashboard = () => {
               )}
             </div>
           )}
+          
+          {/* Next Step Button (Global for Step 1) */}
+          {!activeRide && !isSearching && bookingStep === 1 && (
+            <Button 
+              variant="primary" 
+              style={{ width: '100%', marginTop: '16px', padding: '14px', fontSize: '15px' }} 
+              onClick={() => {
+                if (pickup && dropoff) {
+                  setBookingStep(2);
+                } else {
+                  alert('Please enter both pickup and drop-off locations first.');
+                }
+              }}
+            >
+              Select Vehicle <Car size={16} />
+            </Button>
+          )}
+          {/* Logout button moved to the top right of the dashboard map */}
 
         </div>
         
         <div className="dashboard-map animate-fade-in delay-100" style={{ padding: 0, overflow: 'hidden', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
-          <iframe 
-            id="map-iframe"
-            src="/map.html" 
-            style={{ width: '100%', height: '100%', border: 'none' }}
-            title="Interactive Map"
-          />
+          
+          
 
-          {/* VEHICLE ARRIVING — persistent green banner pinned to top of map when driver accepts */}
-          {rideAccepted && activeRide && !showRating && (
-            <div style={{
-              position: 'absolute',
+          
+          
+
+          
+        </div>
+      </div>
+              {/* PINNED VERIFICATION PIN / CUSTOMER ID (Moved out of map z-index context) */}
+        {rideAccepted && activeRide && passengerId && !showRating && (
+          <div
+            className="pulse-nav-button"
+            style={{
+              position: 'fixed',
               top: '16px',
               left: '50%',
               transform: 'translateX(-50%)',
-              zIndex: 500,
-              pointerEvents: 'none',
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(16,185,129,0.97), rgba(5,150,105,0.97))',
-                border: '1.5px solid rgba(255,255,255,0.18)',
-                borderRadius: '18px',
-                padding: '11px 20px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                boxShadow: '0 8px 32px rgba(16,185,129,0.5), 0 2px 8px rgba(0,0,0,0.4)',
-                backdropFilter: 'blur(12px)',
-                animation: 'vehicle-arriving-bar 0.5s cubic-bezier(0.34,1.56,0.64,1)',
-                whiteSpace: 'nowrap'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'car-bounce 1s ease-in-out infinite alternate' }}>
-                  <Car size={22} color="#ffffff" />
-                </div>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: '900', color: '#ffffff', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                    🚗 Vehicle Arriving
-                  </div>
-                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.85)', fontWeight: '600', marginTop: '1px' }}>
-                    {activeRide.driverName || 'Driver'} • {activeRide.vehicleModel || 'Vehicle'} • {activeRide.vehiclePlate || '—'}
-                  </div>
-                </div>
-                <div style={{
-                  marginLeft: '4px',
-                  background: 'rgba(255,255,255,0.2)',
-                  borderRadius: '20px',
-                  padding: '3px 10px',
-                  fontSize: '10px',
-                  fontWeight: '800',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff', display: 'inline-block', animation: 'pulse 1.2s infinite' }} />
-                  LIVE
-                </div>
-              </div>
-            </div>
-          )}
-          {(isSearching || rideAccepted) && (
-            <div style={{
-              position: 'absolute',
-              bottom: '16px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 1000,
-              background: 'rgba(24, 24, 27, 0.9)',
-              border: '1px solid var(--border)',
-              borderRadius: '12px',
-              padding: '12px 24px',
+              zIndex: 9999,
+              background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
               color: 'white',
-              fontSize: '14px',
-              fontWeight: '600',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-              backdropFilter: 'blur(8px)',
-              pointerEvents: 'none',
-              textAlign: 'center',
-              whiteSpace: 'nowrap'
-            }}>
-              {rideAccepted ? `Route Active: ${pickup.split(',')[0]} ➔ ${dropoff.split(',')[0]}` : 'Finding Nearest Driver Coordinates...'}
-            </div>
-          )}
-        </div>
-      </div>
-      {/* ===== VEHICLE ARRIVING SPLASH NOTIFICATION MODAL ===== */}
+              border: '2px solid rgba(255,255,255,0.4)',
+              borderRadius: '30px',
+              padding: '10px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 20px rgba(59, 130, 246, 0.6)'
+            }}
+          >
+            <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700', opacity: 0.9 }}>
+              Verification PIN
+            </span>
+            <span style={{ fontSize: '20px', fontWeight: '900', letterSpacing: '2px', fontFamily: 'monospace' }}>
+              {passengerId}
+            </span>
+          </div>
+        )}
+
+        {/* ===== VEHICLE ARRIVING SPLASH NOTIFICATION MODAL ===== */}
       {showVehicleArrivingModal && activeRide && (
         <div
           style={{
@@ -2317,7 +2393,7 @@ const PassengerDashboard = () => {
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Trip Chat</h3>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Chatting with Driver: <strong>{activeRide.driverName || 'Rajesh Kumar'}</strong> ({activeRide.vehiclePlate || 'DL 3C AY 4567'})</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Chatting with Driver: <strong>{activeRide.driverName || 'Not provided'}</strong> ({activeRide.vehiclePlate || 'Not provided'})</span>
                 </div>
               </div>
               <button onClick={() => setShowInTripChat(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -2388,117 +2464,6 @@ const PassengerDashboard = () => {
         </div>
       )}
 
-      {/* FLOATING SUPPORT CHAT BUTTON */}
-      <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 900 }}>
-        <button
-          onClick={() => setShowSupportChat(prev => !prev)}
-          style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--primary), #d97706)',
-            color: '#000000',
-            border: 'none',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'transform 0.2s',
-            outline: 'none'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          title="Contact Support / Forget Something?"
-        >
-          {showSupportChat ? <X size={24} /> : <MessageSquare size={24} />}
-        </button>
-      </div>
-
-      {/* SUPPORT CHAT WINDOW */}
-      {showSupportChat && (
-        <div style={{
-          position: 'fixed',
-          bottom: '90px',
-          right: '24px',
-          width: '360px',
-          height: '460px',
-          zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'column',
-          borderRadius: '20px',
-          background: 'var(--bg-card, #121829)',
-          border: '1px solid var(--border)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-          overflow: 'hidden',
-          animation: 'fade-in 0.2s ease-out'
-        }}>
-          {/* Header */}
-          <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, #1f293d, #111827)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: '#ffffff' }}>📞 Customer Care Support</h3>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Help & Forgot Item Claims</span>
-            </div>
-            <button onClick={() => setShowSupportChat(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-              <X size={18} />
-            </button>
-          </div>
-
-          {/* Quick Support Claim Suggestion */}
-          <div style={{ padding: '8px 12px', background: 'rgba(245, 158, 11, 0.05)', borderBottom: '1px solid var(--border)', fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-            💡 <strong>Forget something in a ride?</strong> Type details like vehicle plate number, model, driver name, and what you lost to help Customer Care track it down.
-          </div>
-
-          {/* Messages list */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(0,0,0,0.1)' }}>
-            {supportMessages.length === 0 ? (
-              <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', padding: '20px' }}>
-                <MessageSquare size={32} style={{ opacity: 0.3, marginBottom: '6px' }} />
-                <p style={{ margin: 0 }}>Start a chat with Customer Care.</p>
-                <p style={{ margin: '2px 0 0 0', fontSize: '10px' }}>We will help retrieve any lost or forgotten items.</p>
-              </div>
-            ) : (
-              supportMessages.map((msg) => {
-                const isCare = msg.sender.includes('Care');
-                return (
-                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isCare ? 'flex-start' : 'flex-end' }}>
-                    <div style={{
-                      maxWidth: '85%',
-                      background: isCare ? 'rgba(255,255,255,0.06)' : 'var(--primary)',
-                      color: isCare ? 'var(--text-main)' : '#000000',
-                      padding: '8px 12px',
-                      borderRadius: isCare ? '14px 14px 14px 2px' : '14px 14px 2px 14px',
-                      fontSize: '12.5px',
-                      border: isCare ? '1px solid var(--border)' : 'none'
-                    }}>
-                      <div style={{ fontSize: '9px', opacity: 0.7, marginBottom: '2px', fontWeight: '700' }}>
-                        {msg.sender} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                      <div>{msg.text}</div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* Input field */}
-          <form onSubmit={handleSendSupportMessage} style={{ display: 'flex', gap: '8px', padding: '10px 14px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-            <input
-              type="text"
-              className="input-field"
-              placeholder="Type message to Customer Care..."
-              value={supportText}
-              onChange={(e) => setSupportText(e.target.value)}
-              style={{ flex: 1, padding: '8px 12px', fontSize: '12px' }}
-            />
-            <Button variant="primary" type="submit" style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 12px', fontSize: '12px' }}>
-              <Send size={14} /> Send
-            </Button>
-          </form>
-        </div>
-      )}
-
       {/* MID-TRIP CHANGE / UPDATE DESTINATION MODAL DIALOG */}
       {showUpdateDestModal && activeRide && (
         <div style={{
@@ -2560,7 +2525,14 @@ const PassengerDashboard = () => {
                     onFocus={() => setNewDestFocused(true)}
                     onBlur={() => setTimeout(() => setNewDestFocused(false), 250)}
                     required
+                    style={{ paddingRight: '80px' }}
                   />
+                  <div 
+                    onClick={() => { setMapModalTarget('update_dest'); setShowMapModal(true); }}
+                    style={{ position: 'absolute', right: '6px', top: '50%', marginTop: '4px', transform: 'translateY(-50%)', padding: '6px 10px', background: 'rgba(56, 189, 248, 0.1)', color: 'var(--secondary)', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', zIndex: 10 }}
+                  >
+                    <Map size={14} /> Map
+                  </div>
                 </div>
 
                 {/* Kerala Location Suggestions Dropdown with Geocoding */}
@@ -2685,40 +2657,356 @@ const PassengerDashboard = () => {
       )}
 
       {/* RIDE HISTORY MODAL */}
-      {showRideHistory && (
-        <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyItems: 'center', padding: '16px' }}>
-          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto', padding: '24px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)', margin: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={20} /> Ride History</h3>
-              <button onClick={() => setShowRideHistory(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
-            </div>
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      {/* ========== RIDE HISTORY MODAL ========== */}
+      {showRideHistory && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1900,
+          background: 'var(--bg-main)',
+          display: 'flex', flexDirection: 'column',
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '16px', borderBottom: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: 'var(--bg-card)'
+          }}>
+            <h3 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Clock size={20} color="var(--primary)" /> Ride History
+            </h3>
+            <button
+              onClick={() => setShowRideHistory(false)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
             {rideHistoryData.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)' }}>
-                <Clock size={40} style={{ opacity: 0.2, marginBottom: '10px' }} />
-                <p>No past rides found.</p>
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '40px' }}>
+                <Clock size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
+                <p>You haven't taken any rides yet.</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {rideHistoryData.map(ride => (
-                  <div key={ride.id} style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', background: 'rgba(255,255,255,0.02)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{new Date(ride.completionTime || ride.id).toLocaleDateString()}</span>
-                      <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--primary)' }}>₹{parseFloat(ride.totalCollected || ride.fare).toFixed(2)}</span>
+                  <div key={ride.id} style={{
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '12px',
+                    padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{ride.vehicleCategory || 'Standard'} Ride</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          {ride.completionTime ? new Date(ride.completionTime).toLocaleString() : new Date().toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: '900', fontSize: '16px', color: '#10b981' }}>₹{ride.fare || 0}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{ride.paymentMethod || 'Cash'}</div>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '4px' }}>
-                      To: {ride.dropoff.split(',')[0]}
+                    
+                    <div style={{ height: '1px', background: 'var(--border)' }}></div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                        <MapPin size={16} color="var(--primary)" style={{ marginTop: '2px' }} />
+                        <div style={{ fontSize: '13px', color: 'var(--text-main)' }}>{ride.pickup ? ride.pickup.split(',')[0] : 'Unknown'}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                        <Navigation size={16} color="var(--secondary)" style={{ marginTop: '2px' }} />
+                        <div style={{ fontSize: '13px', color: 'var(--text-main)' }}>{ride.destination ? ride.destination.split(',')[0] : 'Unknown'}</div>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                      Driver: {ride.driverName} • {ride.vehicleModel}
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => alert('Downloading invoice PDF... (Simulated)')}>
-                      Download Invoice
-                    </Button>
+                    
+                    {ride.driverName && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', background: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '8px' }}>
+                        <User size={14} color="var(--text-muted)" />
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Driver: <strong>{ride.driverName}</strong></div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========== SETTINGS / SAVED PLACES MODAL ========== */}
+      {showSettingsModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1900,
+          background: 'var(--bg-main)',
+          display: 'flex', flexDirection: 'column',
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '16px', borderBottom: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: 'var(--bg-card)'
+          }}>
+            <h3 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Settings size={20} color="var(--primary)" /> Settings
+            </h3>
+            <button
+              onClick={() => setShowSettingsModal(false)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
+            <h4 style={{ margin: '0 0 14px 0', fontSize: '14px', color: 'var(--text-muted)' }}>PROFILE</h4>
+            
+            <div style={{
+              background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '12px',
+              padding: '16px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '10px'
+            }}>
+              
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 'bold' }}>Profile Picture</span>
+                <label 
+                  style={{
+                    background: 'var(--primary)', color: '#fff', padding: '6px 12px', borderRadius: '8px', 
+                    fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer',
+                    transition: 'opacity 0.2s'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = 0.8; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = 1; }}
+                >
+                  <Camera size={14} /> Upload
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => handleUploadPassengerProfilePic(e.target.files[0])} 
+                    style={{ display: 'none' }} 
+                  />
+                </label>
+              </div>
+
+              {isEditingName ? (
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input 
+                    type="text" 
+                    value={editNameInput} 
+                    onChange={(e) => setEditNameInput(e.target.value)}
+                    style={{ flex: 1, background: 'var(--bg-main)', border: '1px solid var(--border)', color: 'var(--text-main)', padding: '10px 14px', borderRadius: '8px', fontSize: '14px' }}
+                    autoFocus
+                  />
+                  <button 
+                    onClick={() => {
+                      if (editNameInput.trim()) {
+                        localStorage.setItem('passengerName', editNameInput.trim());
+                        setCurrentName(editNameInput.trim());
+                      }
+                      setIsEditingName(false);
+                    }}
+                    style={{ background: 'var(--primary)', color: '#fff', border: 'none', padding: '0 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '10px', borderRadius: '50%' }}>
+                      <User size={20} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 'bold', fontSize: '15px' }}>Your Name</div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{currentName}</div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setEditNameInput(currentName);
+                      setIsEditingName(true);
+                    }}
+                    style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
+                  >
+                    EDIT
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <h4 style={{ margin: '0 0 14px 0', fontSize: '14px', color: 'var(--text-muted)' }}>BACKGROUND THEME</h4>
+            
+            <div style={{
+              background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '12px',
+              padding: '16px', marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '10px'
+            }}>
+              {[
+                { id: 'default', label: 'Default Dark', color: '#09090b' },
+                { id: 'deep_blue', label: 'Deep Blue', color: '#1e3a8a' },
+                { id: 'emerald', label: 'Emerald', color: '#059669' },
+                { id: 'purple', label: 'Purple', color: '#4c1d95' },
+                { id: 'crimson', label: 'Crimson', color: '#881337' },
+                { id: 'dark_gray', label: 'Dark Gray', color: '#27272a' }
+              ].map(theme => (
+                <button
+                  key={theme.id}
+                  onClick={() => {
+                    setBgTheme(theme.id);
+                    localStorage.setItem('passengerBgTheme', theme.id);
+                  }}
+                  style={{
+                    flex: '1 1 calc(33.333% - 10px)',
+                    background: theme.color,
+                    color: '#fff',
+                    border: bgTheme === theme.id ? '2px solid #fff' : '2px solid transparent',
+                    borderRadius: '8px',
+                    padding: '10px 4px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    opacity: bgTheme === theme.id ? 1 : 0.7,
+                    boxShadow: bgTheme === theme.id ? '0 4px 12px rgba(0,0,0,0.5)' : 'none',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {theme.label}
+                </button>
+              ))}
+            </div>
+
+            <h4 style={{ margin: '0 0 14px 0', fontSize: '14px', color: 'var(--text-muted)' }}>SAVED PLACES</h4>
+            
+            {/* Home */}
+            <div style={{
+              background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '12px',
+              padding: '16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '14px'
+            }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '10px', borderRadius: '50%' }}>
+                <Home size={20} />
+              </div>
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '15px' }}>Home</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {savedPlaces.home ? savedPlaces.home.address : 'Tap to set your home address'}
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setMapModalTarget('save_home');
+                  setShowMapModal(true);
+                  // don't close settings modal, they can see it update instantly!
+                }}
+                style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
+              >
+                {savedPlaces.home ? 'EDIT' : 'ADD'}
+              </button>
+            </div>
+
+            {/* Work */}
+            <div style={{
+              background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '12px',
+              padding: '16px', display: 'flex', alignItems: 'center', gap: '14px'
+            }}>
+              <div style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '10px', borderRadius: '50%' }}>
+                <Briefcase size={20} />
+              </div>
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '15px' }}>Work</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {savedPlaces.work ? savedPlaces.work.address : 'Tap to set your work address'}
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setMapModalTarget('save_work');
+                  setShowMapModal(true);
+                }}
+                style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
+              >
+                {savedPlaces.work ? 'EDIT' : 'ADD'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== CHOOSE FROM MAP MODAL ========== */}
+      {showMapModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 2000,
+            background: 'rgba(0,0,0,0.92)',
+            display: 'flex', flexDirection: 'column',
+          }}
+        >
+          {/* No Header */}
+
+          {/* Map iframe fills remaining space */}
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <iframe
+              id="map-modal-iframe"
+              src="/map.html"
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              title="Choose from Map"
+            />
+          </div>
+
+          {/* Confirm button */}
+          <div style={{
+            padding: '14px 18px',
+            background: 'var(--bg-card)',
+            borderTop: '1px solid var(--border)',
+            flexShrink: 0,
+          }}>
+            <button
+              onClick={() => setShowMapModal(false)}
+              style={{
+                width: '100%', padding: '14px', borderRadius: '12px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                color: '#fff', fontWeight: '800', fontSize: '15px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              }}
+            >
+              ✅ Confirm Location
+            </button>
           </div>
         </div>
       )}

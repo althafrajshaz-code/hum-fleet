@@ -1,0 +1,877 @@
+
+> src\pages\DriverDashboard.jsx:447:          alert('Driver Profile Picture updated successfully!');
+  src\pages\DriverDashboard.jsx:448:          fetchStatus(false);
+  src\pages\DriverDashboard.jsx:449:        }
+  src\pages\DriverDashboard.jsx:450:      } catch (err) {
+  src\pages\DriverDashboard.jsx:451:        console.error('Failed to update profile pic:', err);
+  src\pages\DriverDashboard.jsx:452:      }
+  src\pages\DriverDashboard.jsx:453:    };
+  src\pages\DriverDashboard.jsx:454:    reader.readAsDataURL(file);
+  src\pages\DriverDashboard.jsx:455:  };
+  src\pages\DriverDashboard.jsx:456:
+  src\pages\DriverDashboard.jsx:457:  const handleUploadCarPhoto = async (side, file) => {
+  src\pages\DriverDashboard.jsx:458:    if (!file) return;
+  src\pages\DriverDashboard.jsx:459:    const reader = new FileReader();
+  src\pages\DriverDashboard.jsx:460:    reader.onloadend = async () => {
+  src\pages\DriverDashboard.jsx:461:      const base64Data = reader.result;
+  src\pages\DriverDashboard.jsx:462:      const updatedPhotos = { ...driverPhotos, [side]: base64Data };
+  src\pages\DriverDashboard.jsx:463:      setDriverPhotos(updatedPhotos);
+  src\pages\DriverDashboard.jsx:464:
+  src\pages\DriverDashboard.jsx:465:      const email = localStorage.getItem('driverEmail');
+  src\pages\DriverDashboard.jsx:466:      try {
+  src\pages\DriverDashboard.jsx:467:        const res = await fetch(`${API_BASE}/api/drivers/photos`, {
+  src\pages\DriverDashboard.jsx:468:          method: 'POST',
+  src\pages\DriverDashboard.jsx:469:          headers: { 'Content-Type': 'application/json' },
+  src\pages\DriverDashboard.jsx:470:          body: JSON.stringify({ email, photos: { [side]: base64Data } })
+  src\pages\DriverDashboard.jsx:471:        });
+  src\pages\DriverDashboard.jsx:472:        if (res.ok) {
+  src\pages\DriverDashboard.jsx:473:          alert(`Vehicle ${side.charAt(0).toUpperCase() + side.slice(1)} photo 
+updated successfully!`);
+  src\pages\DriverDashboard.jsx:474:          fetchStatus(false);
+  src\pages\DriverDashboard.jsx:475:        }
+  src\pages\DriverDashboard.jsx:476:      } catch (err) {
+  src\pages\DriverDashboard.jsx:477:        console.error('Failed to update photo:', err);
+  src\pages\DriverDashboard.jsx:478:      }
+  src\pages\DriverDashboard.jsx:479:    };
+  src\pages\DriverDashboard.jsx:480:    reader.readAsDataURL(file);
+  src\pages\DriverDashboard.jsx:481:  };
+  src\pages\DriverDashboard.jsx:482:
+  src\pages\DriverDashboard.jsx:483:  const handleUploadDoc = async (docId, docLabel, file) => {
+  src\pages\DriverDashboard.jsx:484:    if (!file) return;
+  src\pages\DriverDashboard.jsx:485:    const reader = new FileReader();
+  src\pages\DriverDashboard.jsx:486:    reader.onloadend = async () => {
+  src\pages\DriverDashboard.jsx:487:      const base64Data = reader.result;
+  src\pages\DriverDashboard.jsx:488:      const updatedDocs = { ...driverDocs, [docId]: base64Data };
+  src\pages\DriverDashboard.jsx:489:      setDriverDocs(updatedDocs);
+  src\pages\DriverDashboard.jsx:490:
+  src\pages\DriverDashboard.jsx:491:      const email = localStorage.getItem('driverEmail');
+  src\pages\DriverDashboard.jsx:492:      try {
+  src\pages\DriverDashboard.jsx:493:        const res = await fetch(`${API_BASE}/api/drivers/photos`, {
+  src\pages\DriverDashboard.jsx:494:          method: 'POST',
+  src\pages\DriverDashboard.jsx:495:          headers: { 'Content-Type': 'application/json' },
+  src\pages\DriverDashboard.jsx:496:          body: JSON.stringify({ email, docs: { [docId]: base64Data } })
+  src\pages\DriverDashboard.jsx:497:        });
+  src\pages\DriverDashboard.jsx:498:        if (res.ok) {
+  src\pages\DriverDashboard.jsx:499:          alert(`${docLabel} document updated successfully!`);
+  src\pages\DriverDashboard.jsx:500:          fetchStatus(false);
+  src\pages\DriverDashboard.jsx:501:        }
+  src\pages\DriverDashboard.jsx:502:      } catch (err) {
+  src\pages\DriverDashboard.jsx:503:        console.error('Failed to update document:', err);
+  src\pages\DriverDashboard.jsx:504:      }
+  src\pages\DriverDashboard.jsx:505:    };
+  src\pages\DriverDashboard.jsx:506:    reader.readAsDataURL(file);
+  src\pages\DriverDashboard.jsx:507:  };
+  src\pages\DriverDashboard.jsx:508:
+  src\pages\DriverDashboard.jsx:509:  // ---- Daily Verification Camera Handlers ----
+  src\pages\DriverDashboard.jsx:510:  const startCamera = async () => {
+  src\pages\DriverDashboard.jsx:511:    try {
+  src\pages\DriverDashboard.jsx:512:      const stream = await navigator.mediaDevices.getUserMedia({ video: { 
+facingMode: 'user' }, audio: false });
+  src\pages\DriverDashboard.jsx:513:      setCameraStream(stream);
+  src\pages\DriverDashboard.jsx:514:      setVerifyStep('camera');
+  src\pages\DriverDashboard.jsx:515:      setCapturedPhoto(null);
+  src\pages\DriverDashboard.jsx:516:      // Attach stream to video element after modal renders
+  src\pages\DriverDashboard.jsx:517:      setTimeout(() => {
+  src\pages\DriverDashboard.jsx:518:        if (videoRef.current) {
+  src\pages\DriverDashboard.jsx:519:          videoRef.current.srcObject = stream;
+  src\pages\DriverDashboard.jsx:520:          videoRef.current.play();
+  src\pages\DriverDashboard.jsx:521:        }
+  src\pages\DriverDashboard.jsx:522:      }, 100);
+  src\pages\DriverDashboard.jsx:523:    } catch (err) {
+  src\pages\DriverDashboard.jsx:524:      alert('Camera access denied. Please allow camera permissions to complete 
+daily verification.');
+  src\pages\DriverDashboard.jsx:525:      console.error('Camera error:', err);
+  src\pages\DriverDashboard.jsx:526:    }
+  src\pages\DriverDashboard.jsx:527:  };
+  src\pages\DriverDashboard.jsx:528:
+  src\pages\DriverDashboard.jsx:529:  const stopCamera = () => {
+  src\pages\DriverDashboard.jsx:530:    if (cameraStream) {
+  src\pages\DriverDashboard.jsx:531:      cameraStream.getTracks().forEach(t => t.stop());
+  src\pages\DriverDashboard.jsx:532:      setCameraStream(null);
+  src\pages\DriverDashboard.jsx:533:    }
+  src\pages\DriverDashboard.jsx:534:  };
+  src\pages\DriverDashboard.jsx:535:
+  src\pages\DriverDashboard.jsx:536:  const capturePhoto = () => {
+  src\pages\DriverDashboard.jsx:537:    if (!videoRef.current || !canvasRef.current) return;
+  src\pages\DriverDashboard.jsx:538:    const video = videoRef.current;
+  src\pages\DriverDashboard.jsx:539:    const canvas = canvasRef.current;
+  src\pages\DriverDashboard.jsx:540:    canvas.width = video.videoWidth;
+  src\pages\DriverDashboard.jsx:541:    canvas.height = video.videoHeight;
+  src\pages\DriverDashboard.jsx:542:    canvas.getContext('2d').drawImage(video, 0, 0);
+  src\pages\DriverDashboard.jsx:543:    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  src\pages\DriverDashboard.jsx:544:    setCapturedPhoto(dataUrl);
+  src\pages\DriverDashboard.jsx:545:    setVerifyStep('preview');
+  src\pages\DriverDashboard.jsx:546:    stopCamera();
+  src\pages\DriverDashboard.jsx:547:  };
+  src\pages\DriverDashboard.jsx:548:
+  src\pages\DriverDashboard.jsx:549:  const submitVerification = async () => {
+  src\pages\DriverDashboard.jsx:550:    const email = localStorage.getItem('driverEmail');
+  src\pages\DriverDashboard.jsx:551:    setVerifyStep('submitting');
+  src\pages\DriverDashboard.jsx:552:    try {
+  src\pages\DriverDashboard.jsx:553:      const response = await fetch(`${API_BASE}/api/drivers/verify-daily`, {
+  src\pages\DriverDashboard.jsx:554:        method: 'POST',
+  src\pages\DriverDashboard.jsx:555:        headers: { 'Content-Type': 'application/json' },
+  src\pages\DriverDashboard.jsx:556:        body: JSON.stringify({ email, photo: capturedPhoto })
+  src\pages\DriverDashboard.jsx:557:      });
+  src\pages\DriverDashboard.jsx:558:      if (response.ok) {
+  src\pages\DriverDashboard.jsx:559:        setIsDailyVerified(true);
+  src\pages\DriverDashboard.jsx:560:        setVerifyStep('done');
+  src\pages\DriverDashboard.jsx:561:        setTimeout(() => {
+  src\pages\DriverDashboard.jsx:562:          setShowVerifyModal(false);
+  src\pages\DriverDashboard.jsx:563:          setCapturedPhoto(null);
+  src\pages\DriverDashboard.jsx:564:          setVerifyStep('camera');
+  src\pages\DriverDashboard.jsx:565:          // Now actually go online after successful verification
+  src\pages\DriverDashboard.jsx:566:          goOnline();
+  src\pages\DriverDashboard.jsx:567:        }, 1500);
+  src\pages\DriverDashboard.jsx:568:      } else {
+  src\pages\DriverDashboard.jsx:569:        alert('Verification failed. Please try again.');
+  src\pages\DriverDashboard.jsx:570:        setVerifyStep('camera');
+  src\pages\DriverDashboard.jsx:571:        startCamera();
+  src\pages\DriverDashboard.jsx:572:      }
+  src\pages\DriverDashboard.jsx:573:    } catch (err) {
+  src\pages\DriverDashboard.jsx:574:      console.error('Verification error:', err);
+  src\pages\DriverDashboard.jsx:575:      alert('Could not connect to server. Please try again.');
+  src\pages\DriverDashboard.jsx:576:      setVerifyStep('camera');
+  src\pages\DriverDashboard.jsx:577:    }
+  src\pages\DriverDashboard.jsx:578:  };
+  src\pages\DriverDashboard.jsx:579:
+  src\pages\DriverDashboard.jsx:580:  const registerPushNotifications = async () => {
+  src\pages\DriverDashboard.jsx:581:    try {
+  src\pages\DriverDashboard.jsx:582:      if (Capacitor.isNativePlatform()) {
+  src\pages\DriverDashboard.jsx:583:        let permStatus = await PushNotifications.checkPermissions();
+  src\pages\DriverDashboard.jsx:584:        if (permStatus.receive === 'prompt') {
+  src\pages\DriverDashboard.jsx:585:          permStatus = await PushNotifications.requestPermissions();
+  src\pages\DriverDashboard.jsx:586:        }
+  src\pages\DriverDashboard.jsx:587:        if (permStatus.receive !== 'granted') {
+  src\pages\DriverDashboard.jsx:588:          console.warn('User denied push notification permissions');
+  src\pages\DriverDashboard.jsx:589:          return;
+  src\pages\DriverDashboard.jsx:590:        }
+  src\pages\DriverDashboard.jsx:591:
+  src\pages\DriverDashboard.jsx:592:        await PushNotifications.register();
+  src\pages\DriverDashboard.jsx:593:
+  src\pages\DriverDashboard.jsx:594:        PushNotifications.addListener('registration', async (token) => {
+  src\pages\DriverDashboard.jsx:595:          console.log('Push registration success, token: ' + token.value);
+  src\pages\DriverDashboard.jsx:596:          const email = localStorage.getItem('driverEmail');
+  src\pages\DriverDashboard.jsx:597:          if (email) {
+> src\pages\DriverDashboard.jsx:1034:  // Poll status of driver profile updates & admin messages (Optimized to reduce 
+lag)
+  src\pages\DriverDashboard.jsx:1035:  useEffect(() => {
+  src\pages\DriverDashboard.jsx:1036:    // Regular updates (12s)
+  src\pages\DriverDashboard.jsx:1037:    const slowInterval = setInterval(() => {
+  src\pages\DriverDashboard.jsx:1038:      fetchStatus(false);
+  src\pages\DriverDashboard.jsx:1039:      fetchWallet();
+  src\pages\DriverDashboard.jsx:1040:      fetchHomeEarnings();
+  src\pages\DriverDashboard.jsx:1041:      fetchAdminMessages();
+  src\pages\DriverDashboard.jsx:1042:    }, 12000);
+  src\pages\DriverDashboard.jsx:1043:
+  src\pages\DriverDashboard.jsx:1044:    // Infrequent updates (45s)
+  src\pages\DriverDashboard.jsx:1045:    const verySlowInterval = setInterval(() => {
+  src\pages\DriverDashboard.jsx:1046:      fetchSystemSettings();
+  src\pages\DriverDashboard.jsx:1047:      fetchCategories();
+  src\pages\DriverDashboard.jsx:1048:      fetchTravelRoute();
+  src\pages\DriverDashboard.jsx:1049:    }, 45000);
+  src\pages\DriverDashboard.jsx:1050:
+  src\pages\DriverDashboard.jsx:1051:    return () => {
+  src\pages\DriverDashboard.jsx:1052:      clearInterval(slowInterval);
+  src\pages\DriverDashboard.jsx:1053:      clearInterval(verySlowInterval);
+  src\pages\DriverDashboard.jsx:1054:    };
+  src\pages\DriverDashboard.jsx:1055:  }, []);
+  src\pages\DriverDashboard.jsx:1056:
+  src\pages\DriverDashboard.jsx:1057:  const fetchAvailablePreBooked = async () => {
+  src\pages\DriverDashboard.jsx:1058:    const email = localStorage.getItem('driverEmail');
+  src\pages\DriverDashboard.jsx:1059:    if (!email) return;
+  src\pages\DriverDashboard.jsx:1060:    try {
+  src\pages\DriverDashboard.jsx:1061:      const response = await 
+fetch(`${API_BASE}/api/rides/prebooked?email=${encodeURIComponent(email)}`);
+  src\pages\DriverDashboard.jsx:1062:      if (response.ok) {
+  src\pages\DriverDashboard.jsx:1063:        const data = await response.json();
+  src\pages\DriverDashboard.jsx:1064:        setAvailablePreBooked(data);
+  src\pages\DriverDashboard.jsx:1065:      }
+  src\pages\DriverDashboard.jsx:1066:    } catch (err) {
+  src\pages\DriverDashboard.jsx:1067:      console.error("Error fetching available prebooked rides:", err);
+  src\pages\DriverDashboard.jsx:1068:    }
+  src\pages\DriverDashboard.jsx:1069:  };
+  src\pages\DriverDashboard.jsx:1070:
+  src\pages\DriverDashboard.jsx:1071:  const fetchMyScheduledTrips = async () => {
+  src\pages\DriverDashboard.jsx:1072:    const email = localStorage.getItem('driverEmail');
+  src\pages\DriverDashboard.jsx:1073:    if (!email) return;
+  src\pages\DriverDashboard.jsx:1074:    try {
+  src\pages\DriverDashboard.jsx:1075:      const response = await 
+fetch(`${API_BASE}/api/rides/driver/scheduled?email=${encodeURIComponent(email)}`);
+  src\pages\DriverDashboard.jsx:1076:      if (response.ok) {
+  src\pages\DriverDashboard.jsx:1077:        const data = await response.json();
+  src\pages\DriverDashboard.jsx:1078:        setMyScheduledTrips(data);
+  src\pages\DriverDashboard.jsx:1079:      }
+  src\pages\DriverDashboard.jsx:1080:    } catch (err) {
+  src\pages\DriverDashboard.jsx:1081:      console.error("Error fetching scheduled trips:", err);
+  src\pages\DriverDashboard.jsx:1082:    }
+  src\pages\DriverDashboard.jsx:1083:  };
+  src\pages\DriverDashboard.jsx:1084:
+  src\pages\DriverDashboard.jsx:1085:  const fetchDriverActiveRide = async () => {
+  src\pages\DriverDashboard.jsx:1086:    const email = localStorage.getItem('driverEmail');
+  src\pages\DriverDashboard.jsx:1087:    if (!email) return;
+  src\pages\DriverDashboard.jsx:1088:    try {
+  src\pages\DriverDashboard.jsx:1089:      const response = await 
+fetch(`${API_BASE}/api/rides/driver/active?email=${encodeURIComponent(email)}`);
+  src\pages\DriverDashboard.jsx:1090:      if (response.ok) {
+  src\pages\DriverDashboard.jsx:1091:        const data = await response.json();
+  src\pages\DriverDashboard.jsx:1092:        if (data) {
+  src\pages\DriverDashboard.jsx:1093:          if (data.current) setCurrentRide(data.current);
+  src\pages\DriverDashboard.jsx:1094:          else setCurrentRide(null);
+  src\pages\DriverDashboard.jsx:1095:          
+  src\pages\DriverDashboard.jsx:1096:          if (data.queued && data.queued.length > 0) 
+setQueuedRide(data.queued[0]);
+  src\pages\DriverDashboard.jsx:1097:          else setQueuedRide(null);
+  src\pages\DriverDashboard.jsx:1098:        }
+  src\pages\DriverDashboard.jsx:1099:      }
+  src\pages\DriverDashboard.jsx:1100:    } catch (err) {
+  src\pages\DriverDashboard.jsx:1101:      console.error("Error fetching active driver ride:", err);
+  src\pages\DriverDashboard.jsx:1102:    }
+  src\pages\DriverDashboard.jsx:1103:  };
+  src\pages\DriverDashboard.jsx:1104:
+  src\pages\DriverDashboard.jsx:1105:  const handleAcceptPreBooked = async (rideId) => {
+  src\pages\DriverDashboard.jsx:1106:    if (!driverDetails) return;
+  src\pages\DriverDashboard.jsx:1107:    
+  src\pages\DriverDashboard.jsx:1108:    // ?1500 BALANCE LOCK check before local submit
+  src\pages\DriverDashboard.jsx:1109:    const CASH_LOCK_THRESHOLD = 1500;
+  src\pages\DriverDashboard.jsx:1110:    const driverPendingBalance = parseFloat(wallet.toBePaid || 0);
+  src\pages\DriverDashboard.jsx:1111:    const ride = availablePreBooked.find(r => r.id === rideId);
+  src\pages\DriverDashboard.jsx:1112:    const isCashTrip = ride ? (ride.paymentType === 'cash' || !ride.paymentType) 
+: true;
+  src\pages\DriverDashboard.jsx:1113:
+  src\pages\DriverDashboard.jsx:1114:    if (isCashTrip && driverPendingBalance > CASH_LOCK_THRESHOLD) {
+  src\pages\DriverDashboard.jsx:1115:      alert(`Your pending balance of ?${driverPendingBalance.toFixed(2)} exceeds 
+?${CASH_LOCK_THRESHOLD}. You can only accept prepaid trips until you settle your dues with HUM Fleet.`);
+  src\pages\DriverDashboard.jsx:1116:      return;
+  src\pages\DriverDashboard.jsx:1117:    }
+  src\pages\DriverDashboard.jsx:1118:
+  src\pages\DriverDashboard.jsx:1119:    try {
+  src\pages\DriverDashboard.jsx:1120:      const response = await fetch(`${API_BASE}/api/rides/${rideId}/accept`, {
+  src\pages\DriverDashboard.jsx:1121:        method: 'POST',
+  src\pages\DriverDashboard.jsx:1122:        headers: {
+  src\pages\DriverDashboard.jsx:1123:          'Content-Type': 'application/json'
+  src\pages\DriverDashboard.jsx:1124:        },
+  src\pages\DriverDashboard.jsx:1125:        body: JSON.stringify({
+  src\pages\DriverDashboard.jsx:1126:          driverName: driverDetails.name,
+  src\pages\DriverDashboard.jsx:1127:          driverPhone: driverDetails.phone,
+  src\pages\DriverDashboard.jsx:1128:          driverEmail: driverDetails.email,
+  src\pages\DriverDashboard.jsx:1129:          vehicleModel: (driverDetails.manufacturer ? driverDetails.manufacturer 
++ ' ' + driverDetails.model : driverDetails.model) || 'Unknown Vehicle',
+  src\pages\DriverDashboard.jsx:1130:          vehiclePlate: driverDetails.plate || 'Unknown Plate'
+  src\pages\DriverDashboard.jsx:1131:        })
+  src\pages\DriverDashboard.jsx:1132:      });
+  src\pages\DriverDashboard.jsx:1133:
+  src\pages\DriverDashboard.jsx:1134:      if (response.ok) {
+  src\pages\DriverDashboard.jsx:1135:        alert("Pre-booked trip accepted successfully! It has been added to your 
+scheduled trips.");
+  src\pages\DriverDashboard.jsx:1136:        fetchAvailablePreBooked();
+  src\pages\DriverDashboard.jsx:1137:        fetchMyScheduledTrips();
+  src\pages\DriverDashboard.jsx:1138:      } else {
+  src\pages\DriverDashboard.jsx:1139:        const errData = await response.json();
+  src\pages\DriverDashboard.jsx:1140:        alert(errData.error || "Failed to accept trip.");
+  src\pages\DriverDashboard.jsx:1141:        fetchAvailablePreBooked();
+  src\pages\DriverDashboard.jsx:1142:      }
+  src\pages\DriverDashboard.jsx:1143:    } catch (err) {
+  src\pages\DriverDashboard.jsx:1144:      console.error("Failed to accept prebooked ride:", err);
+  src\pages\DriverDashboard.jsx:1145:      alert("Error accepting prebooked ride.");
+  src\pages\DriverDashboard.jsx:1146:    }
+  src\pages\DriverDashboard.jsx:1147:  };
+  src\pages\DriverDashboard.jsx:1148:
+  src\pages\DriverDashboard.jsx:1149:  const handleStartScheduledTrip = async (rideId) => {
+  src\pages\DriverDashboard.jsx:1150:    if (!isOnline) {
+  src\pages\DriverDashboard.jsx:1151:      alert("Please go Online first to start this trip!");
+  src\pages\DriverDashboard.jsx:1152:      return;
+  src\pages\DriverDashboard.jsx:1153:    }
+  src\pages\DriverDashboard.jsx:1154:    if (currentRide) {
+  src\pages\DriverDashboard.jsx:1155:      alert("Please complete or cancel your current active trip before starting 
+another one!");
+  src\pages\DriverDashboard.jsx:1156:      return;
+  src\pages\DriverDashboard.jsx:1157:    }
+  src\pages\DriverDashboard.jsx:1158:    if (!window.confirm("Are you ready to activate and start this scheduled trip 
+now? This will make the trip active on the passenger's screen.")) return;
+  src\pages\DriverDashboard.jsx:1159:
+  src\pages\DriverDashboard.jsx:1160:    try {
+  src\pages\DriverDashboard.jsx:1161:      const response = await fetch(`${API_BASE}/api/rides/${rideId}/start`, {
+  src\pages\DriverDashboard.jsx:1162:        method: 'POST'
+  src\pages\DriverDashboard.jsx:1163:      });
+  src\pages\DriverDashboard.jsx:1164:      if (response.ok) {
+  src\pages\DriverDashboard.jsx:1165:        const ride = await response.json();
+  src\pages\DriverDashboard.jsx:1166:        setCurrentRide(ride);
+  src\pages\DriverDashboard.jsx:1167:        alert("Trip started! You are now navigating to the passenger pickup 
+point.");
+  src\pages\DriverDashboard.jsx:1168:      } else {
+  src\pages\DriverDashboard.jsx:1169:        alert("Failed to start scheduled trip.");
+  src\pages\DriverDashboard.jsx:1170:      }
+  src\pages\DriverDashboard.jsx:1171:    } catch (err) {
+  src\pages\DriverDashboard.jsx:1172:      console.error("Error starting scheduled trip:", err);
+  src\pages\DriverDashboard.jsx:1173:      alert("Error starting scheduled trip.");
+  src\pages\DriverDashboard.jsx:1174:    }
+  src\pages\DriverDashboard.jsx:1175:  };
+  src\pages\DriverDashboard.jsx:1176:
+  src\pages\DriverDashboard.jsx:1177:  useEffect(() => {
+  src\pages\DriverDashboard.jsx:1178:    setupBackground();
+  src\pages\DriverDashboard.jsx:1179:    fetchDriverActiveRide();
+  src\pages\DriverDashboard.jsx:1180:    fetchAvailablePreBooked();
+  src\pages\DriverDashboard.jsx:1181:    fetchMyScheduledTrips();
+  src\pages\DriverDashboard.jsx:1182:  }, []);
+  src\pages\DriverDashboard.jsx:1183:
+  src\pages\DriverDashboard.jsx:1184:  useEffect(() => {
+> src\pages\DriverDashboard.jsx:1758:          {/* DRIVER PROFILE & ONLINE STATUS CARD - collapses to toggle during 
+active trip */}
+  src\pages\DriverDashboard.jsx:1759:          {currentRide && ['Accepted', 'Arrived', 'In 
+Progress'].includes(currentRide.status) ? (
+  src\pages\DriverDashboard.jsx:1760:            <>
+  src\pages\DriverDashboard.jsx:1761:              {/* Compact Toggle Button shown during active trip */}
+  src\pages\DriverDashboard.jsx:1762:              <button
+  src\pages\DriverDashboard.jsx:1763:                onClick={() => setShowDriverHeader(!showDriverHeader)}
+  src\pages\DriverDashboard.jsx:1764:                style={{
+  src\pages\DriverDashboard.jsx:1765:                  width: '100%',
+  src\pages\DriverDashboard.jsx:1766:                  marginBottom: '10px',
+  src\pages\DriverDashboard.jsx:1767:                  background: showDriverHeader ? 'rgba(16,185,129,0.12)' : 
+'var(--bg-card)',
+  src\pages\DriverDashboard.jsx:1768:                  border: '1px solid ' + (showDriverHeader ? 
+'rgba(16,185,129,0.4)' : 'var(--border)'),
+  src\pages\DriverDashboard.jsx:1769:                  borderRadius: '12px',
+  src\pages\DriverDashboard.jsx:1770:                  padding: '10px 14px',
+  src\pages\DriverDashboard.jsx:1771:                  cursor: 'pointer',
+  src\pages\DriverDashboard.jsx:1772:                  display: 'flex',
+  src\pages\DriverDashboard.jsx:1773:                  alignItems: 'center',
+  src\pages\DriverDashboard.jsx:1774:                  justifyContent: 'space-between',
+  src\pages\DriverDashboard.jsx:1775:                  gap: '8px',
+  src\pages\DriverDashboard.jsx:1776:                  color: 'var(--text-main)',
+  src\pages\DriverDashboard.jsx:1777:                  fontSize: '13px',
+  src\pages\DriverDashboard.jsx:1778:                  fontWeight: '700'
+  src\pages\DriverDashboard.jsx:1779:                }}
+  src\pages\DriverDashboard.jsx:1780:              >
+  src\pages\DriverDashboard.jsx:1781:                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' 
+}}>
+  src\pages\DriverDashboard.jsx:1782:                  <div style={{ width: '30px', height: '30px', borderRadius: 
+'50%', overflow: 'hidden', border: '2px solid var(--primary)', flexShrink: 0 }}>
+  src\pages\DriverDashboard.jsx:1783:                    {driverProfilePic
+  src\pages\DriverDashboard.jsx:1784:                      ? <img src={driverProfilePic} alt="Profile" style={{ width: 
+'100%', height: '100%', objectFit: 'cover' }} />
+  src\pages\DriverDashboard.jsx:1785:                      : <div style={{ width: '100%', height: '100%', display: 
+'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 'bold', fontSize: '13px' 
+}}>{(driverDetails?.name || 'D').charAt(0)}</div>
+  src\pages\DriverDashboard.jsx:1786:                    }
+  src\pages\DriverDashboard.jsx:1787:                  </div>
+  src\pages\DriverDashboard.jsx:1788:                  <span>{driverDetails?.name || 'Driver'}</span>
+  src\pages\DriverDashboard.jsx:1789:                  <span style={{ fontSize: '11px', color: '#10b981', background: 
+'rgba(16,185,129,0.12)', padding: '2px 8px', borderRadius: '8px', fontWeight: '800' }}>
+  src\pages\DriverDashboard.jsx:1790:                    ?{homeEarnings?.daily?.net ?? '0.00'} today
+  src\pages\DriverDashboard.jsx:1791:                  </span>
+  src\pages\DriverDashboard.jsx:1792:                </div>
+  src\pages\DriverDashboard.jsx:1793:                <span style={{ color: 'var(--text-muted)', fontSize: '16px' 
+}}>{showDriverHeader ? '' : ''}</span>
+  src\pages\DriverDashboard.jsx:1794:              </button>
+  src\pages\DriverDashboard.jsx:1795:
+  src\pages\DriverDashboard.jsx:1796:              {showDriverHeader && (
+  src\pages\DriverDashboard.jsx:1797:          <div className="driver-header-card" style={{ padding: "18px 14px",
+  src\pages\DriverDashboard.jsx:1798:            position: 'relative',
+  src\pages\DriverDashboard.jsx:1799:            background: isOnline ? (theme === 'light' ? 'rgba(255, 255, 255, 
+0.7)' : 'rgba(24, 24, 27, 0.7)') : 'var(--bg-card)',
+  src\pages\DriverDashboard.jsx:1800:            backdropFilter: isOnline ? 'blur(10px)' : 'none',
+  src\pages\DriverDashboard.jsx:1801:            border: 'none',
+  src\pages\DriverDashboard.jsx:1802:            borderRadius: '16px',
+  src\pages\DriverDashboard.jsx:1803:            marginBottom: '16px',
+  src\pages\DriverDashboard.jsx:1804:            boxShadow: 'var(--shadow-md)',
+  src\pages\DriverDashboard.jsx:1805:            transition: 'all 0.3s ease'
+  src\pages\DriverDashboard.jsx:1806:          }}>
+  src\pages\DriverDashboard.jsx:1807:
+  src\pages\DriverDashboard.jsx:1808:            {/* Logo on Left */}
+  src\pages\DriverDashboard.jsx:1809:            <div style={{
+  src\pages\DriverDashboard.jsx:1810:              position: 'absolute',
+  src\pages\DriverDashboard.jsx:1811:              top: '18px',
+  src\pages\DriverDashboard.jsx:1812:              left: '14px',
+  src\pages\DriverDashboard.jsx:1813:              width: '36px',
+  src\pages\DriverDashboard.jsx:1814:              height: '36px',
+  src\pages\DriverDashboard.jsx:1815:              display: 'flex',
+  src\pages\DriverDashboard.jsx:1816:              alignItems: 'center',
+  src\pages\DriverDashboard.jsx:1817:              justifyContent: 'center',
+  src\pages\DriverDashboard.jsx:1818:              borderRadius: '8px',
+  src\pages\DriverDashboard.jsx:1819:              overflow: 'hidden',
+  src\pages\DriverDashboard.jsx:1820:              border: '2px solid var(--border)'
+  src\pages\DriverDashboard.jsx:1821:            }}>
+  src\pages\DriverDashboard.jsx:1822:              <img src="/hum_fleet_official_logo.jpg" alt="HUM Logo" style={{ 
+width: '100%', height: '100%', objectFit: 'cover' }} />
+  src\pages\DriverDashboard.jsx:1823:            </div>
+  src\pages\DriverDashboard.jsx:1824:
+  src\pages\DriverDashboard.jsx:1825:            {/* Destination Filter Toggle (Opposite to Logo) */}
+  src\pages\DriverDashboard.jsx:1826:            <div style={{
+  src\pages\DriverDashboard.jsx:1827:              position: 'absolute',
+  src\pages\DriverDashboard.jsx:1828:              top: '18px',
+  src\pages\DriverDashboard.jsx:1829:              right: '14px',
+  src\pages\DriverDashboard.jsx:1830:              zIndex: 30
+  src\pages\DriverDashboard.jsx:1831:            }}>
+  src\pages\DriverDashboard.jsx:1832:              {travelRoute ? (
+  src\pages\DriverDashboard.jsx:1833:                <button 
+  src\pages\DriverDashboard.jsx:1834:                  onClick={handleClearTravelRoute} 
+  src\pages\DriverDashboard.jsx:1835:                  style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px 
+solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '8px', color: '#ef4444', cursor: 'pointer', display: 
+'flex', alignItems: 'center', justifyContent: 'center' }}
+  src\pages\DriverDashboard.jsx:1836:                  title="Clear Destination Filter"
+  src\pages\DriverDashboard.jsx:1837:                >
+  src\pages\DriverDashboard.jsx:1838:                  <MapPin size={18} />
+  src\pages\DriverDashboard.jsx:1839:                </button>
+  src\pages\DriverDashboard.jsx:1840:              ) : (
+  src\pages\DriverDashboard.jsx:1841:                <button 
+  src\pages\DriverDashboard.jsx:1842:                  onClick={() => { setMapModalTarget('destination'); 
+setShowMapModal(true); }} 
+  src\pages\DriverDashboard.jsx:1843:                  style={{ background: 'rgba(56, 189, 248, 0.1)', border: '1px 
+solid rgba(56, 189, 248, 0.3)', borderRadius: '8px', padding: '8px', color: 'var(--secondary)', cursor: 'pointer', 
+display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+  src\pages\DriverDashboard.jsx:1844:                  title="Set Destination Filter"
+  src\pages\DriverDashboard.jsx:1845:                >
+  src\pages\DriverDashboard.jsx:1846:                  <Navigation size={18} />
+  src\pages\DriverDashboard.jsx:1847:                </button>
+  src\pages\DriverDashboard.jsx:1848:              )}
+  src\pages\DriverDashboard.jsx:1849:            </div>
+  src\pages\DriverDashboard.jsx:1850:
+> src\pages\DriverDashboard.jsx:1851:            {/* 1. CENTERED DRIVER PROFILE SECTION */}
+  src\pages\DriverDashboard.jsx:1852:            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 
+'center', textAlign: 'center', gap: '8px', padding: '6px 0' }}>
+  src\pages\DriverDashboard.jsx:1853:              {/* Centered Profile Avatar */}
+  src\pages\DriverDashboard.jsx:1854:              <div style={{ position: 'relative', width: '64px', height: '64px', 
+borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--primary)', background: 'var(--bg-main)', boxShadow: 
+'0 0 0 4px var(--bg-card)', margin: '0 auto' }}>
+  src\pages\DriverDashboard.jsx:1855:                {driverProfilePic ? (
+> src\pages\DriverDashboard.jsx:1856:                  <img src={driverProfilePic} alt="Driver Profile" style={{ 
+width: '100%', height: '100%', objectFit: 'cover' }} />
+  src\pages\DriverDashboard.jsx:1857:                ) : (
+  src\pages\DriverDashboard.jsx:1858:                  <div style={{ width: '100%', height: '100%', display: 'flex', 
+alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 'bold', fontSize: '22px' }}>
+  src\pages\DriverDashboard.jsx:1859:                    {(driverDetails?.name || 'D').charAt(0)}
+  src\pages\DriverDashboard.jsx:1860:                  </div>
+  src\pages\DriverDashboard.jsx:1861:                )}
+  src\pages\DriverDashboard.jsx:1862:
+  src\pages\DriverDashboard.jsx:1863:              </div>
+  src\pages\DriverDashboard.jsx:1864:
+  src\pages\DriverDashboard.jsx:1865:              {/* Centered Driver Name & Rating Badge */}
+  src\pages\DriverDashboard.jsx:1866:              <div>
+  src\pages\DriverDashboard.jsx:1867:                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', 
+color: 'var(--text-main)' }}>
+  src\pages\DriverDashboard.jsx:1868:                  {driverDetails?.name || 'Partner Driver'}
+  src\pages\DriverDashboard.jsx:1869:                </h2>
+  src\pages\DriverDashboard.jsx:1870:                <div style={{ display: 'flex', alignItems: 'center', 
+justifyContent: 'center', gap: '6px', marginTop: '4px' }}>
+  src\pages\DriverDashboard.jsx:1871:                  <span style={{ background: 'rgba(251, 191, 36, 0.2)', border: 
+'1px solid rgba(251, 191, 36, 0.5)', color: '#fbbf24', fontSize: '11px', fontWeight: '800', borderRadius: '12px', 
+padding: '1px 8px' }}>
+  src\pages\DriverDashboard.jsx:1872:                    ? {driverDetails?.rating || '5.0'} Rating
+  src\pages\DriverDashboard.jsx:1873:                  </span>
+  src\pages\DriverDashboard.jsx:1874:              </div>
+  src\pages\DriverDashboard.jsx:1875:                
+  src\pages\DriverDashboard.jsx:1876:                {/* Badges Display */}
+  src\pages\DriverDashboard.jsx:1877:                {driverDetails?.badges && driverDetails.badges.length > 0 && (
+  src\pages\DriverDashboard.jsx:1878:                  <div style={{ display: 'flex', flexWrap: 'wrap', 
+justifyContent: 'center', gap: '4px', marginTop: '10px' }}>
+  src\pages\DriverDashboard.jsx:1879:                    {[...new Set(driverDetails.badges)].map(badge => (
+  src\pages\DriverDashboard.jsx:1880:                      <span key={badge} style={{ background: 
+'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', color: '#3b82f6', fontSize: '10px', fontWeight: 
+'bold', padding: '2px 6px', borderRadius: '8px' }}>
+  src\pages\DriverDashboard.jsx:1881:                        {badge} <span style={{ color: 'var(--text-muted)' 
+}}>({driverDetails.badges.filter(b => b === badge).length})</span>
+  src\pages\DriverDashboard.jsx:1882:                      </span>
+  src\pages\DriverDashboard.jsx:1883:                    ))}
+  src\pages\DriverDashboard.jsx:1884:                  </div>
+  src\pages\DriverDashboard.jsx:1885:                )}
+  src\pages\DriverDashboard.jsx:1886:              </div>
+  src\pages\DriverDashboard.jsx:1887:            </div>
+  src\pages\DriverDashboard.jsx:1888:            
+  src\pages\DriverDashboard.jsx:1889:            {/* ACTION BUTTONS */}
+  src\pages\DriverDashboard.jsx:1890:            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', 
+flexWrap: 'wrap', marginBottom: '16px', zIndex: 20 }}>
+  src\pages\DriverDashboard.jsx:1891:                {/* HAMBURGER MENU BUTTON */}
+  src\pages\DriverDashboard.jsx:1892:                <button onClick={() => setShowMainMenu(!showMainMenu)} style={{ 
+background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 
+'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Menu 
+size={20} /></button>
+  src\pages\DriverDashboard.jsx:1893:
+  src\pages\DriverDashboard.jsx:1894:                {/* THEME TOGGLE BUTTON */}
+  src\pages\DriverDashboard.jsx:1895:                <button onClick={() => setTheme(theme === 'dark' ? 'light' : 
+'dark')} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: 
+'6px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+}}>{theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}</button>
+  src\pages\DriverDashboard.jsx:1896:
+  src\pages\DriverDashboard.jsx:1897:                {/* RIDE PREFERENCES BUTTON */}
+  src\pages\DriverDashboard.jsx:1898:                <button onClick={() => setShowRidePreferencesModal(true)} 
+style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 
+'#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Settings size={20} 
+/></button>
+  src\pages\DriverDashboard.jsx:1899:
+  src\pages\DriverDashboard.jsx:1900:                {/* DUES / WALLET BUTTON */}
+  src\pages\DriverDashboard.jsx:1901:                <button onClick={() => 
+window.open('https://api.whatsapp.com/send?phone=918848347290&text=' + encodeURIComponent('Hello Admin, I am driver ' 
++ (driverDetails?.name || 'Partner') + ' (' + (driverDetails?.phone || '') + '). My pending platform commission dues 
+have reached Rs.' + parseFloat(wallet?.toBePaid || 0).toFixed(2) + '. I would like to clear my dues.'), '_blank')} 
+style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 
+'#f59e0b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wallet size={20} 
+/></button>
+  src\pages\DriverDashboard.jsx:1902:
+  src\pages\DriverDashboard.jsx:1903:                {/* LOGOUT BUTTON */}
+  src\pages\DriverDashboard.jsx:1904:                <button onClick={() => { 
+localStorage.removeItem('driverAuthenticated'); localStorage.removeItem('driverEmail'); 
+localStorage.removeItem('driverName'); localStorage.removeItem('driverId'); navigate('/driver-login'); }} style={{ 
+background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '6px', 
+color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Power 
+size={20} /></button>
+  src\pages\DriverDashboard.jsx:1905:            </div>
+  src\pages\DriverDashboard.jsx:1906:            {/* TODAY'S EARNINGS COMPACT CARD */}
+  src\pages\DriverDashboard.jsx:1907:            <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid 
+rgba(16,185,129,0.2)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 
+'center', justifyContent: 'center', gap: '8px' }}>
+  src\pages\DriverDashboard.jsx:1908:              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+  src\pages\DriverDashboard.jsx:1909:                <div style={{ fontSize: '12px', fontWeight: '800', color: 
+'rgba(16,185,129,0.9)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>?? Today's Earnings</div>
+  src\pages\DriverDashboard.jsx:1910:                <button onClick={() => 
+setHideEarningsAmount(!hideEarningsAmount)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', 
+cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
+  src\pages\DriverDashboard.jsx:1911:                  {hideEarningsAmount ? <EyeOff size={14} /> : <Eye size={14} />}
+  src\pages\DriverDashboard.jsx:1912:                </button>
+  src\pages\DriverDashboard.jsx:1913:              </div>
+  src\pages\DriverDashboard.jsx:1914:              <div style={{ fontSize: '28px', fontWeight: '900', color: 
+'#10b981', textAlign: 'center' }}>
+  src\pages\DriverDashboard.jsx:1915:                {hideEarningsAmount ? '?****' : `?${homeEarnings?.daily?.net ?? 
+'0.00'}`}
+  src\pages\DriverDashboard.jsx:1916:              </div>
+  src\pages\DriverDashboard.jsx:1917:
+  src\pages\DriverDashboard.jsx:1918:              {/* Toggle details button */}
+  src\pages\DriverDashboard.jsx:1919:              <button 
+  src\pages\DriverDashboard.jsx:1920:                onClick={() => setShowEarningsDetails(!showEarningsDetails)}
+  src\pages\DriverDashboard.jsx:1921:                style={{ background: 'none', border: 'none', color: 
+'var(--text-muted)', fontSize: '11px', marginTop: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', 
+width: '100%', justifyContent: 'center', fontWeight: 'bold' }}
+  src\pages\DriverDashboard.jsx:1922:              >
+  src\pages\DriverDashboard.jsx:1923:                {showEarningsDetails ? 'Hide Details ' : 'View More Details '}
+  src\pages\DriverDashboard.jsx:1924:              </button>
+  src\pages\DriverDashboard.jsx:1925:
+  src\pages\DriverDashboard.jsx:1926:              {showEarningsDetails && (
+  src\pages\DriverDashboard.jsx:1927:                <div 
+  src\pages\DriverDashboard.jsx:1928:                  className="earnings-scroll-container"
+  src\pages\DriverDashboard.jsx:1929:                  style={{ 
+  src\pages\DriverDashboard.jsx:1930:                    marginTop: '12px', 
+  src\pages\DriverDashboard.jsx:1931:                    paddingTop: '12px', 
+  src\pages\DriverDashboard.jsx:1932:                    borderTop: '1px solid rgba(16,185,129,0.1)',
+  src\pages\DriverDashboard.jsx:1933:                    maxHeight: '160px',
+  src\pages\DriverDashboard.jsx:1934:                    overflowY: 'auto',
+  src\pages\DriverDashboard.jsx:1935:                    WebkitOverflowScrolling: 'touch',
+  src\pages\DriverDashboard.jsx:1936:                    scrollbarWidth: 'none',
+  src\pages\DriverDashboard.jsx:1937:                    msOverflowStyle: 'none'
+  src\pages\DriverDashboard.jsx:1938:                  }}
+  src\pages\DriverDashboard.jsx:1939:                >
+  src\pages\DriverDashboard.jsx:1940:                  <style>
+  src\pages\DriverDashboard.jsx:1941:                    {`
+  src\pages\DriverDashboard.jsx:1942:                      .earnings-scroll-container::-webkit-scrollbar {
+  src\pages\DriverDashboard.jsx:1943:                        display: none;
+  src\pages\DriverDashboard.jsx:1944:                      }
+  src\pages\DriverDashboard.jsx:1945:                    `}
+  src\pages\DriverDashboard.jsx:1946:                  </style>
+  src\pages\DriverDashboard.jsx:1947:                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', 
+gap: '0', marginBottom: '12px' }}>
+  src\pages\DriverDashboard.jsx:1948:                    <div style={{ textAlign: 'center', borderRight: '1px solid 
+var(--border)' }}>
+  src\pages\DriverDashboard.jsx:1949:                      <div style={{ fontSize: '16px', fontWeight: '800', color: 
+'#f59e0b' }}>
+  src\pages\DriverDashboard.jsx:1950:                        {hideEarningsAmount ? '?****' : 
+`?${homeEarnings?.daily?.gross ?? '0.00'}`}
+  src\pages\DriverDashboard.jsx:1951:                      </div>
+  src\pages\DriverDashboard.jsx:1952:                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', 
+marginTop: '1px' }}>Gross</div>
+  src\pages\DriverDashboard.jsx:1953:                    </div>
+  src\pages\DriverDashboard.jsx:1954:                    <div style={{ textAlign: 'center' }}>
+  src\pages\DriverDashboard.jsx:1955:                      <div style={{ fontSize: '16px', fontWeight: '800', color: 
+'#3b82f6' }}>
+  src\pages\DriverDashboard.jsx:1956:                        {hideEarningsAmount ? '****' : 
+(homeEarnings?.daily?.count ?? 0)}
+  src\pages\DriverDashboard.jsx:1957:                      </div>
+  src\pages\DriverDashboard.jsx:1958:                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', 
+marginTop: '1px' }}>Trips</div>
+  src\pages\DriverDashboard.jsx:1959:                    </div>
+  src\pages\DriverDashboard.jsx:1960:                  </div>
+  src\pages\DriverDashboard.jsx:1961:                  
+  src\pages\DriverDashboard.jsx:1962:                  {/* VIEW EARNINGS HISTORY BUTTON */}
+  src\pages\DriverDashboard.jsx:1963:                  <button
+  src\pages\DriverDashboard.jsx:1964:                    onClick={() => setShowEarningsHistory(true)}
+  src\pages\DriverDashboard.jsx:1965:                    style={{ width: '100%', padding: '9px', borderRadius: '10px', 
+border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '12px', 
+fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', 
+transition: 'all 0.2s', marginBottom: '12px' }}
+  src\pages\DriverDashboard.jsx:1966:                    onMouseEnter={e => e.currentTarget.style.background = 
+'var(--bg-card)'}
+  src\pages\DriverDashboard.jsx:1967:                    onMouseLeave={e => e.currentTarget.style.background = 
+'var(--bg-main)'}
+  src\pages\DriverDashboard.jsx:1968:                  >
+  src\pages\DriverDashboard.jsx:1969:                    <TrendingUp size={13} /> View Earnings History
+  src\pages\DriverDashboard.jsx:1970:                  </button>
+  src\pages\DriverDashboard.jsx:1971:
+  src\pages\DriverDashboard.jsx:1972:                  
+  src\pages\DriverDashboard.jsx:1973:                </div>
+  src\pages\DriverDashboard.jsx:1974:              )}
+  src\pages\DriverDashboard.jsx:1975:            </div>
+  src\pages\DriverDashboard.jsx:1976:
+  src\pages\DriverDashboard.jsx:1977:
+  src\pages\DriverDashboard.jsx:1978:
+  src\pages\DriverDashboard.jsx:1979:
+  src\pages\DriverDashboard.jsx:1980:            {/* 2. GO ONLINE BUTTON (POSITIONED DIRECTLY DOWN / UNDER THE 
+PROFILE) */}
+  src\pages\DriverDashboard.jsx:1981:            <div style={{ display: 'flex', gap: '8px' }}>
+  src\pages\DriverDashboard.jsx:1982:              {isOnline && !currentRide && (
+  src\pages\DriverDashboard.jsx:1983:                <Button 
+  src\pages\DriverDashboard.jsx:1984:                  variant={isPaused ? 'primary' : 'outline'} 
+  src\pages\DriverDashboard.jsx:1985:                  onClick={() => togglePauseBreak(!isPaused)}
+  src\pages\DriverDashboard.jsx:1986:                  style={{
+  src\pages\DriverDashboard.jsx:1987:                    flex: 1,
+  src\pages\DriverDashboard.jsx:1988:                    borderColor: isPaused ? '#f59e0b' : 'var(--border)',
+  src\pages\DriverDashboard.jsx:1989:                    background: isPaused ? '#f59e0b' : 'transparent',
+  src\pages\DriverDashboard.jsx:1990:                    color: isPaused ? '#000' : 'var(--text-main)',
+  src\pages\DriverDashboard.jsx:1991:                    display: 'flex', alignItems: 'center', justifyContent: 
+'center', gap: '6px', fontSize: '13px', padding: '12px'
+  src\pages\DriverDashboard.jsx:1992:                  }}
+  src\pages\DriverDashboard.jsx:1993:                >
+  src\pages\DriverDashboard.jsx:1994:                  {isPaused ? <Play size={16} /> : <Coffee size={16} 
+color="#f59e0b" />}
+  src\pages\DriverDashboard.jsx:1995:                  {isPaused ? 'Resume Trips' : 'Take Rest Break'}
+  src\pages\DriverDashboard.jsx:1996:                </Button>
+  src\pages\DriverDashboard.jsx:1997:              )}
+  src\pages\DriverDashboard.jsx:1998:
+  src\pages\DriverDashboard.jsx:1999:              <Button 
+  src\pages\DriverDashboard.jsx:2000:                variant={isOnline ? 'outline' : 'primary'} 
+  src\pages\DriverDashboard.jsx:2001:                className={isOnline ? 'status-online' : ''}
+  src\pages\DriverDashboard.jsx:2002:                onClick={async () => {
+  src\pages\DriverDashboard.jsx:2003:                  if (isOnline) {
+  src\pages\DriverDashboard.jsx:2004:                    // Go offline - sync status to backend
+  src\pages\DriverDashboard.jsx:2005:                    goOffline();
+  src\pages\DriverDashboard.jsx:2006:                    return;
+> src\pages\DriverDashboard.jsx:2096:            {/* Centered Driver Profile */}
+  src\pages\DriverDashboard.jsx:2097:            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 
+'center', textAlign: 'center', gap: '8px', padding: '6px 0' }}>
+  src\pages\DriverDashboard.jsx:2098:              <div style={{ position: 'relative', width: '64px', height: '64px', 
+borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--primary)', background: 'var(--bg-main)', boxShadow: 
+'0 0 0 4px var(--bg-card)', margin: '0 auto' }}>
+  src\pages\DriverDashboard.jsx:2099:                {driverProfilePic ? (
+> src\pages\DriverDashboard.jsx:2100:                  <img src={driverProfilePic} alt="Driver Profile" style={{ 
+width: '100%', height: '100%', objectFit: 'cover' }} />
+  src\pages\DriverDashboard.jsx:2101:                ) : (
+  src\pages\DriverDashboard.jsx:2102:                  <div style={{ width: '100%', height: '100%', display: 'flex', 
+alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 'bold', fontSize: '22px' }}>
+  src\pages\DriverDashboard.jsx:2103:                    {(driverDetails?.name || 'D').charAt(0)}
+  src\pages\DriverDashboard.jsx:2104:                  </div>
+  src\pages\DriverDashboard.jsx:2105:                )}
+  src\pages\DriverDashboard.jsx:2106:              </div>
+  src\pages\DriverDashboard.jsx:2107:              <div>
+  src\pages\DriverDashboard.jsx:2108:                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', 
+color: 'var(--text-main)' }}>{driverDetails?.name || 'Partner Driver'}</h2>
+  src\pages\DriverDashboard.jsx:2109:                <div style={{ display: 'flex', alignItems: 'center', 
+justifyContent: 'center', gap: '6px', marginTop: '4px' }}>
+  src\pages\DriverDashboard.jsx:2110:                  <span style={{ background: 'rgba(251, 191, 36, 0.2)', border: 
+'1px solid rgba(251, 191, 36, 0.5)', color: '#fbbf24', fontSize: '11px', fontWeight: '800', borderRadius: '12px', 
+padding: '1px 8px' }}>
+  src\pages\DriverDashboard.jsx:2111:                    ? {driverDetails?.rating || '5.0'} Rating
+  src\pages\DriverDashboard.jsx:2112:                  </span>
+  src\pages\DriverDashboard.jsx:2113:                </div>
+  src\pages\DriverDashboard.jsx:2114:                {driverDetails?.badges && driverDetails.badges.length > 0 && (
+  src\pages\DriverDashboard.jsx:2115:                  <div style={{ display: 'flex', flexWrap: 'wrap', 
+justifyContent: 'center', gap: '4px', marginTop: '10px' }}>
+  src\pages\DriverDashboard.jsx:2116:                    {[...new Set(driverDetails.badges)].map(badge => (
+  src\pages\DriverDashboard.jsx:2117:                      <span key={badge} style={{ background: 
+'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', color: '#3b82f6', fontSize: '10px', fontWeight: 
+'bold', padding: '2px 6px', borderRadius: '8px' }}>
+  src\pages\DriverDashboard.jsx:2118:                        {badge} <span style={{ color: 'var(--text-muted)' 
+}}>({driverDetails.badges.filter(b => b === badge).length})</span>
+  src\pages\DriverDashboard.jsx:2119:                      </span>
+  src\pages\DriverDashboard.jsx:2120:                    ))}
+  src\pages\DriverDashboard.jsx:2121:                  </div>
+  src\pages\DriverDashboard.jsx:2122:                )}
+  src\pages\DriverDashboard.jsx:2123:              </div>
+  src\pages\DriverDashboard.jsx:2124:            </div>
+  src\pages\DriverDashboard.jsx:2125:
+  src\pages\DriverDashboard.jsx:2126:            {/* Action Buttons */}
+  src\pages\DriverDashboard.jsx:2127:            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', 
+flexWrap: 'wrap', marginBottom: '16px', zIndex: 20 }}>
+  src\pages\DriverDashboard.jsx:2128:              <button onClick={() => setShowMainMenu(!showMainMenu)} style={{ 
+background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 
+'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Menu 
+size={20} /></button>
+  src\pages\DriverDashboard.jsx:2129:              <button onClick={() => setTheme(theme === 'dark' ? 'light' : 
+'dark')} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: 
+'6px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+}}>{theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}</button>
+  src\pages\DriverDashboard.jsx:2130:              <button onClick={() => setShowRidePreferencesModal(true)} style={{ 
+background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 
+'#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Settings size={20} 
+/></button>
+  src\pages\DriverDashboard.jsx:2131:              <button onClick={() => 
+window.open('https://api.whatsapp.com/send?phone=918848347290&text=' + encodeURIComponent('Hello Admin, I am driver ' 
++ (driverDetails?.name || 'Partner') + ' (' + (driverDetails?.phone || '') + '). My pending platform commission dues 
+have reached Rs.' + parseFloat(wallet?.toBePaid || 0).toFixed(2) + '. I would like to clear my dues.'), '_blank')} 
+style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 
+'#f59e0b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wallet size={20} 
+/></button>
+  src\pages\DriverDashboard.jsx:2132:              <button onClick={() => { 
+localStorage.removeItem('driverAuthenticated'); localStorage.removeItem('driverEmail'); 
+localStorage.removeItem('driverName'); localStorage.removeItem('driverId'); navigate('/driver-login'); }} style={{ 
+background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '6px', 
+color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Power 
+size={20} /></button>
+  src\pages\DriverDashboard.jsx:2133:            </div>
+  src\pages\DriverDashboard.jsx:2134:
+  src\pages\DriverDashboard.jsx:2135:            {/* Today's Earnings */}
+  src\pages\DriverDashboard.jsx:2136:            <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid 
+rgba(16,185,129,0.2)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 
+'center', justifyContent: 'center', gap: '8px' }}>
+  src\pages\DriverDashboard.jsx:2137:              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+  src\pages\DriverDashboard.jsx:2138:                <div style={{ fontSize: '12px', fontWeight: '800', color: 
+'rgba(16,185,129,0.9)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>?? Today's Earnings</div>
+  src\pages\DriverDashboard.jsx:2139:                <button onClick={() => 
+setHideEarningsAmount(!hideEarningsAmount)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', 
+cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
+  src\pages\DriverDashboard.jsx:2140:                  {hideEarningsAmount ? <EyeOff size={14} /> : <Eye size={14} />}
+  src\pages\DriverDashboard.jsx:2141:                </button>
+  src\pages\DriverDashboard.jsx:2142:              </div>
+  src\pages\DriverDashboard.jsx:2143:              <div style={{ fontSize: '28px', fontWeight: '900', color: 
+'#10b981', textAlign: 'center' }}>
+  src\pages\DriverDashboard.jsx:2144:                {hideEarningsAmount ? '?****' : `?${homeEarnings?.daily?.net ?? 
+'0.00'}`}
+  src\pages\DriverDashboard.jsx:2145:              </div>
+  src\pages\DriverDashboard.jsx:2146:              <button onClick={() => 
+setShowEarningsDetails(!showEarningsDetails)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', 
+fontSize: '11px', marginTop: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', width: '100%', 
+justifyContent: 'center', fontWeight: 'bold' }}>
+  src\pages\DriverDashboard.jsx:2147:                {showEarningsDetails ? 'Hide Details ' : 'View More Details '}
+  src\pages\DriverDashboard.jsx:2148:              </button>
+  src\pages\DriverDashboard.jsx:2149:              {showEarningsDetails && (
+  src\pages\DriverDashboard.jsx:2150:                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: 
+'1px solid rgba(16,185,129,0.1)', maxHeight: '160px', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 
+'none' }}>
+  src\pages\DriverDashboard.jsx:2151:                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', 
+gap: '0', marginBottom: '12px' }}>
+  src\pages\DriverDashboard.jsx:2152:                    <div style={{ textAlign: 'center', borderRight: '1px solid 
+var(--border)' }}>
+  src\pages\DriverDashboard.jsx:2153:                      <div style={{ fontSize: '16px', fontWeight: '800', color: 
+'#f59e0b' }}>{hideEarningsAmount ? '?****' : `?${homeEarnings?.daily?.gross ?? '0.00'}`}</div>
+  src\pages\DriverDashboard.jsx:2154:                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', 
+marginTop: '1px' }}>Gross</div>
+  src\pages\DriverDashboard.jsx:2155:                    </div>
+  src\pages\DriverDashboard.jsx:2156:                    <div style={{ textAlign: 'center' }}>
+  src\pages\DriverDashboard.jsx:2157:                      <div style={{ fontSize: '16px', fontWeight: '800', color: 
+'#3b82f6' }}>{hideEarningsAmount ? '****' : (homeEarnings?.daily?.count ?? 0)}</div>
+  src\pages\DriverDashboard.jsx:2158:                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', 
+marginTop: '1px' }}>Trips</div>
+  src\pages\DriverDashboard.jsx:2159:                    </div>
+  src\pages\DriverDashboard.jsx:2160:                  </div>
+  src\pages\DriverDashboard.jsx:2161:                  <button onClick={() => setShowEarningsHistory(true)} style={{ 
+width: '100%', padding: '9px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-main)', 
+color: 'var(--text-main)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 
+'center', justifyContent: 'center', gap: '6px', marginBottom: '12px' }}>
+  src\pages\DriverDashboard.jsx:2162:                    <TrendingUp size={13} /> View Earnings History
+  src\pages\DriverDashboard.jsx:2163:                  </button>
+  src\pages\DriverDashboard.jsx:2164:                </div>
+  src\pages\DriverDashboard.jsx:2165:              )}
+  src\pages\DriverDashboard.jsx:2166:            </div>
+  src\pages\DriverDashboard.jsx:2167:
+  src\pages\DriverDashboard.jsx:2168:            {/* Go Online/Offline Button */}
+  src\pages\DriverDashboard.jsx:2169:            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+  src\pages\DriverDashboard.jsx:2170:              {isOnline && !currentRide && (
+  src\pages\DriverDashboard.jsx:2171:                <Button variant={isPaused ? 'primary' : 'outline'} onClick={() => 
+togglePauseBreak(!isPaused)} style={{ flex: 1, borderColor: isPaused ? '#f59e0b' : 'var(--border)', background: 
+isPaused ? '#f59e0b' : 'transparent', color: isPaused ? '#000' : 'var(--text-main)', display: 'flex', alignItems: 
+'center', justifyContent: 'center', gap: '6px', fontSize: '13px', padding: '12px' }}>
+  src\pages\DriverDashboard.jsx:2172:                  {isPaused ? <Play size={16} /> : <Coffee size={16} 
+color="#f59e0b" />}
+  src\pages\DriverDashboard.jsx:2173:                  {isPaused ? 'Resume Trips' : 'Take Rest Break'}
+  src\pages\DriverDashboard.jsx:2174:                </Button>
+  src\pages\DriverDashboard.jsx:2175:              )}
+  src\pages\DriverDashboard.jsx:2176:              <Button variant={isOnline ? 'outline' : 'primary'} 
+className={isOnline ? 'status-online' : ''} onClick={async () => { if (isOnline) { goOffline(); return; } if 
+(!isDailyVerified) { setShowVerifyModal(true); setVerifyStep('camera'); setCapturedPhoto(null); setTimeout(() => 
+startCamera(), 200); } else { goOnline(); } }} style={{ flex: 1, width: '100%', padding: '12px', fontSize: '14px', 
+fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: isOnline ? 
+'rgba(239, 68, 68, 0.12)' : 'linear-gradient(135deg, #10b981, #059669)', color: isOnline ? '#ef4444' : '#ffffff', 
+borderColor: isOnline ? '#ef4444' : 'transparent', boxShadow: isOnline ? '0 4px 14px rgba(239,68,68,0.2)' : '0 4px 
+16px rgba(16, 185, 129, 0.35)' }}>
+  src\pages\DriverDashboard.jsx:2177:                <Power size={18} /> {isOnline ? 'Go Offline' : 'Go Online'}
+  src\pages\DriverDashboard.jsx:2178:              </Button>
+  src\pages\DriverDashboard.jsx:2179:            </div>
+  src\pages\DriverDashboard.jsx:2180:
+  src\pages\DriverDashboard.jsx:2181:            {travelRoute && (
+  src\pages\DriverDashboard.jsx:2182:              <div style={{ marginTop: '12px', padding: '10px', background: 
+'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '10px', textAlign: 'center' }}>
+  src\pages\DriverDashboard.jsx:2183:                <div style={{ fontSize: '11px', color: 'var(--text-muted)', 
+marginBottom: '2px' }}>Currently matching rides towards:</div>
+  src\pages\DriverDashboard.jsx:2184:                <div style={{ fontSize: '12px', fontWeight: '800', color: 
+'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+  src\pages\DriverDashboard.jsx:2185:                  <MapPin size={12} /> {travelRoute.destination.split(',')[0]}
+  src\pages\DriverDashboard.jsx:2186:                </div>
+  src\pages\DriverDashboard.jsx:2187:              </div>
+  src\pages\DriverDashboard.jsx:2188:            )}
+  src\pages\DriverDashboard.jsx:2189:          </div>
+  src\pages\DriverDashboard.jsx:2190:          )}
+  src\pages\DriverDashboard.jsx:2191:
+  src\pages\DriverDashboard.jsx:2192:          {showMainMenu && (<>
+  src\pages\DriverDashboard.jsx:2193:          {/* DEDICATED ROW UNDER GO ONLINE BUTTON FOR ADMIN MESSAGE NOTICE 
+(ELECTRIC PURPLE COLOUR THEME) */}
+  src\pages\DriverDashboard.jsx:2194:          {adminMessages.length > 0 && (
+  src\pages\DriverDashboard.jsx:2195:            <div style={{ marginBottom: '14px' }}>
+  src\pages\DriverDashboard.jsx:2196:              <Button 
+  src\pages\DriverDashboard.jsx:2197:                variant="outline"
+  src\pages\DriverDashboard.jsx:2198:                onClick={() => {
+  src\pages\DriverDashboard.jsx:2199:                  setShowAdminMessagesModal(true);
+  src\pages\DriverDashboard.jsx:2200:                  clearAdminMessages();
+  src\pages\DriverDashboard.jsx:2201:                }}
+  src\pages\DriverDashboard.jsx:2202:                style={{
+  src\pages\DriverDashboard.jsx:2203:                  width: '100%',
+  src\pages\DriverDashboard.jsx:2204:                  position: 'relative',
+  src\pages\DriverDashboard.jsx:2205:                  borderColor: '#8b5cf6',
+  src\pages\DriverDashboard.jsx:2206:                  color: '#a78bfa',
+  src\pages\DriverDashboard.jsx:2207:                  background: 'rgba(139, 92, 246, 0.12)',
+  src\pages\DriverDashboard.jsx:2208:                  display: 'flex',
+  src\pages\DriverDashboard.jsx:2209:                  alignItems: 'center',
+  src\pages\DriverDashboard.jsx:2210:                  justifyContent: 'center',
+  src\pages\DriverDashboard.jsx:2211:                  gap: '8px',
+  src\pages\DriverDashboard.jsx:2212:                  fontSize: '13px',
+  src\pages\DriverDashboard.jsx:2213:                  padding: '12px 16px',
+  src\pages\DriverDashboard.jsx:2214:                  borderRadius: '12px',
+  src\pages\DriverDashboard.jsx:2215:                  boxShadow: '0 4px 16px rgba(139, 92, 246, 0.25)'
+  src\pages\DriverDashboard.jsx:2216:                }}
+  src\pages\DriverDashboard.jsx:2217:              >
+  src\pages\DriverDashboard.jsx:2218:                <MessageSquare size={16} color="#a78bfa" /> ?? New Notice from 
+Admin
+  src\pages\DriverDashboard.jsx:2219:                <span style={{ background: 'linear-gradient(135deg, #8b5cf6, 
+#6d28d9)', color: '#fff', fontSize: '10px', borderRadius: '10px', padding: '2px 8px', fontWeight: '800' }}>
+  src\pages\DriverDashboard.jsx:2220:                  {adminMessages.length}
+  src\pages\DriverDashboard.jsx:2221:                </span>
+  src\pages\DriverDashboard.jsx:2222:              </Button>
+  src\pages\DriverDashboard.jsx:2223:            </div>
+  src\pages\DriverDashboard.jsx:2224:          )}
+  src\pages\DriverDashboard.jsx:2225:
+  src\pages\DriverDashboard.jsx:2226:          {/* PARTNER DASHBOARD MENU VERTICAL LIST */}
+  src\pages\DriverDashboard.jsx:2227:          <div style={{
+  src\pages\DriverDashboard.jsx:2228:            display: 'flex',
+  src\pages\DriverDashboard.jsx:2229:            flexDirection: 'column',
+  src\pages\DriverDashboard.jsx:2230:            gap: '8px',
+  src\pages\DriverDashboard.jsx:2231:            padding: '12px',
+  src\pages\DriverDashboard.jsx:2232:            background: 'rgba(255, 255, 255, 0.02)',
+  src\pages\DriverDashboard.jsx:2233:            border: '1px solid var(--border)',
+  src\pages\DriverDashboard.jsx:2234:            borderRadius: '16px',
+  src\pages\DriverDashboard.jsx:2235:            marginBottom: '20px'
+  src\pages\DriverDashboard.jsx:2236:          }}>
+  src\pages\DriverDashboard.jsx:2237:            <span style={{ fontSize: '11px', fontWeight: '800', textTransform: 
+'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '4px', paddingLeft: '4px' }}>
+  src\pages\DriverDashboard.jsx:2238:              ?? Partner Dashboard Menu
+  src\pages\DriverDashboard.jsx:2239:            </span>
+  src\pages\DriverDashboard.jsx:2240:
+  src\pages\DriverDashboard.jsx:2241:            {/* 1. TRIPS & DISPATCHES */}
+  src\pages\DriverDashboard.jsx:2242:            <button
+  src\pages\DriverDashboard.jsx:2243:              onClick={() => setActiveMenu('dispatches')}
+  src\pages\DriverDashboard.jsx:2244:              style={{
+  src\pages\DriverDashboard.jsx:2245:                padding: '12px 16px',
+  src\pages\DriverDashboard.jsx:2246:                borderRadius: '12px',
+  src\pages\DriverDashboard.jsx:2247:                border: activeMenu === 'dispatches' ? '1px solid var(--primary)' 
+: '1px solid var(--border)',
+  src\pages\DriverDashboard.jsx:2248:                background: activeMenu === 'dispatches' ? 'rgba(16, 185, 129, 
+0.15)' : 'rgba(255, 255, 255, 0.01)',
+  src\pages\DriverDashboard.jsx:2249:                color: activeMenu === 'dispatches' ? 'var(--primary)' : 
+'var(--text-main)',
+  src\pages\DriverDashboard.jsx:2250:                fontWeight: '700',
+
+

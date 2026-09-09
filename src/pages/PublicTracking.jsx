@@ -4,11 +4,7 @@ import { useParams } from 'react-router-dom';
 import { MapPin, Navigation, Car, ShieldCheck } from 'lucide-react';
 import './Dashboard.css';
 
-const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
-  ? 'https://hum-fleet-backend.loca.lt'
-  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
-    ? 'http://localhost:5000'
-    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://humfleet.xyz';
 
 const PublicTracking = () => {
   const { id } = useParams();

@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
-import { auth, googleProvider } from '../firebase';
-import { signInWithEmailAndPassword, signInWithPopup, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
+import { Eye, EyeOff, MessageCircle } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import Button from '../components/Button';
 import './Auth.css';
 
-const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
-  ? 'https://hum-fleet-backend.loca.lt'
-  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
-    ? 'http://localhost:5000'
-    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://humfleet.xyz';
 
 const getBackendUrl = () => { return API_BASE; };
 
@@ -28,29 +21,6 @@ const PassengerLogin = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-
-  const handleGoogleAuth = async () => {
-    try {
-      let result;
-      if (Capacitor.isNativePlatform()) {
-        const user = await GoogleAuth.signIn();
-        const credential = GoogleAuthProvider.credential(user.authentication.idToken);
-        result = await signInWithCredential(auth, credential);
-      } else {
-        result = await signInWithPopup(auth, googleProvider);
-      }
-      const user = result.user;
-      
-      localStorage.setItem('passengerEmail', user.email);
-      localStorage.setItem('passengerName', user.displayName || 'Passenger');
-      
-      // Optionally notify backend here, but for now we proceed
-      navigate('/passenger');
-    } catch (err) {
-      console.error(err);
-      setError('Google Sign-In was unsuccessful: ' + err.message);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -108,7 +78,7 @@ const PassengerLogin = () => {
               type="text" 
               id="loginId" 
               className="input-field" 
-              placeholder="name@example.com or +91..." 
+              placeholder="name@example.com or Mobile Number" 
               value={loginId}
               onChange={(e) => setLoginId(e.target.value)}
               required 
@@ -153,7 +123,7 @@ const PassengerLogin = () => {
             Login
           </Button>
 
-          <div style={{ display: 'flex', alignItems: 'center', margin: '8px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', margin: '16px 0' }}>
             <div style={{ flex: 1, height: '1px', background: 'var(--border-color, rgba(255, 255, 255, 0.1))' }}></div>
             <span style={{ padding: '0 12px', color: 'var(--text-muted)', fontSize: '13px', fontWeight: '500' }}>OR</span>
             <div style={{ flex: 1, height: '1px', background: 'var(--border-color, rgba(255, 255, 255, 0.1))' }}></div>
@@ -161,27 +131,30 @@ const PassengerLogin = () => {
 
           <button 
             type="button" 
-            className="input-field" 
             style={{ 
+              width: '100%',
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center', 
-              gap: '12px', 
-              background: 'white', 
-              color: '#333', 
-              fontWeight: '600',
+              gap: '10px', 
+              background: 'rgba(37, 211, 102, 0.1)', 
+              color: '#25D366', 
+              fontWeight: '700',
               cursor: 'pointer',
-              border: 'none',
+              border: '1px solid rgba(37, 211, 102, 0.3)',
               padding: '12px',
+              borderRadius: '12px',
               transition: 'all 0.2s ease',
-              marginTop: '4px'
             }}
-            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-            onClick={handleGoogleAuth}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 211, 102, 0.15)'; e.currentTarget.style.background = 'rgba(37, 211, 102, 0.15)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.background = 'rgba(37, 211, 102, 0.1)'; }}
+            onClick={() => {
+              const text = `Hello, I would like to book a ride with HUM Fleet.`;
+              window.open(`https://api.whatsapp.com/send?phone=918848347290&text=${encodeURIComponent(text)}`, '_blank');
+            }}
           >
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: '20px', height: '20px' }} />
-            Sign in with Google
+            <MessageCircle size={20} />
+            Quick Book via WhatsApp
           </button>
         </form>
         <div className="auth-footer">

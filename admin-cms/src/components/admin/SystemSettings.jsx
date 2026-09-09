@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Phone, CreditCard, Upload } from 'lucide-react';
+import { MapPin, Phone, CreditCard, Upload, DollarSign } from 'lucide-react';
 import Button from '../Button';
 
 const SystemSettings = ({
@@ -7,6 +7,8 @@ const SystemSettings = ({
   ratePerKm, setRatePerKm,
   minRatePerHour, setMinRatePerHour,
   surgeMultiplier, setSurgeMultiplier,
+  platformCommissionPercentage, setPlatformCommissionPercentage,
+  platformCommissionFlat, setPlatformCommissionFlat,
   systemStatus, setSystemStatus,
   voipMasking, setVoipMasking,
   gatewayType, setGatewayType,
@@ -71,7 +73,38 @@ const SystemSettings = ({
             </div>
           </div>
 
-          <div className="form-row">
+          <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '20px', marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <DollarSign size={18} color="#10b981" /> Platform Commission & Fees
+            </h3>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              Set the platform commission percentage or a flat fee charged to drivers per ride. Leave both as 0 to take no commission.
+            </p>
+            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="form-group">
+                <label>Platform Commission (%)</label>
+                <input 
+                  type="number" step="0.1" min="0"
+                  className="input-field" 
+                  value={platformCommissionPercentage}
+                  onChange={(e) => setPlatformCommissionPercentage(e.target.value)}
+                  placeholder="e.g. 10 (Leave 0 for no commission)"
+                />
+              </div>
+              <div className="form-group">
+                <label>Platform Flat Trip Fee (INR)</label>
+                <input 
+                  type="number" step="0.1" min="0"
+                  className="input-field" 
+                  value={platformCommissionFlat}
+                  onChange={(e) => setPlatformCommissionFlat(e.target.value)}
+                  placeholder="e.g. 5 (Leave 0 for no flat fee)"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-row" style={{ marginTop: '16px' }}>
             <div className="form-group">
               <label>Peak Surge Multiplier</label>
               <select 

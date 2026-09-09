@@ -1,0 +1,8 @@
+
+> src\pages\DriverDashboard.jsx:1758:          {/* DRIVER PROFILE & ONLINE STATUS CARD - collapses to toggle during 
+active trip */}
+  src\pages\DriverDashboard.jsx:1759:          {currentRide && ['Accepted', 'Arrived', 'In 
+Progress'].includes(currentRide.status) ? (
+  src\pages\DriverDashboard.jsx:1760:            <>
+
+

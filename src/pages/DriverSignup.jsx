@@ -1,46 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, User, Mail, Phone, Lock, EyeOff, Eye, Car, CreditCard, ChevronRight, CheckCircle, Navigation, ShieldCheck, FileText, Camera, Check } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import Button from '../components/Button';
 import './Auth.css';
 
-const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('loca.lt'))
-  ? 'https://hum-fleet-backend.loca.lt'
-  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'))
-    ? 'http://localhost:5000'
-    : (import.meta.env.VITE_BACKEND_URL || 'https://server-ashen-beta.vercel.app');
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://humfleet.xyz';
 
 const getBackendUrl = () => { return API_BASE; };
 
 const DriverSignup = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [step, setStep] = useState(1); // 1: Personal, 2: Vehicle, 3: Photos, 4: Documents, 5: Face Verification, 6: Bank
 
   // Step 1: Personal Info
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState('');
-  const [licenseNumber, setLicenseNumber] = useState('');
-  const [isDriverOnly, setIsDriverOnly] = useState(false);
-  const [languages, setLanguages] = useState([]);
-  const [baseLocationName, setBaseLocationName] = useState('');
-  const [baseLocationCoords, setBaseLocationCoords] = useState(null);
 
-  const handleGetBaseLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setBaseLocationCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => alert('Please allow location permissions to set your stand.')
-      );
-    } else {
-      alert('Geolocation is not supported by this browser.');
-    }
-  };
+  const [isDriverOnly, setIsDriverOnly] = useState(false);
+
 
   // Step 2: Vehicle Details
   const [manufacturer, setManufacturer] = useState('');
@@ -72,16 +56,13 @@ const DriverSignup = () => {
   // Step 3: Photos (Base64 data)
   const [photos, setPhotos] = useState({
     front: null,
-    rear: null,
-    left: null,
-    right: null,
-    inside: null
+    rear: null
   });
 
   // Step 4: Documents (Base64 data)
   const [docs, setDocs] = useState({
     pollution: null,
-    rc: null,
+
     insurance: null,
     fitness: null,
     licenseFront: null,
@@ -95,12 +76,7 @@ const DriverSignup = () => {
   const [cameraStream, setCameraStream] = useState(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
 
-  // Step 6: Indian Bank Details
-  const [bankName, setBankName] = useState('');
-  const [customBankName, setCustomBankName] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [ifscCode, setIfscCode] = useState('');
-  const [holderName, setHolderName] = useState('');
+
 
   // Camera Management Helpers for Live Face Verification
   const startRegistrationCamera = async () => {
@@ -228,7 +204,7 @@ const DriverSignup = () => {
 
     const driverData = {
       name,
-      email,
+      email: `${phone}@humfleet.xyz`,
       phone: `+91 ${phone}`,
       password,
       manufacturer: customManufacturer || manufacturer,
@@ -239,18 +215,11 @@ const DriverSignup = () => {
       isPinkVehicle,
       allowsPets,
       isDriverOnly,
-      languages,
-      licenseNumber,
+
       photos,
       docs,
       facePhoto,
-      profilePic: facePhoto,
-      bank: {
-        bankName: bankName === 'Other' ? customBankName : bankName,
-        accountNumber,
-        ifscCode,
-        holderName
-      }
+      profilePic: facePhoto
     };
 
     try {
@@ -262,14 +231,8 @@ const DriverSignup = () => {
         body: JSON.stringify(driverData)
       });
       if (response.ok) {
-        if (baseLocationName && baseLocationCoords) {
-          fetch(`${getBackendUrl()}/api/locations`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: baseLocationName, lat: baseLocationCoords.lat, lng: baseLocationCoords.lng })
-          }).catch(() => {});
-        }
-        localStorage.setItem('driverEmail', email);
+
+        localStorage.setItem('driverEmail', `${phone}@humfleet.xyz`);
         navigate('/driver');
       } else {
         const errorData = await response.json();
@@ -286,13 +249,12 @@ const DriverSignup = () => {
       <div className="auth-card glass-card animate-fade-in" style={{ maxWidth: '550px' }}>
         <div className="auth-header">
           <h2>Apply to Drive</h2>
-          <p>Step {step} of 6: {
+          <p>Step {step} of 5: {
             step === 1 ? 'Personal Info' : 
             step === 2 ? 'Vehicle Info' : 
             step === 3 ? 'Vehicle Photos' : 
             step === 4 ? 'Vehicle Documents' :
-            step === 5 ? 'Face Verification' :
-            'Bank Details'
+            'Face Verification'
           }</p>
           
           {/* Step indicator dots */}
@@ -302,7 +264,6 @@ const DriverSignup = () => {
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: step >= 3 ? 'var(--primary)' : 'var(--border)' }}></span>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: step >= 4 ? 'var(--primary)' : 'var(--border)' }}></span>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: step >= 5 ? 'var(--primary)' : 'var(--border)' }}></span>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: step >= 6 ? 'var(--primary)' : 'var(--border)' }}></span>
           </div>
         </div>
 
@@ -332,17 +293,7 @@ const DriverSignup = () => {
                 required
               />
             </div>
-            <div className="input-group">
-              <div className="input-icon"><Mail size={18} /></div>
-              <input 
-                type="email" 
-                className="input-field with-icon" 
-                placeholder="Email Address" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+
             <div className="form-group" style={{ marginBottom: '16px' }}>
               <div style={{ display: 'flex', gap: '8px', height: '48px' }}>
                 <span className="input-field" style={{ width: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.05)', fontWeight: 'bold', padding: 0 }}>
@@ -429,61 +380,11 @@ const DriverSignup = () => {
               </button>
             </div>
             
-            <div className="form-group" style={{ marginTop: '16px' }}>
-              <label>Languages Known</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '8px' }}>
-                {['English', 'Hindi', 'Malayalam', 'Tamil', 'Telugu', 'Kannada', 'Marathi', 'Arabic'].map(lang => (
-                  <label key={lang} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-                    <input 
-                      type="checkbox"
-                      checked={languages.includes(lang)}
-                      onChange={(e) => {
-                        if (e.target.checked) setLanguages([...languages, lang]);
-                        else setLanguages(languages.filter(l => l !== lang));
-                      }}
-                      style={{ accentColor: 'var(--primary)', width: '16px', height: '16px' }}
-                    />
-                    {lang}
-                  </label>
-                ))}
-              </div>
-            </div>
 
-            <div className="form-group" style={{ marginTop: '16px' }}>
-              <label>Register Your Auto Stand / Base Location (Optional)</label>
-              <div className="input-with-icon" style={{ display: 'flex', gap: '8px' }}>
-                <Navigation className="input-icon" size={18} />
-                <input 
-                  type="text" 
-                  placeholder="e.g. Majeed's Auto Stand"
-                  value={baseLocationName}
-                  onChange={(e) => setBaseLocationName(e.target.value)}
-                  style={{ flex: 1, paddingLeft: '40px' }}
-                />
-                <Button type="button" variant="outline" onClick={handleGetBaseLocation} style={{ padding: '0 12px', whiteSpace: 'nowrap', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  {baseLocationCoords ? <Check size={16} color="green" /> : <Navigation size={16} />}
-                  {baseLocationCoords ? 'Saved' : 'Get GPS'}
-                </Button>
-              </div>
-              <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
-                This location will be permanently saved so passengers can instantly search for your stand!
-              </p>
-            </div>
 
-            <div className="form-group" style={{ marginTop: '16px', background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', color: 'var(--primary)' }}>
-                <input 
-                  type="checkbox" 
-                  checked={isDriverOnly} 
-                  onChange={(e) => setIsDriverOnly(e.target.checked)}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
-                />
-                <span>👨‍✈️ Register as Driver Only (No Vehicle)</span>
-              </label>
-              <p style={{ margin: '6px 0 0 28px', fontSize: '11px', color: 'var(--text-muted)' }}>
-                Select this if you do not have your own vehicle and only wish to drive passenger's vehicles. You will skip vehicle registration steps.
-              </p>
-            </div>
+
+
+
             <Button variant="primary" type="submit" className="full-width" style={{ marginTop: '16px' }}>
               Continue
             </Button>
@@ -660,10 +561,7 @@ const DriverSignup = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
               {[
                 { id: 'front', label: 'Front view' },
-                { id: 'rear', label: 'Rear view' },
-                { id: 'left', label: 'Left Side' },
-                { id: 'right', label: 'Right Side' },
-                { id: 'inside', label: 'Inside Cabin' }
+                { id: 'rear', label: 'Rear view' }
               ].map((side) => (
                 <div key={side.id} className="photo-upload-box" style={{ 
                   border: '2px dashed var(--border)', 
@@ -725,27 +623,14 @@ const DriverSignup = () => {
               Please enter your licence details and upload compliance documents. JPEG or PDF format is accepted.
             </p>
 
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label>Driving Licence Number</label>
-              <input 
-                type="text" 
-                className="input-field" 
-                placeholder="Enter DL number (e.g. DL1420110012345)"
-                value={licenseNumber}
-                onChange={(e) => setLicenseNumber(e.target.value.toUpperCase())}
-                required
-              />
-            </div>
+
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
               {[
                 { id: 'licenseFront', label: 'Licence (Front Side)' },
                 { id: 'licenseBack', label: 'Licence (Back Side)' },
                 ...(!isDriverOnly ? [
-                  { id: 'rc', label: 'Registration (RC)' },
-                  { id: 'pollution', label: 'Pollution (PUC)' },
-                  { id: 'insurance', label: 'Insurance Policy' },
-                  { id: 'fitness', label: 'Fitness Certificate' }
+                  { id: 'insurance', label: 'Insurance Policy' }
                 ] : [])
               ].map((doc) => (
                 <div key={doc.id} className="photo-upload-box" style={{ 
@@ -809,11 +694,11 @@ const DriverSignup = () => {
         {step === 5 && (
           <div className="auth-form">
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px', textAlign: 'center' }}>
-              Position your face clearly inside the oval guide frame and take a live verification selfie.
+              Position your face clearly inside the guide frame and take a live verification selfie.
             </p>
 
             {/* Camera / Captured Face View Box */}
-            <div style={{ position: 'relative', width: '240px', height: '240px', margin: '0 auto 20px auto', borderRadius: '50%', overflow: 'hidden', border: '4px solid var(--primary)', background: '#000', boxShadow: '0 4px 20px rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ position: 'relative', width: '240px', height: '320px', margin: '0 auto 20px auto', borderRadius: '12px', overflow: 'hidden', border: '4px solid var(--primary)', background: '#000', boxShadow: '0 4px 20px rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               
               {facePhoto ? (
                 <img src={facePhoto} alt="Captured Face Selfie" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -828,7 +713,7 @@ const DriverSignup = () => {
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                   />
                   {/* Facial Alignment Guides */}
-                  <div style={{ position: 'absolute', inset: '15px', border: '2px dashed #10b981', borderRadius: '50%', pointerEvents: 'none', opacity: 0.8 }}></div>
+                  <div style={{ position: 'absolute', inset: '15px', border: '2px dashed #10b981', borderRadius: '8px', pointerEvents: 'none', opacity: 0.8 }}></div>
                 </>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: 'var(--text-muted)' }}>
@@ -865,6 +750,10 @@ const DriverSignup = () => {
               </div>
             )}
 
+            <div style={{ textAlign: 'center', margin: '16px 0', fontSize: '13px', color: 'var(--text-muted)' }}>
+              By submitting this application, you agree to our <Link to="/driver/terms" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms & Conditions</Link>.
+            </div>
+
             <div style={{ display: 'flex', gap: '12px' }}>
               <Button variant="outline" type="button" onClick={() => { stopRegistrationCamera(); handlePrevStep(); }} className="full-width">
                 Back
@@ -872,122 +761,25 @@ const DriverSignup = () => {
               <Button 
                 variant="primary" 
                 type="button" 
-                onClick={() => {
+                onClick={(e) => {
                   if (!facePhoto) {
-                    alert('Please capture a live face verification selfie before continuing.');
+                    alert('Please capture a live face verification selfie before submitting.');
                     return;
                   }
                   stopRegistrationCamera();
-                  setStep(6);
+                  handleSubmit(e);
                 }} 
                 className="full-width"
               >
-                Continue to Bank Details
+                Submit Application
               </Button>
             </div>
           </div>
         )}
 
-        {step === 6 && (
-          <form className="auth-form" onSubmit={handleSubmit}>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-              Please enter your Indian bank account details to enable platform payouts.
-            </p>
-            
-            <div className="input-group">
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Bank Name</span>
-              <select 
-                className="input-field" 
-                value={bankName}
-                onChange={(e) => setBankName(e.target.value)}
-                required
-              >
-                <option value="">Select Bank</option>
-                <option value="State Bank of India (SBI)">State Bank of India (SBI)</option>
-                <option value="HDFC Bank">HDFC Bank</option>
-                <option value="ICICI Bank">ICICI Bank</option>
-                <option value="Punjab National Bank (PNB)">Punjab National Bank (PNB)</option>
-                <option value="Axis Bank">Axis Bank</option>
-                <option value="Kotak Mahindra Bank">Kotak Mahindra Bank</option>
-                <option value="Bank of Baroda">Bank of Baroda</option>
-                <option value="Canara Bank">Canara Bank</option>
-                <option value="Union Bank of India">Union Bank of India</option>
-                <option value="IndusInd Bank">IndusInd Bank</option>
-                <option value="Bank of India">Bank of India</option>
-                <option value="Indian Bank">Indian Bank</option>
-                <option value="Central Bank of India">Central Bank of India</option>
-                <option value="Yes Bank">Yes Bank</option>
-                <option value="IDFC FIRST Bank">IDFC FIRST Bank</option>
-                <option value="Federal Bank">Federal Bank</option>
-                <option value="Other">Other</option>
-              </select>
-              {bankName === 'Other' && (
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="Enter Bank Name"
-                  value={customBankName}
-                  onChange={(e) => setCustomBankName(e.target.value)}
-                  style={{ marginTop: '8px' }}
-                  required
-                />
-              )}
-            </div>
 
-            <div className="input-group">
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Account Holder Name</span>
-              <input 
-                type="text" 
-                className="input-field" 
-                placeholder="Name as in Bank Passbook" 
-                value={holderName}
-                onChange={(e) => setHolderName(e.target.value)}
-                required
-              />
-            </div>
 
-            <div className="form-row">
-              <div className="form-group" style={{ flex: 1, margin: 0 }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Account Number</span>
-                <input 
-                  type="text" 
-                  className="input-field" 
-                  placeholder="11 to 16 digits" 
-                  value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
-                  required
-                />
-              </div>
-
-              <div className="form-group" style={{ flex: 1, margin: 0 }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>IFSC Code</span>
-                <input 
-                  type="text" 
-                  className="input-field" 
-                  placeholder="e.g. SBIN0001234" 
-                  value={ifscCode}
-                  onChange={(e) => setIfscCode(e.target.value.toUpperCase().slice(0, 11))}
-                  required
-                />
-              </div>
-            </div>
-
-            <div style={{ textAlign: 'center', margin: '16px 0', fontSize: '13px', color: 'var(--text-muted)' }}>
-              By submitting this application, you agree to our <Link to="/driver/terms" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms & Conditions</Link>.
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-              <Button variant="outline" type="button" onClick={handlePrevStep} className="full-width">
-                Back
-              </Button>
-              <Button variant="primary" type="submit" className="full-width">
-                Submit Application
-              </Button>
-            </div>
-          </form>
-        )}
-
-        {step === 1 && (
+        {step === 1 && location.pathname !== '/join' && (
           <div className="auth-footer">
             Already registered? <Link to="/driver/login" className="auth-link">Login</Link>
           </div>
