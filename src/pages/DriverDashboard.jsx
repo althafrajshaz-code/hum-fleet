@@ -236,6 +236,7 @@ const DriverDashboard = () => {
   const [showEndTripSummary, setShowEndTripSummary] = useState(false);
   const [collectCash, setCollectCash] = useState(true);
   const [ridePin, setRidePin] = useState('');
+
   const [waitTimerSeconds, setWaitTimerSeconds] = useState(0);
 
   // Live Waiting Timer Effect
@@ -1913,10 +1914,15 @@ You can only accept prepaid trips until your balance is cleared.`);
                 <button onClick={() => setShowRidePreferencesModal(true)} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Settings size={20} /></button>
 
                 {/* DUES / WALLET BUTTON */}
-                
+                <button onClick={() => { setShowMainMenu(true); setActiveMenu('wallet'); }} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  <Wallet size={20} />
+                  {parseFloat(wallet.toBePaid || 0) > 1000 && (
+                    <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '10px', height: '10px', background: '#ef4444', borderRadius: '50%', border: '2px solid var(--bg-card)' }} />
+                  )}
+                </button>
 
                 {/* LOGOUT BUTTON */}
-                <button onClick={() => { localStorage.removeItem('driverAuthenticated'); localStorage.removeItem('driverEmail'); localStorage.removeItem('driverName'); localStorage.removeItem('driverId'); navigate('/driver-login'); }} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '6px', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Power size={20} /></button>
+                <button onClick={() => { localStorage.removeItem('driverAuthenticated'); localStorage.removeItem('driverEmail'); localStorage.removeItem('driverName'); localStorage.removeItem('driverId'); navigate('/driver/login'); }} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '6px', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Power size={20} /></button>
             </div>
             {/* TODAY'S EARNINGS COMPACT CARD */}
             <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
@@ -2126,7 +2132,15 @@ You can only accept prepaid trips until your balance is cleared.`);
               <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}</button>
               <button onClick={() => setShowRidePreferencesModal(true)} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Settings size={20} /></button>
               
-              <button onClick={() => { localStorage.removeItem('driverAuthenticated'); localStorage.removeItem('driverEmail'); localStorage.removeItem('driverName'); localStorage.removeItem('driverId'); navigate('/driver-login'); }} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '6px', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Power size={20} /></button>
+              {/* WALLET BUTTON */}
+              <button onClick={() => { setShowMainMenu(true); setActiveMenu('wallet'); }} style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                <Wallet size={20} />
+                {parseFloat(wallet?.toBePaid || 0) > 1000 && (
+                  <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '10px', height: '10px', background: '#ef4444', borderRadius: '50%', border: '2px solid var(--bg-card)' }} />
+                )}
+              </button>
+              
+              <button onClick={() => { localStorage.removeItem('driverAuthenticated'); localStorage.removeItem('driverEmail'); localStorage.removeItem('driverName'); localStorage.removeItem('driverId'); navigate('/driver/login'); }} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '6px', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Power size={20} /></button>
             </div>
 
             {/* Today's Earnings */}
@@ -2513,7 +2527,9 @@ You can only accept prepaid trips until your balance is cleared.`);
                           const tipAmount = parseFloat(currentRide.driverTip || 0);
                         
                         // Total to collect is Trip Fare + Tip
-                        const total = tripFare + tipAmount;
+                        const waitingCharge = parseFloat(currentRide.waitingCharge || 0);
+                        const hiddenDebt = parseFloat(currentRide.hiddenDebt || 0);
+                        const total = tripFare + tipAmount + waitingCharge + hiddenDebt;
                         
                         const isLess = liveDist > 0 && liveDist < baseTotal;
                         const isMore = liveDist > baseTotal;
@@ -2544,6 +2560,18 @@ You can only accept prepaid trips until your balance is cleared.`);
                                 <span>Trip Fare:</span>
                                 <span>₹{tripFare.toFixed(2)}</span>
                               </div>
+                              {waitingCharge > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
+                                  <span>Waiting Charge (after 5 mins):</span>
+                                  <span>+₹{waitingCharge.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {hiddenDebt > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
+                                  <span>Passenger Previous Due:</span>
+                                  <span>+₹{hiddenDebt.toFixed(2)}</span>
+                                </div>
+                              )}
                               <div style={{ borderTop: '1px solid rgba(59, 130, 246, 0.3)', margin: '6px 0', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '15px' }}>
                                 <span>Total Collected:</span>
                                 <span>₹{total.toFixed(2)}</span>

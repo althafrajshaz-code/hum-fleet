@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, MessageCircle } from 'lucide-react';
+import { Eye, EyeOff, MessageCircle, Phone } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import Button from '../components/Button';
 import './Auth.css';
@@ -17,19 +17,21 @@ const PassengerLogin = () => {
       navigate('/passenger');
     }
   }, [navigate]);
-  const [loginId, setLoginId] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
     try {
       const response = await fetch(`${getBackendUrl()}/api/passengers/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ loginId, password })
+        body: JSON.stringify({ loginId: `+91 ${phone}`, password })
       });
 
       if (response.ok) {
@@ -41,10 +43,12 @@ const PassengerLogin = () => {
       } else {
         const data = await response.json();
         setError(data.error || 'Invalid login details or password.');
+        setIsLoading(false);
       }
     } catch (err) {
       console.error(err);
       setError('Failed to connect to authentication server.');
+      setIsLoading(false);
     }
   };
 
@@ -72,17 +76,27 @@ const PassengerLogin = () => {
         )}
 
         <form className="auth-form" onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="loginId">Email or Phone Number</label>
-            <input 
-              type="text" 
-              id="loginId" 
-              className="input-field" 
-              placeholder="name@example.com or Mobile Number" 
-              value={loginId}
-              onChange={(e) => setLoginId(e.target.value)}
-              required 
-            />
+          <div className="form-group" style={{ marginBottom: '16px' }}>
+            <label htmlFor="phone">Phone Number</label>
+            <div style={{ display: 'flex', gap: '8px', height: '48px', marginTop: '8px' }}>
+              <span className="input-field" style={{ width: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(200, 200, 200, 0.15)', fontWeight: 'bold', padding: 0 }}>
+                +91
+              </span>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <div className="input-icon"><Phone size={18} /></div>
+                <input 
+                  type="tel" 
+                  id="phone" 
+                  className="input-field with-icon" 
+                  placeholder="98765 43210" 
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  pattern="[0-9]{10}"
+                  required 
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>
@@ -96,6 +110,7 @@ const PassengerLogin = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 style={{ paddingRight: '40px' }}
                 required 
+                disabled={isLoading}
               />
               <button
                 type="button"
@@ -119,8 +134,8 @@ const PassengerLogin = () => {
               </button>
             </div>
           </div>
-          <Button variant="primary" type="submit" className="full-width">
-            Login
+          <Button variant="primary" type="submit" className="full-width" style={{ opacity: isLoading ? 0.7 : 1 }} disabled={isLoading}>
+            {isLoading ? 'Logging in...' : 'Login'}
           </Button>
 
           <div style={{ display: 'flex', alignItems: 'center', margin: '16px 0' }}>

@@ -12,7 +12,6 @@ const getBackendUrl = () => { return API_BASE; };
 const PassengerSignup = () => {
   const navigate = useNavigate();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -35,7 +34,7 @@ const PassengerSignup = () => {
         },
         body: JSON.stringify({
           name,
-          email,
+          email: `${phone}@humfleet.xyz`,
           phone: `+91 ${phone}`,
           password
         })
@@ -89,19 +88,6 @@ const PassengerSignup = () => {
               placeholder="John Doe" 
               value={name}
               onChange={(e) => setName(e.target.value)}
-              required 
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input 
-              type="email" 
-              id="email" 
-              className="input-field" 
-              placeholder="name@example.com" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               required 
             />
           </div>

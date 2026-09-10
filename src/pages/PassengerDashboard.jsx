@@ -1666,6 +1666,18 @@ const PassengerDashboard = () => {
                   <span style={{ color: 'var(--text-muted)' }}>Trip Fare:</span>
                   <span>₹{parseFloat(activeRide.fare || 0).toFixed(2)}</span>
                 </div>
+                {parseFloat(activeRide.waitingCharge || 0) > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#ef4444' }}>
+                    <span>Waiting Charge:</span>
+                    <span>+₹{parseFloat(activeRide.waitingCharge || 0).toFixed(2)}</span>
+                  </div>
+                )}
+                {parseFloat(activeRide.hiddenDebt || 0) > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#ef4444' }}>
+                    <span>Previous Cancellation Due:</span>
+                    <span>+₹{parseFloat(activeRide.hiddenDebt || 0).toFixed(2)}</span>
+                  </div>
+                )}
                 {parseFloat(activeRide.driverTip || 0) > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Tip:</span>

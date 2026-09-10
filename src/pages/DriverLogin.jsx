@@ -21,10 +21,12 @@ const DriverLogin = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
     try {
       const response = await fetch(`${getBackendUrl()}/api/drivers/login`, {
@@ -43,10 +45,12 @@ const DriverLogin = () => {
       } else {
         const data = await response.json();
         setError(data.error || 'Invalid login details or password.');
+        setIsLoading(false);
       }
     } catch (err) {
       console.error(err);
       setError('Failed to connect to authentication server.');
+      setIsLoading(false);
     }
   };
 
@@ -91,6 +95,7 @@ const DriverLogin = () => {
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   pattern="[0-9]{10}"
                   required 
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -107,6 +112,7 @@ const DriverLogin = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 style={{ paddingRight: '40px' }}
                 required 
+                disabled={isLoading}
               />
               <button
                 type="button"
@@ -130,8 +136,8 @@ const DriverLogin = () => {
               </button>
             </div>
           </div>
-          <Button variant="primary" type="submit" className="full-width" style={{ marginTop: '8px' }}>
-            Login as Driver
+          <Button variant="primary" type="submit" className="full-width" style={{ marginTop: '8px', opacity: isLoading ? 0.7 : 1 }} disabled={isLoading}>
+            {isLoading ? 'Logging in...' : 'Login as Driver'}
           </Button>
         </form>
         <div className="auth-footer">
